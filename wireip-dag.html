@@ -3396,8 +3396,22 @@
       <svg viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
     </button>
     <div class="brand-block">
-      <div class="brand-mark" id="brand-mark" title="OTW">
+      <div class="brand-mark" id="brand-mark" title="Tap to upload logo or Black Paper PDF">
         <img id="brand-logo-img" src="" alt="OTW" style="width:100%;height:100%;object-fit:contain;display:none;">
+        <div id="brand-logo-empty" style="
+          width:100%;height:100%;
+          display:flex;flex-direction:column;align-items:center;justify-content:center;
+          border:1.5px dashed var(--gold);border-radius:6px;
+          color:var(--gold);
+          font-size:8px;font-weight:700;letter-spacing:0.06em;
+          text-transform:uppercase;line-height:1.1;
+          cursor:pointer;
+          background:rgba(240,196,25,0.04);
+          transition:all 0.15s;
+        ">
+          <div style="font-size:14px;line-height:1;margin-bottom:2px;">+</div>
+          <div>LOGO</div>
+        </div>
         <input type="file" id="brand-logo-input" hidden accept="image/*,application/pdf,.pdf">
       </div>
       <div class="brand-text">
@@ -13619,7 +13633,9 @@ async function discoverBrandLogo() {
 function applyBrandLogo(src) {
   if (!src) return;
   const img = document.getElementById('brand-logo-img');
+  const empty = document.getElementById('brand-logo-empty');
   if (img) { img.src = src; img.style.display = 'block'; }
+  if (empty) empty.style.display = 'none';
   const splashImg = document.getElementById('splash-logo-img');
   if (splashImg) {
     splashImg.src = src;
@@ -13627,7 +13643,6 @@ function applyBrandLogo(src) {
     splashImg.style.width = '100%';
     splashImg.style.height = '100%';
     splashImg.style.objectFit = 'contain';
-    // Reveal its container too
     const wrap = splashImg.closest('.splash-logo');
     if (wrap) wrap.style.display = 'flex';
   }
