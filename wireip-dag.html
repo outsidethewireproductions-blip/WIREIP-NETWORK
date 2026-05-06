@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#050606">
 <title>WireIP Network™ — IP Tokenization Vault · Institutional Edition v4.1</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -1693,6 +1696,306 @@
     background: transparent; border: 1px solid var(--border-strong);
   }
 
+  /* ===== Hardware / Software Store ===== */
+  .product-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .product-card {
+    background: var(--panel); border: 1.5px solid var(--border-strong);
+    border-radius: var(--radius); padding: 18px;
+    position: relative; overflow: hidden;
+    transition: all 0.18s;
+  }
+  .product-card:hover { border-color: var(--gold-soft); box-shadow: 0 0 18px rgba(240,196,25,0.15); transform: translateY(-2px); }
+  .product-card.featured { border-color: var(--gold); }
+  .product-card.featured::before {
+    content: 'BESTSELLER'; position: absolute; top: 10px; right: 10px;
+    background: var(--gold); color: var(--bg);
+    font-size: 8px; padding: 2px 8px; border-radius: 8px;
+    letter-spacing: 0.10em; font-weight: 700;
+  }
+  .product-card .pc-icon {
+    width: 60px; height: 60px;
+    background: linear-gradient(135deg, rgba(240,196,25,0.20), rgba(240,196,25,0.04));
+    border: 1.5px solid var(--gold);
+    border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--gold); font-size: 24px;
+    margin-bottom: 14px;
+  }
+  .product-card.cyan .pc-icon { background: linear-gradient(135deg, rgba(79,214,255,0.20), rgba(79,214,255,0.04)); border-color: var(--cyan); color: var(--cyan); }
+  .product-card .pc-name {
+    font-size: 14px; color: var(--text); font-weight: 700;
+    letter-spacing: 0.06em; margin-bottom: 4px;
+  }
+  .product-card .pc-tagline {
+    font-size: 10px; color: var(--gold-soft);
+    text-transform: uppercase; letter-spacing: 0.10em;
+    margin-bottom: 12px;
+  }
+  .product-card .pc-desc {
+    font-size: 11px; color: var(--muted); line-height: 1.6;
+    margin-bottom: 12px; min-height: 56px;
+  }
+  .product-card .pc-features {
+    list-style: none; padding: 0; margin: 0 0 14px;
+    font-size: 10.5px; color: var(--text);
+  }
+  .product-card .pc-features li {
+    padding: 3px 0; padding-left: 18px; position: relative;
+  }
+  .product-card .pc-features li::before {
+    content: '✓'; position: absolute; left: 0; color: var(--green); font-weight: 700;
+  }
+  .product-card .pc-price {
+    display: flex; align-items: baseline; gap: 6px;
+    margin-bottom: 12px; padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .product-card .pc-price .pp-amt {
+    font-size: 22px; color: var(--gold); font-weight: 700; font-family: ui-monospace, monospace;
+  }
+  .product-card .pc-price .pp-cur {
+    font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.10em;
+  }
+  .product-card .pc-buy {
+    width: 100%; padding: 10px; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.10em;
+  }
+
+  /* Tier selector for software */
+  .tier-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 10px; margin-top: 10px;
+  }
+  .tier-card {
+    background: var(--panel-2); border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: 12px 14px;
+    cursor: pointer; transition: all 0.15s; text-align: center;
+  }
+  .tier-card:hover { border-color: var(--gold-soft); }
+  .tier-card.selected { border-color: var(--gold); background: rgba(240,196,25,0.06); }
+  .tier-card .tc-name {
+    font-size: 10px; color: var(--gold-soft); text-transform: uppercase;
+    letter-spacing: 0.10em; margin-bottom: 4px;
+  }
+  .tier-card .tc-price {
+    font-size: 16px; color: var(--text); font-weight: 700; font-family: ui-monospace, monospace;
+  }
+  .tier-card .tc-period {
+    font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.10em;
+    margin-top: 2px;
+  }
+
+  /* License key display */
+  .license-key {
+    background: var(--bg); border: 1px dashed var(--gold);
+    border-radius: var(--radius); padding: 14px;
+    font-family: ui-monospace, monospace; font-size: 12px;
+    color: var(--gold); text-align: center; letter-spacing: 0.10em;
+    margin: 12px 0; word-break: break-all;
+    text-shadow: 0 0 6px rgba(240,196,25,0.3);
+  }
+
+  /* Order tracking timeline */
+  .order-timeline {
+    display: flex; gap: 0; margin: 14px 0;
+    background: var(--panel-2); border-radius: var(--radius); padding: 8px;
+  }
+  .order-stage {
+    flex: 1; text-align: center; padding: 6px 4px;
+    font-size: 9px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    position: relative;
+  }
+  .order-stage:not(:last-child)::after {
+    content: ''; position: absolute; right: -6px; top: 50%;
+    width: 12px; height: 1px; background: var(--border);
+  }
+  .order-stage.done { color: var(--green); }
+  .order-stage.active { color: var(--gold); font-weight: 700; }
+  .order-stage .stage-dot {
+    display: block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--border); margin: 0 auto 4px;
+  }
+  .order-stage.done .stage-dot { background: var(--green); box-shadow: 0 0 6px rgba(74,222,128,0.5); }
+  .order-stage.active .stage-dot { background: var(--gold); box-shadow: 0 0 8px rgba(240,196,25,0.7); animation: pulse 1.6s infinite; }
+
+  /* Owned items list */
+  .owned-row {
+    display: grid; grid-template-columns: 32px 1fr 100px 80px;
+    gap: 10px; align-items: center;
+    padding: 8px 12px; background: var(--panel-2);
+    border: 1px solid var(--border); border-left: 3px solid var(--green);
+    border-radius: var(--radius); margin-bottom: 5px;
+    font-size: 10.5px;
+  }
+  .owned-row.cyan { border-left-color: var(--cyan); }
+  .owned-row .or-icon { color: var(--green); font-size: 16px; text-align: center; }
+  .owned-row.cyan .or-icon { color: var(--cyan); }
+  .owned-row .or-name { color: var(--text); font-weight: 600; }
+  .owned-row .or-meta { color: var(--muted); font-size: 9.5px; margin-top: 1px; }
+  .owned-row .or-status {
+    font-size: 9px; padding: 2px 8px; border-radius: 8px;
+    text-transform: uppercase; letter-spacing: 0.08em; text-align: center;
+  }
+  .owned-row .or-status.active { background: rgba(74,222,128,0.10); color: var(--green); border: 1px solid rgba(74,222,128,0.4); }
+  .owned-row .or-status.shipping { background: rgba(245,158,11,0.10); color: var(--warn); border: 1px solid rgba(245,158,11,0.4); }
+  .owned-row .or-status.delivered { background: rgba(74,222,128,0.10); color: var(--green); border: 1px solid rgba(74,222,128,0.4); }
+
+  /* ===== Mobile menu toggle ===== */
+  .menu-toggle {
+    display: none;
+    align-items: center; justify-content: center;
+    width: 38px; height: 38px;
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--gold);
+    cursor: pointer; padding: 0; flex-shrink: 0;
+    transition: all 0.15s;
+  }
+  .menu-toggle:hover, .menu-toggle:active { background: rgba(240,196,25,0.10); border-color: var(--gold); }
+  .menu-toggle svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+  .nav-backdrop {
+    display: none; position: fixed; inset: 64px 0 28px 0;
+    background: rgba(0,0,0,0.65); backdrop-filter: blur(2px);
+    z-index: 79; animation: fadeIn 0.18s ease;
+  }
+  .nav-backdrop.show { display: block; }
+
+  /* ===== Mobile breakpoint ===== */
+  @media (max-width: 900px) {
+    .menu-toggle { display: inline-flex; }
+    header.topbar { padding: 0 10px; gap: 8px; }
+    .brand-text { display: none; }
+    .brand-mark { width: 36px; height: 36px; }
+    .top-search { max-width: none; flex: 1; }
+    .top-search input { font-size: 11px; padding: 6px 10px 6px 30px; }
+    .top-search .icon { left: 10px; font-size: 11px; }
+    .wallet-display { padding: 4px 8px; }
+    .wallet-display .addr { display: none; }
+    .wallet-display button { padding: 1px 6px; font-size: 8.5px; }
+    .conn-banner { padding: 0 10px; font-size: 9px; gap: 6px; letter-spacing: 0.06em; }
+    .conn-banner #conn-banner-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; flex: 1; }
+    .conn-banner button { padding: 3px 8px; font-size: 8.5px; }
+    .conn-banner .conn-actions { gap: 4px; }
+    main.workspace { grid-template-columns: 1fr; }
+    nav.side {
+      position: fixed; top: 64px; bottom: 28px; left: 0;
+      width: 260px; max-width: 80vw;
+      z-index: 80; transform: translateX(-100%);
+      transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+      box-shadow: 4px 0 24px rgba(0,0,0,0.6);
+      overflow-y: auto;
+    }
+    nav.side.open { transform: translateX(0); }
+    .view { padding: 16px 12px; }
+    .view h1 { font-size: 15px; letter-spacing: 0.06em; }
+    .view .lede { font-size: 10.5px; margin-bottom: 14px; }
+    .view h2 { margin-top: 18px; padding-top: 12px; font-size: 11px; }
+    .card { padding: 14px; }
+    .card-header h3 { font-size: 11px; }
+    .form-row, .form-row.three { grid-template-columns: 1fr; gap: 10px; }
+    .asset-types { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .asset-type { padding: 12px 8px; }
+    .asset-type .icon { font-size: 18px; margin-bottom: 6px; }
+    .asset-type .label { font-size: 10px; }
+    .asset-type .desc { font-size: 9px; }
+    .privacy-mode-bar { flex-direction: column; }
+    .privacy-mode-bar .pm-opt { border-right: none; border-bottom: 1px solid var(--border-strong); }
+    .privacy-mode-bar .pm-opt:last-child { border-bottom: none; }
+    .vault-grid, .provider-grid, .network-grid, .collab-grid,
+    .stablecoin-grid, .nn-stat-grid, .sec-grid, .meter-grid, .sentinel-grid,
+    .office-grid, .contract-template-grid { grid-template-columns: 1fr; }
+    .vault-summary { grid-template-columns: 1fr 1fr; }
+    .vault-filters { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+    .vault-filters::-webkit-scrollbar { display: none; }
+    .vault-filters .filter-chip { flex-shrink: 0; }
+    .vault-filters .filter-search { min-width: 160px; }
+    .category-chips { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+    .category-chips::-webkit-scrollbar { display: none; }
+    .category-chips .cat-chip { flex-shrink: 0; }
+    .modal { width: 96vw; max-height: 92vh; }
+    .modal header { padding: 12px 14px; }
+    .modal header h2 { font-size: 11px; letter-spacing: 0.10em; }
+    .modal .body { padding: 14px; }
+    .modal .footer { padding: 10px 12px; flex-wrap: wrap; gap: 6px; }
+    .modal .footer button { flex: 1; min-width: 100px; }
+    footer.statusbar { padding: 0 10px; gap: 8px; font-size: 8.5px; letter-spacing: 0.06em; }
+    footer.statusbar #status-msg, footer.statusbar #last-saved { display: none; }
+    footer.statusbar > span:nth-of-type(2) { display: none; }
+    .globe-shell { height: 60vh; min-height: 360px; }
+    .globe-overlay-top { flex-direction: column; gap: 8px; left: 8px; right: 8px; top: 8px; }
+    .globe-stats { flex-wrap: wrap; gap: 10px; padding: 8px 10px; font-size: 9px; }
+    .globe-stats .gs-item .gs-val { font-size: 12px; }
+    .globe-buttons { flex-wrap: wrap; }
+    .globe-buttons button { padding: 4px 8px; font-size: 9px; }
+    .vertex-spec, .legend { display: none; }
+    .globe-labels .g-label.city, .globe-labels .g-label.state { display: none; }
+    .globe-labels .g-label { font-size: 8px; }
+    .globe-labels .g-label.region { font-size: 9.5px; }
+    .canvas-wrap { height: 55vh; min-height: 360px; }
+    .dag-hud { position: relative; top: auto; right: auto; margin: 8px; min-width: 0; }
+    .tokenomics-hero { padding: 16px; }
+    .tokenomics-hero .th-coin { flex-direction: column; align-items: flex-start; gap: 14px; }
+    .coin-emblem { width: 64px; height: 64px; font-size: 22px; }
+    .th-stat-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .th-stat .ths-val { font-size: 16px; }
+    .alloc-grid { grid-template-columns: 1fr; }
+    .alloc-donut-wrap svg { max-width: 220px; }
+    .asset-row { grid-template-columns: 28px 1fr 80px; gap: 8px; padding: 6px 8px; }
+    .asset-row .ar-qty, .asset-row .ar-pct { display: none; }
+    .asset-row .ar-change { font-size: 9px; }
+    .wallet-connect-grid { grid-template-columns: 1fr 1fr; }
+    .float-submit-bar { padding: 12px 14px 16px; flex-wrap: wrap; gap: 8px; }
+    .float-submit-bar .fsb-pill { font-size: 8.5px; padding: 3px 8px; }
+    .float-submit-btn { padding: 12px 24px; font-size: 11px; letter-spacing: 0.14em; }
+    .sn-actions button { flex: 1; min-width: 110px; }
+    .sn-checklist { grid-template-columns: 1fr; }
+    .quantum-sim button { flex: 1; min-width: 140px; }
+    .threat-feed .tf-row { grid-template-columns: 60px 50px 1fr; gap: 6px; font-size: 9px; }
+    .stable-card .sc-balance { font-size: 14px; }
+    .provider-card .pv-stats { gap: 4px; }
+    #boot-splash .splash-logo.splash-logo-big { width: min(70vmin, 320px); height: min(70vmin, 320px); }
+    .globe-tooltip { min-width: 160px; max-width: 240px; font-size: 9.5px; padding: 8px 10px; }
+    .dropzone { padding: 24px 14px; }
+    .file-preview { grid-template-columns: 1fr; gap: 12px; }
+    .fp-thumb { width: 100%; height: 180px; }
+    .verdict-card { flex-direction: column; align-items: flex-start; padding: 12px; }
+    .office-grid { grid-template-columns: 1fr 1fr; }
+    .sentinel-card .st-stats { grid-template-columns: 1fr 1fr; }
+    .clause-lib .cl-search { max-width: none !important; }
+    .clause-lib .cl-head { flex-wrap: wrap; gap: 6px; }
+  }
+
+  @media (max-width: 480px) {
+    .asset-types { grid-template-columns: 1fr; }
+    .vault-summary { grid-template-columns: 1fr; }
+    .th-stat-grid { grid-template-columns: 1fr; }
+    .wallet-connect-grid { grid-template-columns: 1fr; }
+    .office-grid { grid-template-columns: 1fr; }
+    header.topbar { flex-wrap: wrap; height: auto; padding: 8px; }
+    #app { grid-template-rows: auto 36px 1fr 28px; }
+    .top-search { order: 3; flex-basis: 100%; max-width: none; }
+    .conn-banner #conn-banner-text { font-size: 8.5px; }
+    .conn-banner button { padding: 2px 6px; font-size: 8px; }
+  }
+
+  @supports (padding: max(0px)) {
+    @media (max-width: 900px) {
+      header.topbar { padding-left: max(10px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
+      footer.statusbar { padding-left: max(10px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); padding-bottom: env(safe-area-inset-bottom); }
+      .float-submit-bar { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+    }
+  }
+
+  @media (pointer: coarse) {
+    button, .nav-item, .filter-chip, .cat-chip, .asset-type, .ct-card, .office-card,
+    .privacy-mode-bar .pm-opt, .viz-swatch { min-height: 36px; }
+    .nav-item { padding: 12px 16px; }
+    .priv-toggle { padding: 4px 8px; }
+  }
+
   /* ===== Boot Splash — Futuristic Vault Unlock ===== */
   #boot-splash {
     position: fixed; inset: 0; z-index: 9999;
@@ -2780,6 +3083,9 @@
 <div id="app">
   <!-- ===== TOP BAR ===== -->
   <header class="topbar">
+    <button class="menu-toggle" id="menu-toggle" aria-label="Open menu">
+      <svg viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+    </button>
     <div class="brand-block">
       <div class="brand-mark" id="brand-mark" title="OTW">
         <img id="brand-logo-img" src="" alt="OTW" style="width:100%;height:100%;object-fit:contain;display:none;">
@@ -2817,7 +3123,8 @@
 
   <!-- ===== WORKSPACE ===== -->
   <main class="workspace">
-    <nav class="side">
+    <div class="nav-backdrop" id="nav-backdrop"></div>
+    <nav class="side" id="side-nav">
       <div class="nav-group">
         <h4 data-nav-group>Tokenization<span class="chev">▾</span></h4>
         <div class="nav-item active" data-view="view-tokenize"><span class="icon">▲</span><span>New Asset</span></div>
@@ -3731,17 +4038,66 @@
           <div id="ssd-match-results" style="margin-top:12px;"></div>
         </div>
 
+        <!-- ===== HARDWARE & SOFTWARE STORE ===== -->
         <div class="card">
-          <div class="card-header"><h3>Don't have SecureNode™ yet?</h3></div>
-          <p style="font-size:11px;color:var(--text);line-height:1.6;">
-            SecureNode™ is the local software that bridges this entry app to your SSD vault. Without it, files cannot be encrypted to disk — drafts only.
-          </p>
-          <div class="sn-checklist">
-            <div class="sn-step"><span class="num">1</span><span class="title">Download</span><div class="body">SecureNode™ Software Interface for macOS / Windows / Linux from the institutional release channel.</div></div>
-            <div class="sn-step"><span class="num">2</span><span class="title">Source SSD</span><div class="body">Compliant SSD (NFC + Secure Element) for Phase 1, or proprietary SecureNode™ SSD for Phase 2.</div></div>
-            <div class="sn-step"><span class="num">3</span><span class="title">Pair SecureCard™</span><div class="body">First boot performs MPC trusted setup with NFC SecureCard™. Physical TAPP becomes mandatory.</div></div>
-            <div class="sn-step"><span class="num">4</span><span class="title">Connect</span><div class="body">Service listens on <code>http://127.0.0.1:8443</code>. Probe and you're online.</div></div>
+          <div class="card-header">
+            <h3>⚜ Order Hardware &amp; Software</h3>
+            <div class="spacer"></div>
+            <span class="pill gold"><span class="dot"></span><span>OFFICIAL OUTSIDE THE WIRE STORE</span></span>
           </div>
+          <p style="font-size:11px;color:var(--text);line-height:1.6;margin:0 0 14px;">
+            Don't have SecureNode™ yet? Order your NFC SecureCard™ for hardware-rooted Proof of Agency, and license the SecureNode™ software interface that bridges this app to your encrypted SSD vault. All orders settle in stablecoin · ships from Atlanta, GA.
+          </p>
+          <div class="product-grid">
+            <!-- SecureCard product -->
+            <div class="product-card cyan featured">
+              <div class="pc-icon">⌬</div>
+              <div class="pc-name">SecureCard™ NFC</div>
+              <div class="pc-tagline">Physical Human Gate · MPC Setup</div>
+              <div class="pc-desc">Tamper-evident NFC card with on-card Ed25519 key. Required for all minting, governance, and treasury actions. FIPS 140-2 L3 secure element, ISO/IEC 14443.</div>
+              <ul class="pc-features">
+                <li>Ed25519 on-card signing</li>
+                <li>FIPS 140-2 Level 3 element</li>
+                <li>Multi-Party Computation trusted setup</li>
+                <li>Physical TAPP gate for all actions</li>
+                <li>Anti-tamper · IP67 rated</li>
+              </ul>
+              <div class="pc-price">
+                <span class="pp-amt">$249</span>
+                <span class="pp-cur">USDC · USDT · $WIP</span>
+              </div>
+              <button class="pc-buy primary cyan" id="btn-order-securecard">⚜ ORDER SECURECARD™</button>
+            </div>
+            <!-- SecureNode software product -->
+            <div class="product-card">
+              <div class="pc-icon">⛁</div>
+              <div class="pc-name">SecureNode™ Software</div>
+              <div class="pc-tagline">SSD Vault Interface · 3 Tiers</div>
+              <div class="pc-desc">The local service that encrypts asset bytes to your SSD and bridges the WireIP DAG. Connects to any compliant SSD (NFC + Secure Element) or proprietary SecureNode™ SSD.</div>
+              <ul class="pc-features">
+                <li>AES-256-GCM disk encryption</li>
+                <li>Local API on 127.0.0.1:8443</li>
+                <li>macOS · Windows · Linux</li>
+                <li>BLAKE3 vertex anchoring</li>
+                <li>Auto-updates via signed channel</li>
+              </ul>
+              <div class="pc-price">
+                <span class="pp-amt">$0–$1,499</span>
+                <span class="pp-cur">FREE / PRO / ENTERPRISE</span>
+              </div>
+              <button class="pc-buy primary" id="btn-buy-securenode">⛁ BUY SECURENODE™ LICENSE</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- My Hardware & Licenses -->
+        <div class="card" id="my-hw-card">
+          <div class="card-header">
+            <h3>My Hardware &amp; Licenses</h3>
+            <div class="spacer"></div>
+            <span style="font-size:9.5px;color:var(--muted);" id="my-hw-count">0 items</span>
+          </div>
+          <div id="my-hw-list"></div>
         </div>
       </section>
 
@@ -4494,6 +4850,142 @@
   </div>
 </div>
 
+<!-- ===== Order SecureCard modal ===== -->
+<div class="modal-backdrop hidden" id="modal-order-card">
+  <div class="modal" style="border-color:var(--cyan);">
+    <header style="background:linear-gradient(90deg,rgba(79,214,255,0.08),transparent);border-bottom-color:rgba(79,214,255,0.30);">
+      <h2 style="color:var(--cyan);">⌬ Order SecureCard™ NFC</h2>
+      <button class="close" data-close="modal-order-card">&times;</button>
+    </header>
+    <div class="body">
+      <div style="display:flex;align-items:center;gap:14px;padding:12px;background:var(--panel-2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;">
+        <div style="font-size:28px;color:var(--cyan);">⌬</div>
+        <div style="flex:1;">
+          <div style="font-size:12px;font-weight:700;color:var(--text);">SecureCard™ NFC · Physical Human Gate</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px;">Ed25519 on-card · FIPS 140-2 L3 · MPC trusted setup</div>
+        </div>
+        <div style="font-size:18px;font-weight:700;color:var(--gold);font-family:ui-monospace,monospace;">$249</div>
+      </div>
+      <div style="font-size:9.5px;color:var(--gold-soft);text-transform:uppercase;letter-spacing:0.10em;margin-bottom:6px;">Shipping Address</div>
+      <label class="field">
+        <span class="lbl"><span class="name req">Recipient Name</span></span>
+        <input type="text" id="oc-name" placeholder="Full name as on ID">
+      </label>
+      <label class="field">
+        <span class="lbl"><span class="name req">Street Address</span></span>
+        <input type="text" id="oc-street" placeholder="Address line 1">
+      </label>
+      <div class="form-row">
+        <label class="field">
+          <span class="lbl"><span class="name req">City</span></span>
+          <input type="text" id="oc-city" placeholder="Atlanta">
+        </label>
+        <label class="field">
+          <span class="lbl"><span class="name">State / Region</span></span>
+          <input type="text" id="oc-state" placeholder="GA">
+        </label>
+      </div>
+      <div class="form-row">
+        <label class="field">
+          <span class="lbl"><span class="name req">Postal Code</span></span>
+          <input type="text" id="oc-zip" placeholder="30303">
+        </label>
+        <label class="field">
+          <span class="lbl"><span class="name">Country</span></span>
+          <input type="text" id="oc-country" placeholder="United States" value="United States">
+        </label>
+      </div>
+      <label class="field">
+        <span class="lbl"><span class="name">Email (for tracking)</span></span>
+        <input type="email" id="oc-email" placeholder="optional">
+      </label>
+      <div style="font-size:9.5px;color:var(--gold-soft);text-transform:uppercase;letter-spacing:0.10em;margin-top:14px;margin-bottom:6px;">Payment</div>
+      <div class="form-row">
+        <label class="field">
+          <span class="lbl"><span class="name req">Currency</span></span>
+          <select id="oc-currency">
+            <option value="USDC">USDC</option><option value="USDT">USDT</option>
+            <option value="USD1">USD1</option><option value="USDP">USDP</option><option value="WIP">$WIP</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="lbl"><span class="name">Quantity</span></span>
+          <input type="number" id="oc-qty" min="1" max="10" value="1" step="1">
+        </label>
+      </div>
+      <div style="background:var(--panel-2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;font-size:11px;">
+        <span style="color:var(--muted);">Total</span>
+        <span id="oc-total" style="color:var(--gold);font-weight:700;font-family:ui-monospace,monospace;font-size:14px;">$249.00 USDC</span>
+      </div>
+      <div class="form-error hidden" id="oc-error"></div>
+    </div>
+    <div class="footer">
+      <button data-close="modal-order-card">Cancel</button>
+      <button class="primary cyan" id="oc-confirm">⌬ Place Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Buy SecureNode software modal ===== -->
+<div class="modal-backdrop hidden" id="modal-buy-software">
+  <div class="modal" style="border-color:var(--gold);">
+    <header><h2>⛁ Buy SecureNode™ License</h2><button class="close" data-close="modal-buy-software">&times;</button></header>
+    <div class="body">
+      <div style="font-size:9.5px;color:var(--gold-soft);text-transform:uppercase;letter-spacing:0.10em;margin-bottom:6px;">Pick a Tier</div>
+      <div class="tier-grid" id="bs-tiers"></div>
+      <div style="font-size:9.5px;color:var(--gold-soft);text-transform:uppercase;letter-spacing:0.10em;margin-top:14px;margin-bottom:6px;">Operating System</div>
+      <div class="form-row three" style="grid-template-columns:repeat(3,1fr)">
+        <label class="field" style="margin:0">
+          <input type="radio" name="bs-os" value="macOS" id="bs-os-mac" checked style="width:auto;margin-right:6px;">
+          <span style="font-size:11px;">macOS</span>
+        </label>
+        <label class="field" style="margin:0">
+          <input type="radio" name="bs-os" value="Windows" id="bs-os-win" style="width:auto;margin-right:6px;">
+          <span style="font-size:11px;">Windows</span>
+        </label>
+        <label class="field" style="margin:0">
+          <input type="radio" name="bs-os" value="Linux" id="bs-os-linux" style="width:auto;margin-right:6px;">
+          <span style="font-size:11px;">Linux</span>
+        </label>
+      </div>
+      <label class="field" style="margin-top:14px;">
+        <span class="lbl"><span class="name">Email for license delivery (optional)</span></span>
+        <input type="email" id="bs-email" placeholder="creator@studio.com">
+      </label>
+      <label class="field">
+        <span class="lbl"><span class="name req">Pay With</span></span>
+        <select id="bs-currency">
+          <option value="USDC">USDC</option><option value="USDT">USDT</option>
+          <option value="USD1">USD1</option><option value="USDP">USDP</option><option value="WIP">$WIP</option>
+        </select>
+      </label>
+      <div style="background:var(--panel-2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;font-size:11px;">
+        <span style="color:var(--muted);">Total</span>
+        <span id="bs-total" style="color:var(--gold);font-weight:700;font-family:ui-monospace,monospace;font-size:14px;">$0.00 USDC</span>
+      </div>
+      <div class="form-error hidden" id="bs-error"></div>
+    </div>
+    <div class="footer">
+      <button data-close="modal-buy-software">Cancel</button>
+      <button class="primary" id="bs-confirm">⛁ Buy License</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Order confirmation / license display ===== -->
+<div class="modal-backdrop hidden" id="modal-order-confirm">
+  <div class="modal" style="border-color:var(--green);">
+    <header style="background:linear-gradient(90deg,rgba(74,222,128,0.08),transparent);border-bottom-color:rgba(74,222,128,0.30);">
+      <h2 style="color:var(--green);">✓ Order Confirmed</h2>
+      <button class="close" data-close="modal-order-confirm">&times;</button>
+    </header>
+    <div class="body" id="oc-confirm-body"></div>
+    <div class="footer">
+      <button class="primary" data-close="modal-order-confirm">Done</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== Floating Submit-to-Network bar (post-PoA) ===== -->
 <div class="float-submit-bar" id="float-submit-bar">
   <span class="fsb-pill">✓ PoA VERIFIED</span>
@@ -4555,7 +5047,9 @@ const state = {
   ipListings: [],
   ssdMatches: [],
   ipMarketFilter: 'all',
-  deployedSentinels: [],  // user-deployed Sentinel Soldier instances
+  deployedSentinels: [],
+  hardwareOrders: [],
+  softwareLicenses: [],
   wipPrice: 0.85,
   wipCirculating: 32_400_000,
   wipBurned: 145_280,
@@ -4811,6 +5305,8 @@ function save() {
     ipListings: state.ipListings,
     ssdMatches: state.ssdMatches,
     deployedSentinels: state.deployedSentinels,
+    hardwareOrders: state.hardwareOrders,
+    softwareLicenses: state.softwareLicenses,
     wipPrice: state.wipPrice,
     wipCirculating: state.wipCirculating,
     wipBurned: state.wipBurned,
@@ -4851,6 +5347,8 @@ function load() {
     state.ipListings = p.ipListings || [];
     state.ssdMatches = p.ssdMatches || [];
     state.deployedSentinels = p.deployedSentinels || [];
+    state.hardwareOrders = p.hardwareOrders || [];
+    state.softwareLicenses = p.softwareLicenses || [];
     state.wipPrice = p.wipPrice || 0.85;
     state.wipCirculating = p.wipCirculating || 32_400_000;
     state.wipBurned = p.wipBurned || 145_280;
@@ -4892,7 +5390,7 @@ function showView(id) {
   if (id === 'view-security') renderSecurityView();
   if (id === 'view-dag') updateDagHUD();
   if (id === 'view-ipmarket') renderIPMarket();
-  if (id === 'view-securenode') renderSSDMatchResults();
+  if (id === 'view-securenode') { renderSSDMatchResults(); renderOwnedHardware(); }
   if (id === 'view-tokenomics') renderTokenomics();
 }
 
@@ -6031,7 +6529,37 @@ function updateDagHUD() {
   $('#hud-edges').textContent = state.edges.size;
   $('#hud-tps').textContent = fmtNum(820 + (Date.now() / 1000 | 0) % 4200);
 }
-$$('.nav-item').forEach(n => n.addEventListener('click', () => showView(n.dataset.view)));
+$$('.nav-item').forEach(n => n.addEventListener('click', () => {
+  showView(n.dataset.view);
+  // On mobile, close the sidebar after picking a view
+  if (window.matchMedia('(max-width: 900px)').matches) closeSideNav();
+}));
+
+// ============================================================
+// MOBILE SIDEBAR
+// ============================================================
+function openSideNav() {
+  document.getElementById('side-nav')?.classList.add('open');
+  document.getElementById('nav-backdrop')?.classList.add('show');
+}
+function closeSideNav() {
+  document.getElementById('side-nav')?.classList.remove('open');
+  document.getElementById('nav-backdrop')?.classList.remove('show');
+}
+function toggleSideNav() {
+  const nav = document.getElementById('side-nav');
+  if (nav?.classList.contains('open')) closeSideNav(); else openSideNav();
+}
+document.getElementById('menu-toggle')?.addEventListener('click', toggleSideNav);
+document.getElementById('nav-backdrop')?.addEventListener('click', closeSideNav);
+// Close sidebar on Escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('side-nav')?.classList.contains('open')) closeSideNav();
+});
+// Auto-close drawer if window is resized to desktop width
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 900) closeSideNav();
+});
 
 // ============================================================
 // WALLET
@@ -11130,6 +11658,287 @@ document.addEventListener('click', (e) => {
   const h4 = e.target.closest('h4[data-nav-group]');
   if (h4) h4.parentElement.classList.toggle('collapsed');
 });
+
+// ============================================================
+// HARDWARE & SOFTWARE STORE — order SecureCard / buy SecureNode
+// ============================================================
+const SECURECARD_PRICE = 249;
+const SOFTWARE_TIERS = [
+  { id: 'free',       name: 'Free',       price: 0,    period: 'forever',   features: ['Local-only mode', 'Up to 5 deeds', 'Community support'] },
+  { id: 'pro',        name: 'Pro',        price: 499,  period: 'per year',  features: ['Unlimited deeds', 'AGI Sentinel agents', 'Priority sync', 'Email support'] },
+  { id: 'enterprise', name: 'Enterprise', price: 1499, period: 'per year',  features: ['Everything in Pro', 'On-premise SecureNode', 'Custom integrations', 'SLA + 24/7 support'] },
+];
+
+let selectedTier = 'pro';
+
+function genLicenseKey() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const groups = [];
+  for (let g = 0; g < 4; g++) {
+    let s = '';
+    for (let i = 0; i < 5; i++) s += chars[Math.floor(Math.random() * chars.length)];
+    groups.push(s);
+  }
+  return 'WIP-' + groups.join('-');
+}
+function genTrackingNumber() {
+  return 'OTW' + Math.floor(Math.random() * 9e9 + 1e9).toString();
+}
+
+// ===== Order SecureCard =====
+function openOrderCardModal() {
+  $('#oc-name').value = state.wallet.name || '';
+  $('#oc-street').value = '';
+  $('#oc-city').value = '';
+  $('#oc-state').value = '';
+  $('#oc-zip').value = '';
+  $('#oc-country').value = 'United States';
+  $('#oc-email').value = '';
+  $('#oc-currency').value = 'USDC';
+  $('#oc-qty').value = 1;
+  $('#oc-error').classList.add('hidden');
+  updateOrderCardTotal();
+  openModal('modal-order-card');
+}
+function updateOrderCardTotal() {
+  const qty = Number($('#oc-qty')?.value || 1);
+  const cur = $('#oc-currency')?.value || 'USDC';
+  const total = SECURECARD_PRICE * qty;
+  const el = $('#oc-total');
+  if (el) el.textContent = '$' + total.toFixed(2) + ' ' + cur;
+}
+$('#oc-qty')?.addEventListener('input', updateOrderCardTotal);
+$('#oc-currency')?.addEventListener('change', updateOrderCardTotal);
+
+const btnOrderCard = $('#btn-order-securecard');
+if (btnOrderCard) btnOrderCard.addEventListener('click', () => {
+  if (!state.walletConnected) { toast('Connect a wallet first to order', 'warn'); soundDeny(); showView('view-wallet'); return; }
+  openOrderCardModal();
+});
+
+$('#oc-confirm')?.addEventListener('click', () => {
+  const errEl = $('#oc-error'); errEl.classList.add('hidden');
+  const name = $('#oc-name').value.trim();
+  const street = $('#oc-street').value.trim();
+  const city = $('#oc-city').value.trim();
+  const zip = $('#oc-zip').value.trim();
+  const qty = Math.max(1, Number($('#oc-qty').value || 1));
+  const cur = $('#oc-currency').value;
+  const total = SECURECARD_PRICE * qty;
+  if (!name || !street || !city || !zip) {
+    errEl.textContent = 'Name, street, city, and postal code are required'; errEl.classList.remove('hidden'); soundDeny(); return;
+  }
+  if ((state.walletBalances[cur] || 0) < total) {
+    errEl.textContent = 'Insufficient ' + cur + ' balance · need ' + total + ' ' + cur;
+    errEl.classList.remove('hidden'); soundDeny(); return;
+  }
+  state.walletBalances[cur] -= total;
+  const order = {
+    id: uid('ord'), product: 'SecureCard™ NFC',
+    quantity: qty, unit_price: SECURECARD_PRICE, total, currency: cur,
+    shipping: { name, street, city, state: $('#oc-state').value.trim(), zip, country: $('#oc-country').value.trim(), email: $('#oc-email').value.trim() },
+    tracking: genTrackingNumber(),
+    stages: ['ordered','manufacturing','shipping','delivered'],
+    stage: 0,
+    status: 'ordered',
+    ordered_at: nowISO(),
+    estimated_delivery: new Date(Date.now() + 7 * 86400000).toLocaleDateString(),
+  };
+  state.hardwareOrders.unshift(order);
+  state.payments.unshift({
+    id: uid('pay'), direction: 'out', from: state.walletAddr,
+    to: 'OTW Productions Treasury', amount: total, currency: cur,
+    memo: 'SecureCard™ x' + qty + ' (' + order.tracking + ')',
+    status: 'released', tx_hash: '0x' + Math.random().toString(16).slice(2,18),
+    created_at: nowISO(),
+  });
+  save();
+  closeModal('modal-order-card');
+  soundSubmit();
+  showOrderConfirm({ kind: 'hardware', order });
+  // Simulate order progression — manufacturing → shipping → delivered
+  setTimeout(() => { order.stage = 1; order.status = 'manufacturing'; save(); renderOwnedHardware(); }, 4000);
+  setTimeout(() => { order.stage = 2; order.status = 'shipping'; save(); renderOwnedHardware(); toast('Your SecureCard is on the way · ' + order.tracking, 'info', 4000); }, 12000);
+  setTimeout(() => { order.stage = 3; order.status = 'delivered'; save(); renderOwnedHardware(); toast('SecureCard delivered ✓', 'ok'); }, 22000);
+  renderOwnedHardware();
+});
+
+// ===== Buy SecureNode license =====
+function openBuySoftwareModal() {
+  selectedTier = 'pro';
+  const tg = $('#bs-tiers');
+  tg.innerHTML = '';
+  for (const t of SOFTWARE_TIERS) {
+    const card = el('div', { class: 'tier-card' + (selectedTier === t.id ? ' selected' : ''), 'data-tier': t.id });
+    card.appendChild(el('div', { class: 'tc-name' }, t.name));
+    card.appendChild(el('div', { class: 'tc-price' }, t.price === 0 ? 'FREE' : '$' + t.price));
+    card.appendChild(el('div', { class: 'tc-period' }, t.period));
+    card.addEventListener('click', () => {
+      selectedTier = t.id;
+      $$('#bs-tiers .tier-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      updateBuySoftwareTotal();
+    });
+    tg.appendChild(card);
+  }
+  $('#bs-email').value = '';
+  $('#bs-currency').value = 'USDC';
+  $('#bs-error').classList.add('hidden');
+  updateBuySoftwareTotal();
+  openModal('modal-buy-software');
+}
+function updateBuySoftwareTotal() {
+  const tier = SOFTWARE_TIERS.find(t => t.id === selectedTier);
+  const cur = $('#bs-currency')?.value || 'USDC';
+  const el = $('#bs-total');
+  if (el) el.textContent = '$' + (tier?.price || 0).toFixed(2) + ' ' + cur;
+}
+$('#bs-currency')?.addEventListener('change', updateBuySoftwareTotal);
+
+const btnBuySoft = $('#btn-buy-securenode');
+if (btnBuySoft) btnBuySoft.addEventListener('click', () => {
+  if (!state.walletConnected && SOFTWARE_TIERS.find(t => t.id === selectedTier)?.price > 0) {
+    toast('Connect a wallet for paid tiers', 'warn'); showView('view-wallet'); return;
+  }
+  openBuySoftwareModal();
+});
+
+$('#bs-confirm')?.addEventListener('click', () => {
+  const errEl = $('#bs-error'); errEl.classList.add('hidden');
+  const tier = SOFTWARE_TIERS.find(t => t.id === selectedTier);
+  const cur = $('#bs-currency').value;
+  const os = document.querySelector('input[name=bs-os]:checked')?.value || 'macOS';
+  if (tier.price > 0) {
+    if (!state.walletConnected) { errEl.textContent = 'Wallet not connected'; errEl.classList.remove('hidden'); soundDeny(); return; }
+    if ((state.walletBalances[cur] || 0) < tier.price) {
+      errEl.textContent = 'Insufficient ' + cur + ' balance · need ' + tier.price + ' ' + cur;
+      errEl.classList.remove('hidden'); soundDeny(); return;
+    }
+    state.walletBalances[cur] -= tier.price;
+    state.payments.unshift({
+      id: uid('pay'), direction: 'out', from: state.walletAddr,
+      to: 'OTW Productions Treasury', amount: tier.price, currency: cur,
+      memo: 'SecureNode™ ' + tier.name + ' license (' + os + ')',
+      status: 'released', tx_hash: '0x' + Math.random().toString(16).slice(2,18),
+      created_at: nowISO(),
+    });
+  }
+  const license = {
+    id: uid('lic'),
+    product: 'SecureNode™ ' + tier.name,
+    tier: tier.id,
+    license_key: genLicenseKey(),
+    os, price: tier.price, currency: cur,
+    email: $('#bs-email').value.trim(),
+    issued_at: nowISO(),
+    expires_at: tier.id === 'free' ? null : new Date(Date.now() + 365 * 86400000).toISOString(),
+    download_url: '#download-' + os.toLowerCase() + '-' + tier.id,
+    status: 'active',
+  };
+  state.softwareLicenses.unshift(license);
+  save();
+  closeModal('modal-buy-software');
+  soundSubmit();
+  showOrderConfirm({ kind: 'software', license });
+  renderOwnedHardware();
+});
+
+// ===== Order confirmation modal =====
+function showOrderConfirm({ kind, order, license }) {
+  const body = $('#oc-confirm-body');
+  body.innerHTML = '';
+  if (kind === 'hardware') {
+    body.appendChild(el('p', { style:'font-size:11.5px;color:var(--text);line-height:1.6;margin:0 0 14px;' },
+      'Your ' + order.product + ' order has been received. Manufacturing begins immediately, then ships from Atlanta, GA — typically delivered within 5–7 business days.'));
+    const grid = el('div', { style:'display:grid;grid-template-columns:130px 1fr;gap:6px;font-size:11px;' });
+    function r(k, v, color) {
+      grid.appendChild(el('div', { style:'color:var(--muted);font-size:9.5px;text-transform:uppercase;letter-spacing:0.08em;' }, k));
+      grid.appendChild(el('div', { style:'color:' + (color || 'var(--text)') + ';font-family:ui-monospace,monospace;word-break:break-all;' }, v));
+    }
+    r('Order ID', order.id, 'var(--gold)');
+    r('Tracking #', order.tracking, 'var(--gold)');
+    r('Quantity', String(order.quantity));
+    r('Unit Price', '$' + order.unit_price);
+    r('Total Charged', '$' + order.total + ' ' + order.currency, 'var(--green)');
+    r('Ship To', order.shipping.name + ', ' + order.shipping.city);
+    r('Est. Delivery', order.estimated_delivery);
+    body.appendChild(grid);
+    body.appendChild(buildOrderTimeline(order));
+  } else if (kind === 'software') {
+    body.appendChild(el('p', { style:'font-size:11.5px;color:var(--text);line-height:1.6;margin:0 0 8px;' },
+      'Thank you for purchasing ' + license.product + '. Your license is active immediately. The license key below is also stored in your account.'));
+    body.appendChild(el('div', { style:'font-size:9.5px;color:var(--gold-soft);text-transform:uppercase;letter-spacing:0.10em;margin:14px 0 4px;' }, 'License Key'));
+    body.appendChild(el('div', { class: 'license-key' }, license.license_key));
+    const grid = el('div', { style:'display:grid;grid-template-columns:130px 1fr;gap:6px;font-size:11px;' });
+    function r(k, v, color) {
+      grid.appendChild(el('div', { style:'color:var(--muted);font-size:9.5px;text-transform:uppercase;letter-spacing:0.08em;' }, k));
+      grid.appendChild(el('div', { style:'color:' + (color || 'var(--text)') + ';font-family:ui-monospace,monospace;' }, v));
+    }
+    r('Tier', license.product, 'var(--gold)');
+    r('Operating System', license.os);
+    r('Issued', new Date(license.issued_at).toLocaleString());
+    if (license.expires_at) r('Expires', new Date(license.expires_at).toLocaleDateString());
+    if (license.price > 0) r('Charged', '$' + license.price + ' ' + license.currency, 'var(--green)');
+    body.appendChild(grid);
+    const dl = el('button', { class: 'primary cyan', style: 'width:100%;margin-top:14px;padding:12px;' },
+      '⬇ Download SecureNode™ for ' + license.os);
+    dl.addEventListener('click', () => {
+      toast('Download link sent · check your email or use the link in My Hardware', 'ok');
+      soundVerify();
+    });
+    body.appendChild(dl);
+  }
+  openModal('modal-order-confirm');
+}
+
+function buildOrderTimeline(order) {
+  const wrap = el('div', { class: 'order-timeline' });
+  const labels = ['Ordered', 'Manufacturing', 'Shipping', 'Delivered'];
+  for (let i = 0; i < labels.length; i++) {
+    const stage = el('div', { class: 'order-stage' + (i < order.stage ? ' done' : i === order.stage ? ' active' : '') });
+    stage.appendChild(el('span', { class: 'stage-dot' }));
+    stage.appendChild(el('div', {}, labels[i]));
+    wrap.appendChild(stage);
+  }
+  return wrap;
+}
+
+function renderOwnedHardware() {
+  const wrap = $('#my-hw-list');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const total = state.hardwareOrders.length + state.softwareLicenses.length;
+  $('#my-hw-count').textContent = total + ' item' + (total === 1 ? '' : 's');
+  if (total === 0) {
+    wrap.appendChild(el('div', { class: 'help', style: 'margin:6px 0;' }, 'You haven\'t ordered any hardware or licensed any software yet.'));
+    return;
+  }
+  for (const o of state.hardwareOrders) {
+    const row = el('div', { class: 'owned-row cyan', style: 'cursor:pointer;' });
+    row.appendChild(el('div', { class: 'or-icon' }, '⌬'));
+    const info = el('div');
+    info.appendChild(el('div', { class: 'or-name' }, o.product + ' × ' + o.quantity));
+    info.appendChild(el('div', { class: 'or-meta' }, 'Tracking ' + o.tracking + ' · ' + new Date(o.ordered_at).toLocaleDateString() + ' · est. ' + o.estimated_delivery));
+    row.appendChild(info);
+    row.appendChild(el('div', { style:'color:var(--gold);font-family:ui-monospace,monospace;text-align:right;' }, '$' + o.total + ' ' + o.currency));
+    const statusCls = o.status === 'delivered' ? 'delivered' : o.status === 'shipping' ? 'shipping' : 'active';
+    row.appendChild(el('div', { class: 'or-status ' + statusCls }, o.status));
+    row.addEventListener('click', () => showOrderConfirm({ kind: 'hardware', order: o }));
+    wrap.appendChild(row);
+  }
+  for (const l of state.softwareLicenses) {
+    const row = el('div', { class: 'owned-row', style: 'cursor:pointer;' });
+    row.appendChild(el('div', { class: 'or-icon' }, '⛁'));
+    const info = el('div');
+    info.appendChild(el('div', { class: 'or-name' }, l.product + ' · ' + l.os));
+    info.appendChild(el('div', { class: 'or-meta' }, 'Key: ' + l.license_key + ' · issued ' + new Date(l.issued_at).toLocaleDateString()));
+    row.appendChild(info);
+    row.appendChild(el('div', { style:'color:var(--gold);font-family:ui-monospace,monospace;text-align:right;' }, l.price > 0 ? '$' + l.price + ' ' + l.currency : 'FREE'));
+    row.appendChild(el('div', { class: 'or-status active' }, 'active'));
+    row.addEventListener('click', () => showOrderConfirm({ kind: 'software', license: l }));
+    wrap.appendChild(row);
+  }
+}
 
 // ============================================================
 // COLLABORATORS
