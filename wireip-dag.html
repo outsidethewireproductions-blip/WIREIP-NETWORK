@@ -1978,8 +1978,100 @@
     .clause-lib .cl-head { flex-wrap: wrap; gap: 6px; }
   }
 
+  /* ===== HARD CONTAINMENT — kill horizontal overflow ===== */
+  @media (max-width: 900px) {
+    html, body, #app, main.workspace, .content-area, .view, .card,
+    header.topbar, .conn-banner, footer.statusbar {
+      max-width: 100vw !important;
+      overflow-x: hidden;
+    }
+    main.workspace {
+      display: block !important;
+      grid-template-columns: 1fr !important;
+      width: 100vw;
+    }
+    .content-area {
+      width: 100%;
+      max-width: 100%;
+    }
+    .view { width: 100%; max-width: 100%; }
+    /* min-width: 0 on grid items so they can shrink below content size */
+    .asset-types, .vault-grid, .provider-grid, .network-grid, .collab-grid,
+    .stablecoin-grid, .nn-stat-grid, .sec-grid, .meter-grid, .sentinel-grid,
+    .office-grid, .contract-template-grid, .product-grid, .tier-grid,
+    .alloc-grid, .form-row, .vault-summary, .th-stat-grid, .wallet-connect-grid,
+    .viz-picker, .sn-checklist, .meter-grid {
+      min-width: 0; max-width: 100%;
+    }
+    .asset-types > *, .vault-grid > *, .provider-grid > *, .network-grid > *,
+    .collab-grid > *, .stablecoin-grid > *, .nn-stat-grid > *, .sec-grid > *,
+    .meter-grid > *, .sentinel-grid > *, .office-grid > *,
+    .contract-template-grid > *, .product-grid > *, .tier-grid > *,
+    .form-row > *, .vault-summary > *, .th-stat-grid > *,
+    .wallet-connect-grid > *, .viz-picker > * {
+      min-width: 0; max-width: 100%;
+    }
+    /* Card content must not blow out */
+    .card, .vault-card, .provider-card, .product-card, .stable-card,
+    .sentinel-card, .meter-card, .sec-card, .nn-stat, .network-card,
+    .collab-card, .contract-card, .vs-tile, .ct-card, .office-card {
+      max-width: 100%;
+      overflow: hidden;
+      word-wrap: break-word;
+      overflow-wrap: anywhere;
+    }
+    /* Truncate long words / hashes that can blow out cards */
+    .pi-hash, .vc-meta .v, .kv .v, .deed-cert .cert-row .v,
+    .fpd-row .v, .agent-row .ag-id, .stable-card .sc-balance,
+    .ar-name, .or-name, .or-meta, .pv-name, .pv-bio, .nt-desc {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    /* Status bar items truncate */
+    footer.statusbar > * { min-width: 0; flex-shrink: 1; }
+    footer.statusbar #status-msg, footer.statusbar #last-saved { display: none !important; }
+    footer.statusbar > span:not(.pill) { display: none !important; }
+    /* Connection banner — wrap */
+    .conn-banner { flex-wrap: wrap; height: auto; min-height: 28px; }
+    .conn-banner #conn-banner-text { flex: 1 1 auto; min-width: 0; }
+    .conn-banner .conn-actions { flex-shrink: 0; }
+    /* Top bar elements shrink properly */
+    header.topbar > * { min-width: 0; }
+    .top-search { min-width: 0; }
+  }
+
   /* ===== iPhone-class phones (≤ 480px) ===== */
   @media (max-width: 480px) {
+    /* Asset types — keep 2 col but allow shrink */
+    .asset-types { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; }
+    /* Connection banner — stack vertically, buttons share width */
+    .conn-banner {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+      padding: 6px 10px !important;
+      height: auto;
+    }
+    .conn-banner > * { width: 100%; }
+    .conn-banner #conn-banner-text {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      width: 100%; max-width: 100%;
+    }
+    .conn-banner .conn-actions {
+      display: flex;
+      gap: 6px;
+      width: 100%;
+    }
+    .conn-banner .conn-actions button {
+      flex: 1; min-width: 0;
+      padding: 4px 6px;
+      font-size: 8.5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     /* Top bar drops the search to its own row */
     header.topbar {
       flex-wrap: wrap;
