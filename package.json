@@ -1,0 +1,13 @@
+{
+  "name": "wireip-network-dag",
+  "version": "4.1.0",
+  "private": true,
+  "description": "WireIP Network™ — IP Tokenization Vault · Institutional Edition. Self-contained single-file app for tokenizing IP, hiring service providers, deploying Sentinel agents, and managing CBIA™ deeds on the WireIP DAG.",
+  "scripts": {
+    "dev": "npx serve . -l 3000",
+    "start": "npx serve . -l 3000",
+    "build": "echo 'Static site — nothing to build'"
+  },
+  "license": "UNLICENSED",
+  "homepage": "https://wireip.network"
+}
