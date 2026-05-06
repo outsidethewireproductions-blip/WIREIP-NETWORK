@@ -1978,7 +1978,7 @@
     .clause-lib .cl-head { flex-wrap: wrap; gap: 6px; }
   }
 
-  /* ===== HARD CONTAINMENT — kill horizontal overflow ===== */
+  /* ===== HARD CONTAINMENT — kill horizontal overflow, allow vertical scroll ===== */
   @media (max-width: 900px) {
     html, body, #app, main.workspace, .content-area, .view, .card,
     header.topbar, .conn-banner, footer.statusbar {
@@ -1986,13 +1986,18 @@
       overflow-x: hidden;
     }
     main.workspace {
-      display: block !important;
+      display: grid !important;
       grid-template-columns: 1fr !important;
       width: 100vw;
+      overflow: hidden;
     }
     .content-area {
       width: 100%;
       max-width: 100%;
+      height: 100%;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      -webkit-overflow-scrolling: touch;
     }
     .view { width: 100%; max-width: 100%; }
     /* min-width: 0 on grid items so they can shrink below content size */
@@ -12548,9 +12553,37 @@ const VALIDATOR_TYPES = ['Record Label', 'Record Company', 'Recording Studio', '
 const NAME_PREFIXES = ['Wax', 'Vinyl', 'Bronze', 'Iron', 'Sun', 'Lunar', 'Atlas', 'Echo', 'Pulse', 'Sonic', 'Cipher', 'Vortex', 'Halcyon', 'Sentinel', 'Forge', 'Anvil', 'Quartz', 'Ember', 'Voltage', 'Mosaic', 'Beacon', 'Crown'];
 const NAME_SUFFIXES = ['Records', 'Studios', 'Sound', 'Productions', 'Collective', 'House', 'Works', 'Lab', 'Group', 'Audio', 'Atelier', 'Society'];
 
+function ensureFlagshipValidators() {
+  // Always make sure the two Atlanta flagship validators exist, even for existing users
+  const flagships = [
+    {
+      id: 'vld-flagship-otw',
+      name: 'Outside The Wire Productions',
+      type: 'Record Label',
+      location: { city: 'Atlanta', country: 'USA', lat: 33.749, lng: -84.388, isHub: true, isFlagship: true },
+      status: 'active', stake: 100_000, validated_count: 4_280, revenue: 1_240_000,
+      flagship: true, role: 'Genesis · Founder', added_at: nowISO(),
+    },
+    {
+      id: 'vld-flagship-wavlord',
+      name: 'Wav Lord Records',
+      type: 'Record Label',
+      location: { city: 'Atlanta', country: 'USA', lat: 33.7510, lng: -84.3850, isHub: true, isFlagship: true },
+      status: 'active', stake: 88_500, validated_count: 3_640, revenue: 1_080_000,
+      flagship: true, role: 'Genesis · Co-Founder', added_at: nowISO(),
+    },
+  ];
+  for (const f of flagships) {
+    if (!state.validators.find(v => v.id === f.id)) {
+      state.validators.unshift(f);
+    }
+  }
+}
+
 function seedValidators() {
-  if (state.validators.length > 0) return; // already seeded
-  let i = 0;
+  ensureFlagshipValidators();
+  if (state.validators.length > 2) return; // already seeded beyond flagships
+  let i = 2;
   for (const loc of VALIDATOR_SEED_LOCATIONS) {
     for (let k = 0; k < loc.n; k++) {
       const seed = (i * 9301 + 49297) % 233280;
@@ -12654,8 +12687,8 @@ function initGlobe() {
 
   globe = { initialized: true, scene, camera, renderer, earth: earthGroup, markers: [], raycaster: new THREE.Raycaster(), mouse: new THREE.Vector2(), autoRotate: true };
 
-  // Drag rotate
-  let isDragging = false, lastX, lastY;
+  // Drag rotate / pinch zoom — works for both mouse and touch
+  let isDragging = false, lastX, lastY, lastTouchDist = 0;
   const cv = renderer.domElement;
   cv.addEventListener('mousedown', e => { isDragging = true; lastX = e.clientX; lastY = e.clientY; globe.autoRotate = false; });
   cv.addEventListener('mousemove', e => {
@@ -12675,6 +12708,44 @@ function initGlobe() {
     camera.position.z = Math.max(140, Math.min(420, camera.position.z + e.deltaY * 0.25));
   }, { passive: false });
   cv.addEventListener('click', (e) => handleClick(e));
+
+  // ---- Touch gestures (mobile) ----
+  cv.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      isDragging = true;
+      lastX = e.touches[0].clientX;
+      lastY = e.touches[0].clientY;
+      globe.autoRotate = false;
+    } else if (e.touches.length === 2) {
+      isDragging = false;
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      lastTouchDist = Math.sqrt(dx*dx + dy*dy);
+    }
+  }, { passive: true });
+  cv.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 1 && isDragging) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - lastX;
+      const dy = e.touches[0].clientY - lastY;
+      lastX = e.touches[0].clientX;
+      lastY = e.touches[0].clientY;
+      earthGroup.rotation.y += dx * 0.005;
+      earthGroup.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, earthGroup.rotation.x + dy * 0.005));
+    } else if (e.touches.length === 2) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (lastTouchDist > 0) {
+        const delta = lastTouchDist - dist;
+        camera.position.z = Math.max(140, Math.min(420, camera.position.z + delta * 0.5));
+      }
+      lastTouchDist = dist;
+    }
+  }, { passive: false });
+  cv.addEventListener('touchend', () => { isDragging = false; lastTouchDist = 0; });
+  cv.addEventListener('touchcancel', () => { isDragging = false; lastTouchDist = 0; });
 
   // Resize
   const ro = new ResizeObserver(() => {
@@ -13014,6 +13085,7 @@ function refreshGlobeMarkers() {
       size = v.location.isHub ? 1.4 : 0.7;
     }
     if (v.location.isHub) size = Math.max(size, 1.3);
+    if (v.flagship) { size = 2.4; color = 0xf0c419; }
     const marker = new THREE.Mesh(
       new THREE.SphereGeometry(size, 12, 12),
       new THREE.MeshBasicMaterial({ color })
@@ -13454,6 +13526,47 @@ function fitView() {
     state.view.y = my - (my - state.view.y) * (k1/k0);
     state.view.k = k1; applyViewportTransform();
   }, { passive: false });
+  // ---- Touch gestures: pan with one finger, pinch zoom with two ----
+  let dagTouchDist = 0;
+  svg.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) {
+      panning = true; svg.classList.add('panning');
+      sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+      ox = state.view.x; oy = state.view.y;
+    } else if (e.touches.length === 2) {
+      panning = false;
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      dagTouchDist = Math.sqrt(dx*dx + dy*dy);
+    }
+  }, { passive: true });
+  svg.addEventListener('touchmove', e => {
+    if (e.touches.length === 1 && panning) {
+      e.preventDefault();
+      state.view.x = ox + (e.touches[0].clientX - sx);
+      state.view.y = oy + (e.touches[0].clientY - sy);
+      applyViewportTransform();
+    } else if (e.touches.length === 2) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dagTouchDist > 0) {
+        const factor = dist / dagTouchDist;
+        const rect = svg.getBoundingClientRect();
+        const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+        const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+        const k0 = state.view.k;
+        const k1 = Math.max(0.2, Math.min(3, k0 * factor));
+        state.view.x = cx - (cx - state.view.x) * (k1/k0);
+        state.view.y = cy - (cy - state.view.y) * (k1/k0);
+        state.view.k = k1; applyViewportTransform();
+      }
+      dagTouchDist = dist;
+    }
+  }, { passive: false });
+  svg.addEventListener('touchend', () => { panning = false; dagTouchDist = 0; svg.classList.remove('panning'); });
+  svg.addEventListener('touchcancel', () => { panning = false; dagTouchDist = 0; svg.classList.remove('panning'); });
 })();
 const zi = $('#btn-zoom-in'), zo = $('#btn-zoom-out'), zf = $('#btn-fit');
 if (zi) zi.addEventListener('click', () => { state.view.k = Math.min(3, state.view.k * 1.2); applyViewportTransform(); });
@@ -13912,6 +14025,8 @@ function init() {
   $('#nav-ipmarket-count').textContent = state.ipListings.filter(l => l.status === 'active' || l.status === 'auction-live').length;
   // Pre-seed validators for the globe + marketplace providers
   if (state.validators.length === 0) seedValidators();
+  ensureFlagshipValidators();
+  save();
   if (state.providers.length === 0) seedProviders();
   // Compute treasury badge value on init
   let totalVal = 0;
