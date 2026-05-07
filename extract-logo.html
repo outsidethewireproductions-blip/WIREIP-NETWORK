@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Extract OTW Logo from Black Paper</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  body { background:#050606; color:#f0e8c8; font-family: ui-monospace, monospace; padding: 28px; max-width: 720px; margin: 0 auto; }
+  h1 { color:#f0c419; letter-spacing:0.08em; }
+  p, li { line-height:1.6; font-size:13px; }
+  .drop {
+    border: 2px dashed #f0c419; border-radius: 8px;
+    padding: 40px; text-align: center; cursor: pointer;
+    background: rgba(240,196,25,0.04); margin: 20px 0;
+    transition: all 0.15s;
+  }
+  .drop:hover, .drop.drag { background: rgba(240,196,25,0.10); transform: scale(1.01); }
+  .drop input { display:none; }
+  .drop-icon { font-size: 36px; color:#f0c419; }
+  .preview { display:flex; gap:14px; margin-top:18px; flex-wrap:wrap; align-items:flex-start; }
+  .preview img { background:#0a0a0a; border:1px solid #f0c419; border-radius:8px; padding:8px; max-width:240px; }
+  button {
+    background: rgba(240,196,25,0.10); border: 1px solid #f0c419; color:#f0c419;
+    padding: 10px 18px; font-size: 12px; letter-spacing: 0.10em;
+    text-transform: uppercase; cursor: pointer; border-radius: 6px;
+    margin-right: 8px; margin-top: 8px;
+  }
+  button:hover { background: rgba(240,196,25,0.20); }
+  code { background:#121315; padding: 2px 6px; border-radius:3px; color:#f0c419; }
+  .step { background:#0b0c0d; border-left:3px solid #f0c419; padding:12px 16px; margin:12px 0; border-radius:4px; }
+  .ok { color:#4ade80; }
+</style>
+</head>
+<body>
+<h1>⚜ Extract OTW Logo from Black Paper</h1>
+<p>This is a one-time helper. Drop your Black Paper PDF below. The script renders page 1, finds the densest gold-pixel cluster (the cover logo), crops it square, and lets you download it as <code>otw-logo.png</code>. Save the download into the project folder, push to GitHub, and the main app's auto-discovery picks it up everywhere.</p>
+
+<label class="drop" id="drop">
+  <div class="drop-icon">⬆</div>
+  <div style="margin-top:8px;font-size:13px;color:#f0c419;font-weight:700;letter-spacing:0.10em;text-transform:uppercase;">Drop Black Paper PDF</div>
+  <div style="font-size:10.5px;color:#6b6450;margin-top:4px;">or click to browse</div>
+  <input type="file" id="file" accept="application/pdf,.pdf">
+</label>
+
+<div id="status" style="font-size:12px;color:#6b6450;margin:14px 0;"></div>
+
+<div class="preview" id="preview"></div>
+
+<div class="step">
+  <strong>After download:</strong>
+  <ol>
+    <li>Move the downloaded <code>otw-logo.png</code> into <code>WireIP Network DAG/</code> (next to <code>wireip-dag.html</code>)</li>
+    <li>Run: <code>git add otw-logo.png && git commit -m "logo" && git push</code></li>
+    <li>Vercel redeploys, the main app auto-discovers the file, and shows it in the brand mark + splash everywhere (desktop + mobile)</li>
+  </ol>
+</div>
+
+<script>
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('file');
+const status = document.getElementById('status');
+const preview = document.getElementById('preview');
+
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
+drop.addEventListener('drop', e => {
+  e.preventDefault(); drop.classList.remove('drag');
+  if (e.dataTransfer.files?.[0]) handle(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files?.[0]) handle(fileInput.files[0]); });
+
+async function handle(file) {
+  status.textContent = '⌬ Loading PDF…';
+  preview.innerHTML = '';
+  try {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    const page = await pdf.getPage(1);
+    const baseViewport = page.getViewport({ scale: 1 });
+    const targetWidth = 1600;
+    const scale = targetWidth / baseViewport.width;
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    const ctx = canvas.getContext('2d');
+    status.textContent = '⌬ Rendering cover…';
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    status.textContent = '⌬ Detecting logo region…';
+    // Scan for densest gold-pixel cluster
+    const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const px = img.data, w = canvas.width, h = canvas.height;
+    let minX = w, minY = h, maxX = 0, maxY = 0, gold = 0;
+    for (let y = 0; y < h; y += 2) {
+      for (let x = 0; x < w; x += 2) {
+        const i = (y * w + x) * 4;
+        const r = px[i], g = px[i+1], b = px[i+2];
+        if (r > 170 && r < 255 && g > 130 && g < 220 && b < 90 && r - b > 100) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+          gold++;
+        }
+      }
+    }
+    if (gold < 200 || maxX <= minX || maxY <= minY) {
+      status.textContent = '⚠ Could not detect a gold logo cluster on the cover. Falling back to top-center crop.';
+      const cropX = Math.floor(w * 0.30), cropY = Math.floor(h * 0.05);
+      const cropW = Math.floor(w * 0.40), cropH = Math.floor(h * 0.30);
+      finalize(canvas, cropX, cropY, cropW, cropH);
+      return;
+    }
+    const pad = Math.floor(w * 0.025);
+    minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
+    maxX = Math.min(w - 1, maxX + pad); maxY = Math.min(h - 1, maxY + pad);
+    const cw = maxX - minX, ch = maxY - minY;
+    const side = Math.max(cw, ch);
+    let cx = minX - Math.floor((side - cw) / 2);
+    let cy = minY - Math.floor((side - ch) / 2);
+    cx = Math.max(0, Math.min(w - side, cx));
+    cy = Math.max(0, Math.min(h - side, cy));
+    finalize(canvas, cx, cy, side, side);
+  } catch (e) {
+    status.textContent = '✕ Extraction failed: ' + e.message;
+  }
+}
+
+function finalize(canvas, x, y, cw, ch) {
+  const out = document.createElement('canvas');
+  out.width = cw; out.height = ch;
+  out.getContext('2d').drawImage(canvas, x, y, cw, ch, 0, 0, cw, ch);
+  const dataURL = out.toDataURL('image/png');
+  status.innerHTML = '<span class="ok">✓ Extracted ' + cw + '×' + ch + 'px logo from cover.</span>';
+  preview.innerHTML = '';
+  const img = document.createElement('img');
+  img.src = dataURL;
+  preview.appendChild(img);
+  const buttons = document.createElement('div');
+  const dl = document.createElement('button');
+  dl.textContent = '⬇ Download otw-logo.png';
+  dl.addEventListener('click', () => {
+    const a = document.createElement('a');
+    a.href = dataURL; a.download = 'otw-logo.png'; a.click();
+  });
+  buttons.appendChild(dl);
+  const copy = document.createElement('button');
+  copy.textContent = 'Copy as data URI';
+  copy.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(dataURL);
+    copy.textContent = '✓ Copied';
+    setTimeout(() => { copy.textContent = 'Copy as data URI'; }, 1600);
+  });
+  buttons.appendChild(copy);
+  preview.appendChild(buttons);
+}
+</script>
+</body>
+</html>
