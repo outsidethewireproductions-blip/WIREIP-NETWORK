@@ -286,7 +286,7 @@
   .brand-mark:hover { filter: drop-shadow(0 0 14px rgba(240,196,25,0.85)); transform: scale(1.04); }
   .brand-mark img { display: block; max-width: 100%; max-height: 100%; }
   .brand-mark svg { width: 100%; height: 100%; overflow: visible; }
-  .brand-mark .spray { filter: url(#spray-paint-filter); }
+  /* (removed: dead spray-paint-filter rule that referenced a non-existent SVG filter) */
   .brand-text .title {
     font-size: 13px; font-weight: 700; letter-spacing: 0.16em; color: var(--gold);
     text-shadow: 0 0 6px rgba(240,196,25,0.35);
@@ -16059,7 +16059,11 @@ document.addEventListener('click', (e) => {
 // BRAND LOGO — auto-discovers a logo file in the project folder,
 //   falls back to localStorage, supports drop/click upload.
 // ============================================================
-const BRAND_LOGO_KEY = 'wireip-brand-logo-v1';
+// v2 — invalidates the previous cached value so stale/wrong logos cleared by previous auto-discovery don't leak through.
+const BRAND_LOGO_KEY = 'wireip-brand-logo-v2';
+const BRAND_LOGO_OLD_KEYS = ['wireip-brand-logo-v1'];
+// Clean up any old keys so the SVG default always shows unless the user explicitly uploads.
+try { BRAND_LOGO_OLD_KEYS.forEach(k => localStorage.removeItem(k)); } catch(e) {}
 
 // Common filenames the user might have saved their logo as
 const BRAND_LOGO_CANDIDATES = [
@@ -16222,47 +16226,38 @@ async function autoExtractFromBlackPaper() {
 }
 
 (async function initBrandLogo() {
-  // 1) INSTANT: Read localStorage synchronously and apply the cached logo
-  //    BEFORE any network probes run. This guarantees mobile + desktop see
-  //    the same logo immediately, regardless of network speed.
+  // The inline SVG default (#splash-logo-default and #brand-logo-default) is the
+  // source of truth and renders immediately. Mobile and desktop both show this
+  // same SVG by default — no network races, no PNG auto-discovery, no PDF
+  // extraction. A custom logo only replaces the SVG when the user explicitly
+  // uploads one (click the brand mark → file picker → PNG/JPG/SVG/PDF).
   let appliedSrc = null;
   try {
     const saved = localStorage.getItem(BRAND_LOGO_KEY);
     if (saved) { applyBrandLogo(saved); appliedSrc = saved; }
   } catch(e) {}
-
-  // 2) BACKGROUND: Probe the project folder for a logo file in parallel.
-  //    If found, convert to data URL and swap (only if it's actually different).
-  try {
-    const found = await discoverBrandLogo();
-    if (found) {
-      // Convert the discovered URL to a data URL so it persists across sessions
-      // and doesn't 404 if the file is later renamed/moved.
-      let dataURL = null;
-      try { dataURL = await urlToDataURL(found); } catch(e) {}
-      const next = dataURL || found;
-      if (next && next !== appliedSrc) {
-        applyBrandLogo(next);
-        appliedSrc = next;
-        if (dataURL) {
-          try { localStorage.setItem(BRAND_LOGO_KEY, dataURL); } catch(e) {}
-        }
-      }
-    }
-  } catch(e) {}
-
-  // 3) BACKGROUND fallback: If still no logo, try to auto-extract from the Black Paper PDF
-  if (!appliedSrc) {
+  // (Auto-discovery + Black Paper auto-extraction intentionally disabled.
+  // They previously caused mobile to show the wrong logo on slow networks
+  // and to cache stale/incorrect images. To re-enable in dev only:
+  //   ?autologo=1 in the URL  →  see below.)
+  if (!appliedSrc && /[?&]autologo=1/.test(location.search)) {
     try {
-      const dataURL = await autoExtractFromBlackPaper();
-      if (dataURL) {
-        applyBrandLogo(dataURL);
-        try { localStorage.setItem(BRAND_LOGO_KEY, dataURL); } catch(e) {}
-        appliedSrc = dataURL;
+      const found = await discoverBrandLogo();
+      if (found) {
+        let dataURL = null;
+        try { dataURL = await urlToDataURL(found); } catch(e) {}
+        const next = dataURL || found;
+        if (next) {
+          applyBrandLogo(next);
+          appliedSrc = next;
+          if (dataURL) {
+            try { localStorage.setItem(BRAND_LOGO_KEY, dataURL); } catch(e) {}
+          }
+        }
       }
     } catch(e) {}
   }
-  // 4) If still nothing, the SVG default stays visible (matches desktop + mobile).
+  // The SVG default stays visible by default — desktop + mobile match exactly.
   // Wire the setup modal's drop zone
   const lsmDrop = document.getElementById('lsm-drop');
   const lsmInput = document.getElementById('lsm-input');
@@ -16305,7 +16300,29 @@ async function autoExtractFromBlackPaper() {
     if (f) handleBrandLogoUpload(f);
     e.target.value = '';
   });
+
+  // Reset to the SVG default — right-click on desktop, long-press on mobile
+  mark.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    resetBrandLogoToDefault();
+  });
+  let pressTimer = null;
+  mark.addEventListener('touchstart', () => {
+    pressTimer = setTimeout(() => {
+      resetBrandLogoToDefault();
+      pressTimer = null;
+    }, 700);
+  }, { passive: true });
+  mark.addEventListener('touchend', () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
+  mark.addEventListener('touchcancel', () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
+  mark.addEventListener('touchmove', () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
 })();
+
+function resetBrandLogoToDefault() {
+  try { localStorage.removeItem(BRAND_LOGO_KEY); } catch(e) {}
+  if (typeof restoreSvgDefaults === 'function') restoreSvgDefaults();
+  if (typeof toast === 'function') toast('Logo reset to OTW default', 'ok');
+}
 
 async function handleBrandLogoUpload(file) {
   // PDF drop → extract logo from cover page
