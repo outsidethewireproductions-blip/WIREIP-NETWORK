@@ -16075,24 +16075,61 @@ const BRAND_LOGO_CANDIDATES = [
   'otw-logo.webp', 'OTW.webp', 'logo.webp',
 ];
 
-function probeImage(url) {
+function probeImage(url, timeoutMs) {
+  // Default 6s timeout — gives slow cellular networks (mobile) room to respond.
+  // Previously this was 1.5s which caused mobile to fall back to the SVG default
+  // while desktop showed the discovered PNG, making the two devices diverge.
+  const timeout = timeoutMs || 6000;
   return new Promise((resolve) => {
     const img = new Image();
-    img.onload = () => resolve({ ok: true, w: img.naturalWidth, h: img.naturalHeight });
-    img.onerror = () => resolve({ ok: false });
+    let done = false;
+    const finish = (val) => { if (done) return; done = true; resolve(val); };
+    img.onload = () => finish({ ok: true, w: img.naturalWidth, h: img.naturalHeight, url });
+    img.onerror = () => finish({ ok: false, url });
     img.src = url;
-    // Give up after 1.5s per probe so the splash isn't held hostage by a slow server
-    setTimeout(() => resolve({ ok: false, timeout: true }), 1500);
+    setTimeout(() => finish({ ok: false, timeout: true, url }), timeout);
   });
 }
 
 async function discoverBrandLogo() {
-  for (const name of BRAND_LOGO_CANDIDATES) {
-    const url = encodeURI(name);
-    const r = await probeImage(url);
-    if (r.ok) return url;
+  // Probe candidates in PARALLEL so a slow server doesn't serialize 30 × 6s = 180s on mobile.
+  // The first one that returns ok wins.
+  const probes = BRAND_LOGO_CANDIDATES.map((name) => probeImage(encodeURI(name)));
+  const results = await Promise.all(probes);
+  const found = results.find((r) => r && r.ok);
+  return found ? found.url : null;
+}
+
+// Convert a same-origin URL into a base64 data URL so the logo survives across
+// sessions (and devices that share localStorage via the same user). Returns null
+// if fetch fails or the response isn't an image.
+async function urlToDataURL(url) {
+  try {
+    const res = await fetch(url, { cache: 'force-cache' });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    if (!blob || blob.size < 256) return null;
+    return await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+  } catch (e) {
+    return null;
   }
-  return null;
+}
+
+// Re-shows the SVG default if the PNG/URL we set fails to load (silently revert)
+function restoreSvgDefaults() {
+  const img = document.getElementById('brand-logo-img');
+  const defaultSvg = document.getElementById('brand-logo-default');
+  if (img) { img.style.display = 'none'; img.removeAttribute('src'); }
+  if (defaultSvg) defaultSvg.style.display = 'block';
+  const splashImg = document.getElementById('splash-logo-img');
+  const splashSvg = document.getElementById('splash-logo-default');
+  if (splashImg) { splashImg.style.display = 'none'; splashImg.removeAttribute('src'); }
+  if (splashSvg) splashSvg.style.display = 'block';
 }
 
 function applyBrandLogo(src) {
@@ -16100,21 +16137,48 @@ function applyBrandLogo(src) {
   const img = document.getElementById('brand-logo-img');
   const defaultSvg = document.getElementById('brand-logo-default');
   const empty = document.getElementById('brand-logo-empty');
-  if (img) { img.src = src; img.style.display = 'block'; }
-  if (defaultSvg) defaultSvg.style.display = 'none';
-  if (empty) empty.style.display = 'none';
   const splashImg = document.getElementById('splash-logo-img');
   const splashSvg = document.getElementById('splash-logo-default');
+
+  // Helper: only hide the SVG fallback once the image has actually loaded.
+  // If the image fails or never loads, the SVG stays visible — so desktop and
+  // mobile always show *some* OTW logo (never a broken-image icon).
+  function attachLoadHandlers(target, fallbackSvg) {
+    if (!target) return;
+    target.onload = () => {
+      target.style.display = 'block';
+      if (fallbackSvg) fallbackSvg.style.display = 'none';
+    };
+    target.onerror = () => {
+      target.style.display = 'none';
+      if (fallbackSvg) fallbackSvg.style.display = 'block';
+    };
+  }
+
+  if (img) {
+    attachLoadHandlers(img, defaultSvg);
+    img.src = src;
+    // If image is cached, the onload may have already fired before src was set.
+    if (img.complete && img.naturalWidth > 0) {
+      img.style.display = 'block';
+      if (defaultSvg) defaultSvg.style.display = 'none';
+    }
+  }
+  if (empty) empty.style.display = 'none';
+
   if (splashImg) {
-    splashImg.src = src;
-    splashImg.style.display = 'block';
     splashImg.style.width = '100%';
     splashImg.style.height = '100%';
     splashImg.style.objectFit = 'contain';
+    attachLoadHandlers(splashImg, splashSvg);
+    splashImg.src = src;
+    if (splashImg.complete && splashImg.naturalWidth > 0) {
+      splashImg.style.display = 'block';
+      if (splashSvg) splashSvg.style.display = 'none';
+    }
     const wrap = splashImg.closest('.splash-logo');
     if (wrap) wrap.style.display = 'flex';
   }
-  if (splashSvg) splashSvg.style.display = 'none';
 }
 
 // Try to extract the cover logo from a Black Paper PDF in the project folder
@@ -16158,34 +16222,47 @@ async function autoExtractFromBlackPaper() {
 }
 
 (async function initBrandLogo() {
-  let logoApplied = false;
-  // 1) Try the project folder for a logo image first (any common filename)
+  // 1) INSTANT: Read localStorage synchronously and apply the cached logo
+  //    BEFORE any network probes run. This guarantees mobile + desktop see
+  //    the same logo immediately, regardless of network speed.
+  let appliedSrc = null;
+  try {
+    const saved = localStorage.getItem(BRAND_LOGO_KEY);
+    if (saved) { applyBrandLogo(saved); appliedSrc = saved; }
+  } catch(e) {}
+
+  // 2) BACKGROUND: Probe the project folder for a logo file in parallel.
+  //    If found, convert to data URL and swap (only if it's actually different).
   try {
     const found = await discoverBrandLogo();
     if (found) {
-      applyBrandLogo(found);
-      logoApplied = true;
+      // Convert the discovered URL to a data URL so it persists across sessions
+      // and doesn't 404 if the file is later renamed/moved.
+      let dataURL = null;
+      try { dataURL = await urlToDataURL(found); } catch(e) {}
+      const next = dataURL || found;
+      if (next && next !== appliedSrc) {
+        applyBrandLogo(next);
+        appliedSrc = next;
+        if (dataURL) {
+          try { localStorage.setItem(BRAND_LOGO_KEY, dataURL); } catch(e) {}
+        }
+      }
     }
   } catch(e) {}
-  // 2) If still not applied, try to auto-extract from the Black Paper PDF
-  if (!logoApplied) {
+
+  // 3) BACKGROUND fallback: If still no logo, try to auto-extract from the Black Paper PDF
+  if (!appliedSrc) {
     try {
       const dataURL = await autoExtractFromBlackPaper();
       if (dataURL) {
         applyBrandLogo(dataURL);
         try { localStorage.setItem(BRAND_LOGO_KEY, dataURL); } catch(e) {}
-        logoApplied = true;
+        appliedSrc = dataURL;
       }
     } catch(e) {}
   }
-  // 3) Fall back to a saved upload from a previous session
-  if (!logoApplied) {
-    try {
-      const saved = localStorage.getItem(BRAND_LOGO_KEY);
-      if (saved) { applyBrandLogo(saved); logoApplied = true; }
-    } catch(e) {}
-  }
-  // 4) If still nothing, the splash logo div stays hidden (display:none).
+  // 4) If still nothing, the SVG default stays visible (matches desktop + mobile).
   // Wire the setup modal's drop zone
   const lsmDrop = document.getElementById('lsm-drop');
   const lsmInput = document.getElementById('lsm-input');
