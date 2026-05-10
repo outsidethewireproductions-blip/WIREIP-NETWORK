@@ -9,6 +9,9 @@
 <title>WireIP Network™ — IP Tokenization Vault · Institutional Edition v4.1</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #050606;
@@ -35,6 +38,151 @@
     --radius: 4px;
     --shadow: 0 0 24px rgba(240,196,25,0.10), 0 6px 24px rgba(0,0,0,0.6);
   }
+  /* Light-theme surface overrides for elements that hard-code dark gradients/overlays */
+  body.light-theme {
+    background:
+      linear-gradient(rgba(247,245,237,0.85), rgba(247,245,237,0.85)),
+      repeating-linear-gradient(0deg, transparent 0, transparent 39px, var(--bg-grid) 39px, var(--bg-grid) 40px),
+      repeating-linear-gradient(90deg, transparent 0, transparent 39px, var(--bg-grid) 39px, var(--bg-grid) 40px),
+      var(--bg) !important;
+  }
+  body.light-theme .rail-hero {
+    background-color: var(--panel);
+    background-image:
+      radial-gradient(ellipse at 20% 20%, rgba(184,134,11,0.12), transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(22,101,52,0.08), transparent 50%);
+  }
+  body.light-theme .tokenomics-hero,
+  body.light-theme .sec-hero,
+  body.light-theme .sn-hero,
+  body.light-theme .quantum-sim {
+    background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(250,250,243,0.95));
+  }
+  body.light-theme #boot-splash { background: var(--bg); }
+  body.light-theme .modal-backdrop { background: rgba(247,245,237,0.78); }
+  body.light-theme .nav-backdrop { background: rgba(247,245,237,0.65); }
+  body.light-theme .conn-banner.disconnected { background: linear-gradient(90deg, rgba(185,28,28,0.08), rgba(185,28,28,0.02)); }
+  body.light-theme .conn-banner.connected { background: linear-gradient(90deg, rgba(22,101,52,0.08), rgba(22,101,52,0.02)); }
+  body.light-theme .conn-banner.connecting { background: linear-gradient(90deg, rgba(180,83,9,0.08), rgba(180,83,9,0.02)); }
+  body.light-theme header.topbar {
+    background: linear-gradient(180deg, rgba(184,134,11,0.05), transparent);
+  }
+  body.light-theme .float-submit-bar {
+    background: linear-gradient(0deg, rgba(247,245,237,0.96) 60%, rgba(247,245,237,0.0));
+  }
+  body.light-theme .canvas-wrap {
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(184,134,11,0.08), transparent 60%),
+      var(--bg);
+  }
+  /* === DAG view light-mode readability — make vertex tiles + HUD light so text is visible === */
+  body.light-theme .canvas-wrap .vx-group .vx-shape {
+    fill: rgba(255,255,255,0.96);
+    stroke-width: 1.8;
+  }
+  body.light-theme .canvas-wrap .vx-group:hover .vx-shape {
+    fill: #ffffff;
+    filter: brightness(1.0) drop-shadow(0 4px 12px rgba(184,134,11,0.22));
+  }
+  /* Vertex titles in light mode — already use brand colors (which are darker in light theme) so they remain readable on white */
+  body.light-theme .canvas-wrap .vx-group .vx-subtitle {
+    fill: #2a2418; opacity: 0.85;
+  }
+  body.light-theme .canvas-wrap .vx-group .vx-meta {
+    fill: #5a5440; opacity: 0.90;
+  }
+  /* Layer labels + dashed layer lines need more contrast on cream background */
+  body.light-theme .canvas-wrap .layer-label {
+    fill: #946d0a; opacity: 0.95; font-weight: 600;
+  }
+  body.light-theme .canvas-wrap .layer-line {
+    stroke: #946d0a; opacity: 0.30;
+  }
+  /* Edges */
+  body.light-theme .canvas-wrap .edge-path { opacity: 0.65; stroke-width: 1.2; }
+  body.light-theme .canvas-wrap .edge-path.tan { stroke: #6b6450; }
+  /* HUD panel + zoom overlay — switch to a light glass panel so dark text shows up */
+  body.light-theme .dag-hud {
+    background: rgba(255,255,255,0.92);
+    border-color: var(--border);
+    color: var(--text);
+    box-shadow: 0 4px 18px rgba(0,0,0,0.06);
+  }
+  body.light-theme .dag-hud h4 { color: #946d0a; }
+  body.light-theme .dag-hud .hud-row { color: #5a5440; }
+  body.light-theme .dag-hud .hud-row .v { color: #2a2418; }
+  body.light-theme .canvas-overlay {
+    background: rgba(255,255,255,0.92);
+    border-color: var(--border);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+  }
+  body.light-theme .canvas-overlay button {
+    color: #2a2418; background: transparent;
+  }
+  body.light-theme .canvas-overlay button:hover {
+    background: rgba(184,134,11,0.10); color: #946d0a;
+  }
+  /* Vertex specs / legend panel on the side if visible */
+  body.light-theme .vertex-spec,
+  body.light-theme .legend {
+    background: rgba(255,255,255,0.95);
+    color: var(--text);
+    border-color: var(--border);
+  }
+  body.light-theme .globe-shell {
+    /* Globe stays dark for the "space" view consistency, like fintech maps do */
+    background: radial-gradient(ellipse at center, #0a0e1a 0%, #050606 70%);
+  }
+  body.light-theme .threat-feed,
+  body.light-theme .sn-log,
+  body.light-theme .verify-progress .vp-bar,
+  body.light-theme .settlement-feed,
+  body.light-theme .ltv-bar,
+  body.light-theme .wip-ticker {
+    background: var(--panel-2);
+  }
+  body.light-theme .anim-counter,
+  body.light-theme .meter-card .m-val,
+  body.light-theme .sec-hero .sc-tile .sct-val,
+  body.light-theme .th-stat .ths-val,
+  body.light-theme .vs-tile .vs-value,
+  body.light-theme .nn-stat .ns-value {
+    text-shadow: none;
+  }
+  body.light-theme .toast { box-shadow: 0 0 16px rgba(184,134,11,0.10), 0 6px 16px rgba(0,0,0,0.10); }
+  body.light-theme .deed-cert {
+    background: linear-gradient(135deg, rgba(184,134,11,0.06), rgba(184,134,11,0.02));
+  }
+  body.light-theme .vault-card:hover {
+    box-shadow: 0 6px 20px rgba(0,0,0,0.10), 0 0 12px rgba(184,134,11,0.10);
+  }
+
+  /* Light-theme variable overrides — applied when <body class="light-theme"> */
+  body.light-theme {
+    --bg: #f7f5ed;
+    --bg-grid: rgba(184, 134, 11, 0.07);
+    --panel: #ffffff;
+    --panel-2: #fafaf3;
+    --panel-3: #f0ede0;
+    --border: #ddd6bc;
+    --border-strong: #b8b094;
+    --text: #2a2418;
+    --muted: #7a7458;
+    --dim: #c8c2a8;
+    --gold: #b8860b;
+    --gold-soft: #946d0a;
+    --cyan: #0e7490;
+    --green: #166534;
+    --orange: #b45309;
+    --red: #b91c1c;
+    --tan: #6b6450;
+    --purple: #6d28d9;
+    --ok: #166534;
+    --warn: #b45309;
+    --err: #b91c1c;
+    --shadow: 0 0 20px rgba(184,134,11,0.10), 0 6px 20px rgba(0,0,0,0.10);
+  }
+
   * { box-sizing: border-box; }
   html, body {
     margin: 0; padding: 0;
@@ -49,7 +197,7 @@
       repeating-linear-gradient(90deg, transparent 0, transparent 39px, var(--bg-grid) 39px, var(--bg-grid) 40px),
       var(--bg);
     color: var(--text);
-    font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-family: "IBM Plex Mono", "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
     font-size: 12px; overflow: hidden; letter-spacing: 0.02em;
   }
   button, input, select, textarea { font-family: inherit; font-size: inherit; color: var(--text); }
@@ -195,11 +343,214 @@
 
   .top-tools { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
   .wallet-display {
+    position: relative;
     display: flex; align-items: center; gap: 8px;
     padding: 6px 12px; background: var(--panel-2); border: 1px solid var(--border);
     border-radius: var(--radius); font-size: 10.5px;
   }
-  .wallet-display .addr { color: var(--gold-soft); font-family: ui-monospace, monospace; }
+
+  /* ===== Top-bar wallet picker dropdown ===== */
+  .wallet-picker {
+    position: absolute; top: calc(100% + 8px); right: 0;
+    min-width: 280px; max-width: 320px;
+    background: var(--panel);
+    border: 1px solid var(--gold-soft);
+    border-radius: var(--radius);
+    box-shadow: 0 12px 36px rgba(0,0,0,0.55), 0 0 22px rgba(240,196,25,0.18);
+    padding: 10px;
+    z-index: 9000;
+    display: none;
+    animation: walletPickerIn 0.16s ease-out;
+  }
+  .wallet-picker.open { display: block; }
+  @keyframes walletPickerIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .wallet-picker .wp-head {
+    font-size: 9px; color: var(--gold-soft);
+    text-transform: uppercase; letter-spacing: 0.12em;
+    padding: 4px 8px 8px; border-bottom: 1px solid var(--border);
+    margin-bottom: 6px;
+  }
+  .wallet-picker .wp-head .wp-sub {
+    display: block; color: var(--muted);
+    font-size: 8.5px; letter-spacing: 0.08em; margin-top: 2px;
+    text-transform: none;
+  }
+  .wallet-picker .wp-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; cursor: pointer;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    transition: all 0.12s;
+  }
+  .wallet-picker .wp-item:hover {
+    background: rgba(240,196,25,0.07);
+    border-color: var(--gold-soft);
+  }
+  .wallet-picker .wp-item .wp-icon {
+    width: 26px; height: 26px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 6px; font-size: 14px;
+    color: var(--gold); flex-shrink: 0;
+  }
+  .wallet-picker .wp-item .wp-info { flex: 1; min-width: 0; }
+  .wallet-picker .wp-item .wp-name {
+    font-size: 11px; color: var(--text); font-weight: 600;
+    line-height: 1.2;
+  }
+  .wallet-picker .wp-item .wp-detail {
+    font-size: 8.5px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-top: 2px;
+  }
+  .wallet-picker .wp-item .wp-chain {
+    font-size: 8px; color: var(--gold-soft);
+    padding: 1px 5px; border: 1px solid var(--border);
+    border-radius: 3px; text-transform: uppercase;
+    letter-spacing: 0.06em; flex-shrink: 0;
+  }
+  .wallet-picker .wp-divider {
+    height: 1px; background: var(--border);
+    margin: 6px 4px;
+  }
+  .wallet-picker .wp-custom {
+    display: block; width: 100%;
+    text-align: left; padding: 7px 10px;
+    background: transparent; border: 1px dashed var(--border);
+    border-radius: 6px; cursor: pointer;
+    color: var(--gold-soft); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.10em;
+  }
+  .wallet-picker .wp-custom:hover {
+    border-color: var(--gold); color: var(--gold);
+    background: rgba(240,196,25,0.05);
+  }
+  .wallet-picker .wp-foot {
+    font-size: 8.5px; color: var(--muted);
+    padding: 8px 6px 2px; line-height: 1.4;
+    border-top: 1px solid var(--border); margin-top: 6px;
+  }
+  .wallet-picker .wp-foot strong { color: var(--gold-soft); }
+  @media (max-width: 540px) {
+    .wallet-picker {
+      position: fixed;
+      top: auto; bottom: 12px; left: 12px; right: 12px;
+      min-width: 0; max-width: none;
+    }
+  }
+  /* ===== Link button with LED indicator ===== */
+  .link-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px !important; font-size: 9.5px !important;
+    font-weight: 700; letter-spacing: 0.10em;
+    border-radius: 4px;
+  }
+  .link-btn .link-led {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 8px var(--gold), inset 0 0 2px rgba(255,255,255,0.4);
+    animation: linkLedPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes linkLedPulse {
+    0%, 100% { box-shadow: 0 0 6px var(--gold), inset 0 0 2px rgba(255,255,255,0.3); transform: scale(1); }
+    50% { box-shadow: 0 0 14px var(--gold), 0 0 22px rgba(240,196,25,0.5), inset 0 0 3px rgba(255,255,255,0.6); transform: scale(1.15); }
+  }
+  /* Connected state — green LED */
+  .link-btn.linked .link-led {
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green), inset 0 0 2px rgba(255,255,255,0.4);
+    animation: linkLedConnected 2.4s ease-in-out infinite;
+  }
+  @keyframes linkLedConnected {
+    0%, 100% { box-shadow: 0 0 6px var(--green), inset 0 0 2px rgba(255,255,255,0.3); }
+    50% { box-shadow: 0 0 14px var(--green), 0 0 22px rgba(74,222,128,0.5), inset 0 0 3px rgba(255,255,255,0.6); }
+  }
+
+  /* ===== Sound toggle ===== */
+  .sound-toggle {
+    width: 32px; height: 30px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--panel-2); border: 1px solid var(--border-strong);
+    border-radius: 6px; color: var(--gold-soft);
+    cursor: pointer; padding: 0; flex-shrink: 0;
+    transition: all 0.15s;
+  }
+  .sound-toggle:hover {
+    color: var(--gold); border-color: var(--gold);
+    background: rgba(240,196,25,0.08);
+  }
+  .sound-toggle.muted { color: var(--muted); border-color: var(--border); }
+  .sound-toggle.muted:hover { color: var(--err); border-color: var(--err); }
+  @keyframes soundIntroBlink {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(240,196,25,0); }
+    50% { box-shadow: 0 0 14px 2px rgba(240,196,25,0.55); border-color: var(--gold); }
+  }
+  .sound-toggle.intro-blink { animation: soundIntroBlink 0.45s ease-in-out 3; }
+
+  /* ===== Theme toggle — institutional pill switch ===== */
+  .theme-toggle {
+    position: relative;
+    width: 64px; height: 30px;
+    border-radius: 15px;
+    background: var(--panel-2);
+    border: 1px solid var(--border-strong);
+    display: inline-flex; align-items: center;
+    padding: 0; margin: 0;
+    cursor: pointer; flex-shrink: 0;
+    transition: border-color 0.18s, box-shadow 0.18s;
+    overflow: hidden;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.25);
+  }
+  .theme-toggle:hover {
+    border-color: var(--gold);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.25), 0 0 10px rgba(240,196,25,0.30);
+  }
+  .theme-toggle .theme-icon {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    z-index: 2; color: var(--muted);
+    transition: color 0.22s;
+    pointer-events: none;
+  }
+  .theme-toggle .theme-icon svg { display: block; }
+  .theme-toggle .theme-slider {
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 26px; height: 24px;
+    background: linear-gradient(180deg, var(--gold) 0%, var(--gold-soft) 100%);
+    border-radius: 12px;
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.28s;
+    box-shadow: 0 0 10px rgba(240,196,25,0.55), 0 1px 2px rgba(0,0,0,0.4);
+    z-index: 1;
+  }
+  /* Dark theme = slider on left (sun-side covered), moon icon glows */
+  body:not(.light-theme) .theme-toggle .theme-slider { transform: translateX(0); }
+  body:not(.light-theme) .theme-toggle .theme-icon.sun { color: #2a2418; }
+  body:not(.light-theme) .theme-toggle .theme-icon.moon { color: var(--gold); }
+  /* Light theme = slider on right (moon-side covered), sun icon glows */
+  body.light-theme .theme-toggle .theme-slider { transform: translateX(32px); }
+  body.light-theme .theme-toggle .theme-icon.sun { color: var(--gold); }
+  body.light-theme .theme-toggle .theme-icon.moon { color: #2a2418; }
+  body.light-theme .theme-toggle {
+    background: var(--panel-3);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.08);
+  }
+  /* Intro blink — 3 pulses on load */
+  @keyframes themeIntroBlink {
+    0%, 100% { box-shadow: inset 0 1px 3px rgba(0,0,0,0.25), 0 0 0 0 rgba(240,196,25,0); border-color: var(--border-strong); }
+    50% { box-shadow: inset 0 1px 3px rgba(0,0,0,0.25), 0 0 18px 4px rgba(240,196,25,0.65); border-color: var(--gold); }
+  }
+  .theme-toggle.intro-blink { animation: themeIntroBlink 0.45s ease-in-out 3; }
+  .theme-toggle.intro-blink .theme-slider {
+    animation: themeIntroSlider 0.45s ease-in-out 3;
+  }
+  @keyframes themeIntroSlider {
+    0%, 100% { box-shadow: 0 0 10px rgba(240,196,25,0.55), 0 1px 2px rgba(0,0,0,0.4); }
+    50% { box-shadow: 0 0 22px rgba(240,196,25,1), 0 1px 2px rgba(0,0,0,0.4); }
+  }
+  .wallet-display .addr { color: var(--gold-soft); font-family: "IBM Plex Mono", ui-monospace, monospace; }
 
   /* Connection banner */
   .conn-banner {
@@ -359,7 +710,7 @@
   .fp-detail .fpd-name { color: var(--text); font-size: 13px; font-weight: 600; word-break: break-all; }
   .fp-detail .fpd-row { display: grid; grid-template-columns: 110px 1fr; gap: 8px; font-size: 10.5px; }
   .fp-detail .fpd-row .k { color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-size: 9.5px; }
-  .fp-detail .fpd-row .v { color: var(--text); font-family: ui-monospace, monospace; word-break: break-all; }
+  .fp-detail .fpd-row .v { color: var(--text); font-family: "IBM Plex Mono", ui-monospace, monospace; word-break: break-all; }
   .fp-detail .fpd-row .v.gold { color: var(--gold); }
   .fp-actions { display: flex; gap: 6px; margin-top: 6px; }
   .fp-actions button { padding: 4px 10px; font-size: 9.5px; }
@@ -448,7 +799,7 @@
   }
   .vault-card .vc-meta { font-size: 10px; color: var(--muted); line-height: 1.6; }
   .vault-card .vc-meta .row { display: flex; justify-content: space-between; gap: 8px; }
-  .vault-card .vc-meta .v { color: var(--text); font-family: ui-monospace, monospace; font-size: 9.5px; }
+  .vault-card .vc-meta .v { color: var(--text); font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 9.5px; }
   .vault-card .vc-meta .v.redacted { color: var(--red); font-style: italic; }
   .vault-card .vc-status {
     display: inline-block; margin-top: 10px; padding: 2px 8px;
@@ -479,7 +830,7 @@
     border-radius: var(--radius); margin-bottom: 6px;
   }
   .agent-row .ag-id {
-    font-family: ui-monospace, monospace; font-size: 10.5px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px;
     color: var(--green); font-weight: 600;
   }
   .agent-row .ag-task { flex: 1; font-size: 10.5px; color: var(--text); }
@@ -589,7 +940,7 @@
   }
   .deed-cert .cert-row:last-child { border-bottom: none; }
   .deed-cert .cert-row .k { color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-size: 9.5px; }
-  .deed-cert .cert-row .v { color: var(--text); font-family: ui-monospace, monospace; word-break: break-all; }
+  .deed-cert .cert-row .v { color: var(--text); font-family: "IBM Plex Mono", ui-monospace, monospace; word-break: break-all; }
   .deed-cert .cert-row .v.gold { color: var(--gold); }
   .deed-cert .cert-row .v.green { color: var(--green); }
   .deed-cert .cert-row .v.redacted { color: var(--red); font-style: italic; }
@@ -640,7 +991,7 @@
   }
   .dag-hud h4 { margin: 0 0 6px 0; font-size: 9px; color: var(--gold-soft); letter-spacing: 0.14em; text-transform: uppercase; }
   .dag-hud .hud-row { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; color: var(--muted); font-size: 9.5px; }
-  .dag-hud .hud-row .v { color: var(--text); font-family: ui-monospace, monospace; }
+  .dag-hud .hud-row .v { color: var(--text); font-family: "IBM Plex Mono", ui-monospace, monospace; }
   .dag-hud .hud-row .v.green { color: var(--green); }
   .dag-hud .hud-row .v.red { color: var(--red); }
   .dag-hud .hud-row .v.gold { color: var(--gold); }
@@ -679,7 +1030,7 @@
   }
   .sec-hero .sc-tile .sct-lab { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.14em; }
   .sec-hero .sc-tile .sct-val {
-    font-size: 22px; font-weight: 700; color: var(--green); font-family: ui-monospace, monospace;
+    font-size: 22px; font-weight: 700; color: var(--green); font-family: "IBM Plex Mono", ui-monospace, monospace;
     text-shadow: 0 0 12px rgba(74,222,128,0.4); margin-top: 2px;
   }
   .sec-hero .sc-tile.warn .sct-val { color: var(--warn); text-shadow: 0 0 12px rgba(245,158,11,0.4); }
@@ -721,7 +1072,7 @@
   @keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0.5; } }
   .sec-card .sc-detail { font-size: 10px; color: var(--muted); line-height: 1.5; }
   .sec-card .sc-spec {
-    font-family: ui-monospace, monospace; font-size: 9.5px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 9.5px;
     color: var(--gold-soft); margin-top: 6px; padding-top: 6px;
     border-top: 1px dashed var(--border);
   }
@@ -729,7 +1080,7 @@
     max-height: 260px; overflow-y: auto;
     background: var(--bg); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 8px;
-    font-family: ui-monospace, monospace; font-size: 10px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px;
   }
   .threat-feed .tf-row {
     display: grid; grid-template-columns: 70px 60px 1fr;
@@ -749,10 +1100,14 @@
   .threat-feed .tf-row .tf-msg { color: var(--text); }
 
   .canvas-wrap {
-    position: relative; background:
-      radial-gradient(ellipse at 50% 0%, rgba(240,196,25,0.08), transparent 60%), var(--bg);
+    position: relative;
+    background-color: var(--panel);
+    background-image: radial-gradient(ellipse at 50% 0%, rgba(240,196,25,0.10), transparent 60%);
     overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius);
     height: calc(100vh - 220px);
+  }
+  body.light-theme .canvas-wrap {
+    background-image: radial-gradient(ellipse at 50% 0%, rgba(184,134,11,0.10), transparent 60%);
   }
   .canvas-wrap svg.dag { width: 100%; height: 100%; display: block; cursor: grab; }
   .canvas-wrap svg.dag.panning { cursor: grabbing; }
@@ -950,7 +1305,7 @@
   }
   .val-row .vt-source { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .val-row .vt-source .vt-detail { color: var(--muted); font-size: 9.5px; }
-  .val-row .vt-value { color: var(--green); font-weight: 600; font-family: ui-monospace, monospace; }
+  .val-row .vt-value { color: var(--green); font-weight: 600; font-family: "IBM Plex Mono", ui-monospace, monospace; }
   .val-row .vt-verify {
     font-size: 9px; padding: 1px 6px; border-radius: 8px;
     text-transform: uppercase; letter-spacing: 0.06em;
@@ -992,7 +1347,7 @@
   .proof-item .pi-info { min-width: 0; }
   .proof-item .pi-name { color: var(--text); font-size: 11px; word-break: break-all; }
   .proof-item .pi-meta { color: var(--muted); font-size: 9.5px; margin-top: 1px; }
-  .proof-item .pi-hash { color: var(--gold-soft); font-family: ui-monospace, monospace; font-size: 9px; word-break: break-all; }
+  .proof-item .pi-hash { color: var(--gold-soft); font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 9px; word-break: break-all; }
   .proof-item .pi-actions { display: flex; gap: 4px; }
   .proof-item .pi-actions button { padding: 3px 8px; font-size: 9.5px; }
   .proof-item .pi-review {
@@ -1063,7 +1418,7 @@
   }
   .collab-card .cc-name { font-size: 12.5px; color: var(--text); font-weight: 600; }
   .collab-card .cc-role { font-size: 9.5px; color: var(--gold-soft); text-transform: uppercase; letter-spacing: 0.10em; margin-top: 2px; }
-  .collab-card .cc-wallet { font-family: ui-monospace, monospace; font-size: 10px; color: var(--muted); margin-top: 8px; word-break: break-all; }
+  .collab-card .cc-wallet { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px; color: var(--muted); margin-top: 8px; word-break: break-all; }
   .collab-card .cc-actions { display: flex; gap: 6px; margin-top: 10px; }
   .collab-card .cc-actions button { padding: 3px 10px; font-size: 9.5px; }
 
@@ -1092,7 +1447,7 @@
     margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
   }
   .network-card .nt-stat { text-align: center; }
-  .network-card .nt-stat .ns-val { font-size: 13px; font-weight: 700; color: var(--gold); font-family: ui-monospace, monospace; }
+  .network-card .nt-stat .ns-val { font-size: 13px; font-weight: 700; color: var(--gold); font-family: "IBM Plex Mono", ui-monospace, monospace; }
   .network-card .nt-stat .ns-lab { font-size: 8.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
 
   /* ===== Globe ===== */
@@ -1127,7 +1482,7 @@
     font-size: 10px;
   }
   .globe-stats .gs-item .gs-lab { color: var(--muted); text-transform: uppercase; letter-spacing: 0.10em; font-size: 8.5px; }
-  .globe-stats .gs-item .gs-val { color: var(--gold); font-weight: 700; font-size: 14px; font-family: ui-monospace, monospace; }
+  .globe-stats .gs-item .gs-val { color: var(--gold); font-weight: 700; font-size: 14px; font-family: "IBM Plex Mono", ui-monospace, monospace; }
   .globe-overlay-bottom {
     position: absolute; bottom: 14px; left: 14px; right: 14px;
     z-index: 5; pointer-events: none;
@@ -1148,11 +1503,11 @@
     gap: 10px; align-items: center; padding: 4px 0;
     font-size: 10.5px;
   }
-  .gar-row .gar-rank { color: var(--muted); font-family: ui-monospace, monospace; font-size: 9px; text-align: right; }
+  .gar-row .gar-rank { color: var(--muted); font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 9px; text-align: right; }
   .gar-row .gar-name { color: var(--text); }
   .gar-row .gar-bar-wrap { background: var(--panel-2); border-radius: 2px; height: 5px; overflow: hidden; }
   .gar-row .gar-bar { background: var(--gold); height: 100%; }
-  .gar-row .gar-val { color: var(--gold); font-family: ui-monospace, monospace; text-align: right; font-size: 10px; }
+  .gar-row .gar-val { color: var(--gold); font-family: "IBM Plex Mono", ui-monospace, monospace; text-align: right; font-size: 10px; }
 
   .globe-tooltip {
     position: absolute; pointer-events: none;
@@ -1167,7 +1522,7 @@
   .globe-tooltip .gt-meta { color: var(--muted); font-size: 9.5px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.08em; }
   .globe-tooltip .gt-grid { display: grid; grid-template-columns: 70px 1fr; gap: 4px; font-size: 10px; }
   .globe-tooltip .gt-grid .k { color: var(--muted); }
-  .globe-tooltip .gt-grid .v { color: var(--text); font-family: ui-monospace, monospace; }
+  .globe-tooltip .gt-grid .v { color: var(--text); font-family: "IBM Plex Mono", ui-monospace, monospace; }
 
   /* ===== System-wide finishing animations ===== */
   @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -1248,14 +1603,14 @@
   }
   .visualizer .viz-corner {
     position: absolute; bottom: 8px; right: 12px;
-    font-family: ui-monospace, monospace; font-size: 8.5px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 8.5px;
     color: rgba(255,255,255,0.55);
     letter-spacing: 0.10em;
     z-index: 4;
   }
   .visualizer .viz-corner-left {
     position: absolute; bottom: 8px; left: 12px;
-    font-family: ui-monospace, monospace; font-size: 8.5px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 8.5px;
     color: rgba(255,255,255,0.55);
     letter-spacing: 0.10em;
     z-index: 4;
@@ -1332,6 +1687,381 @@
   }
   .viz-randomize:hover { color: var(--gold); border-color: var(--gold); }
 
+  /* ===== Visualizer pattern toggle + aspect-ratio chips ===== */
+  .viz-controls-row {
+    display: flex; gap: 16px; flex-wrap: wrap; align-items: center;
+    margin-top: 14px;
+  }
+  .viz-toggle-pattern {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; background: var(--panel-2);
+    border: 1px solid var(--border); border-radius: 16px;
+    font-size: 10px; color: var(--muted); cursor: pointer;
+    text-transform: uppercase; letter-spacing: 0.10em;
+    transition: all 0.18s;
+  }
+  .viz-toggle-pattern .vtp-led {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 6px var(--gold);
+    transition: all 0.18s;
+  }
+  .viz-toggle-pattern.off .vtp-led {
+    background: var(--muted); box-shadow: none;
+  }
+  .viz-toggle-pattern:hover { border-color: var(--gold-soft); color: var(--gold-soft); }
+  .viz-toggle-pattern.on { color: var(--gold); border-color: var(--gold-soft); background: rgba(240,196,25,0.06); }
+
+  .viz-aspect-row {
+    display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+    margin-top: 10px;
+  }
+  .viz-aspect-label {
+    font-size: 9.5px; color: var(--gold-soft);
+    text-transform: uppercase; letter-spacing: 0.10em;
+    margin-right: 4px;
+  }
+  .viz-aspect-chip {
+    padding: 4px 10px; border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--muted);
+    border-radius: 12px; cursor: pointer; font-size: 9.5px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    transition: all 0.15s;
+  }
+  .viz-aspect-chip:hover { border-color: var(--gold-soft); color: var(--text); }
+  .viz-aspect-chip.active {
+    border-color: var(--gold); color: var(--gold);
+    background: rgba(240,196,25,0.10);
+  }
+
+  /* ===== Asset image overlay controls (sits inside the visualizer card) ===== */
+  .viz-image-controls {
+    margin-top: 14px;
+    padding: 12px;
+    background: var(--panel-2);
+    border: 1px solid var(--gold-soft);
+    border-radius: var(--radius);
+  }
+  .viz-image-controls .vic-head {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 10px; flex-wrap: wrap;
+  }
+  .viz-image-controls .vic-label {
+    font-size: 10px; color: var(--gold); font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    flex: 1; min-width: 0;
+  }
+  .viz-image-controls .vic-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 8px; flex-wrap: wrap;
+  }
+  .viz-image-controls .vic-slider-label {
+    font-size: 9.5px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.10em;
+    min-width: 70px;
+  }
+  .viz-image-controls .vic-slider-val {
+    font-size: 10px; color: var(--gold);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    min-width: 36px; text-align: right;
+  }
+  .viz-slider {
+    flex: 1; min-width: 120px; height: 6px;
+    -webkit-appearance: none; appearance: none;
+    background: linear-gradient(90deg, var(--gold) 0%, var(--gold-soft) 100%);
+    border-radius: 3px; outline: none;
+    cursor: pointer;
+  }
+  .viz-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #fff; border: 2px solid var(--gold);
+    box-shadow: 0 0 8px rgba(240,196,25,0.45);
+    cursor: pointer;
+  }
+  .viz-slider::-moz-range-thumb {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #fff; border: 2px solid var(--gold);
+    cursor: pointer;
+  }
+  .viz-fit-chips {
+    display: flex; flex-wrap: wrap; gap: 5px;
+    flex: 1; min-width: 200px;
+  }
+  .viz-fit-chip {
+    padding: 5px 10px; border: 1px solid var(--border);
+    background: var(--panel); color: var(--muted);
+    border-radius: 12px; cursor: pointer;
+    font-size: 9.5px; letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: all 0.15s;
+  }
+  .viz-fit-chip:hover { border-color: var(--gold-soft); color: var(--text); }
+  .viz-fit-chip.active {
+    border-color: var(--gold); color: var(--gold);
+    background: rgba(240,196,25,0.10);
+  }
+  .viz-image-controls .vic-foot {
+    font-size: 9px; color: var(--muted);
+    line-height: 1.5; margin-top: 4px;
+    padding-top: 8px; border-top: 1px dashed var(--border);
+  }
+  .viz-image-controls .vic-foot strong { color: var(--gold-soft); }
+  .viz-image-controls .vic-foot em { color: var(--text); font-style: normal; }
+
+  /* Asset image overlay positioned on the visualizer SVG */
+  .visualizer .viz-asset-overlay {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none; z-index: 4;
+    overflow: hidden; border-radius: inherit;
+  }
+  .visualizer .viz-asset-overlay img {
+    max-width: 100%; max-height: 100%;
+    display: block;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.42), 0 0 0 1px rgba(255,255,255,0.10);
+    border-radius: 4px;
+  }
+  .visualizer .viz-asset-overlay.cover img {
+    width: 100%; height: 100%; object-fit: cover;
+    max-width: none; max-height: none;
+  }
+  .visualizer .viz-asset-overlay.contain img {
+    object-fit: contain;
+  }
+  .visualizer.pattern-off .viz-asset-overlay img {
+    box-shadow: 0 4px 18px rgba(0,0,0,0.35);
+  }
+
+  /* ===== 1/1 Master Token + NOT AN NFT banner ===== */
+  .master-banner {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 18px; margin: 14px 0;
+    background:
+      linear-gradient(135deg, rgba(240,196,25,0.10), rgba(74,222,128,0.06)),
+      var(--panel);
+    border: 1.5px solid var(--gold-soft); border-radius: var(--radius);
+    box-shadow: inset 0 0 24px rgba(240,196,25,0.05);
+    position: relative; overflow: hidden;
+  }
+  .master-banner::before {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at top right, rgba(240,196,25,0.12), transparent 60%);
+    pointer-events: none;
+  }
+  .master-banner .mb-badge {
+    flex-shrink: 0; padding: 10px 14px;
+    background: var(--gold); color: #050606;
+    font-weight: 800; font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 14px; letter-spacing: 0.06em;
+    border-radius: 6px; line-height: 1;
+    box-shadow: 0 0 18px rgba(240,196,25,0.45);
+    text-align: center; min-width: 56px;
+  }
+  .master-banner .mb-badge .mb-fraction {
+    display: block; font-size: 22px; line-height: 1; letter-spacing: 0.02em;
+  }
+  .master-banner .mb-badge .mb-sub {
+    display: block; font-size: 8px; letter-spacing: 0.14em; margin-top: 2px;
+    opacity: 0.78;
+  }
+  .master-banner .mb-content { flex: 1; min-width: 0; }
+  .master-banner .mb-title {
+    font-size: 13px; font-weight: 700; color: var(--gold);
+    letter-spacing: 0.10em; text-transform: uppercase;
+    margin-bottom: 4px; display: flex; align-items: center; gap: 10px;
+    flex-wrap: wrap;
+  }
+  .master-banner .mb-title .mb-not-nft {
+    font-size: 9px; padding: 3px 8px;
+    background: var(--err-bg, rgba(239,68,68,0.12));
+    border: 1px solid rgba(239,68,68,0.45);
+    border-radius: 12px; color: #ef4444;
+    text-transform: uppercase; letter-spacing: 0.14em;
+    font-weight: 700;
+  }
+  .master-banner .mb-desc {
+    font-size: 11px; color: var(--text); line-height: 1.55;
+  }
+  .master-banner .mb-desc strong { color: var(--green); }
+  @media (max-width: 720px) {
+    .master-banner { flex-direction: column; align-items: stretch; gap: 10px; padding: 12px; }
+    .master-banner .mb-badge { align-self: center; }
+  }
+
+  /* ===== AI Sentinel Auto-File card ===== */
+  .sentinel-auto {
+    background: linear-gradient(135deg, rgba(192,132,252,0.08), rgba(75,30,150,0.04)),
+                var(--panel);
+    border: 1.5px solid #c084fc;
+    border-radius: var(--radius); padding: 16px;
+    margin-bottom: 14px;
+  }
+  .sentinel-auto .sa-head {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .sentinel-auto .sa-icon {
+    width: 36px; height: 36px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(192,132,252,0.15); border: 1.5px solid #c084fc;
+    border-radius: 50%; color: #c084fc;
+    font-size: 16px;
+    box-shadow: 0 0 12px rgba(192,132,252,0.25);
+  }
+  .sentinel-auto .sa-title {
+    flex: 1; min-width: 0;
+    font-size: 13px; font-weight: 700; color: #c084fc;
+    letter-spacing: 0.10em; text-transform: uppercase;
+  }
+  .sentinel-auto .sa-title .sa-sub {
+    display: block; font-size: 9.5px; color: var(--muted);
+    letter-spacing: 0.08em; margin-top: 2px;
+    font-weight: 400;
+  }
+  /* Big toggle switch */
+  .sa-switch {
+    position: relative; width: 56px; height: 30px; flex-shrink: 0;
+    background: var(--panel-2); border: 1px solid var(--border-strong);
+    border-radius: 15px; cursor: pointer;
+    transition: all 0.22s;
+  }
+  .sa-switch .sa-knob {
+    position: absolute; top: 2px; left: 2px;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--muted);
+    transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .sa-switch.on {
+    background: rgba(192,132,252,0.20);
+    border-color: #c084fc;
+    box-shadow: 0 0 14px rgba(192,132,252,0.35);
+  }
+  .sa-switch.on .sa-knob {
+    transform: translateX(26px);
+    background: #c084fc;
+    box-shadow: 0 0 10px rgba(192,132,252,0.6);
+  }
+
+  .sentinel-auto .sa-desc {
+    font-size: 11px; color: var(--text); line-height: 1.55;
+    margin-bottom: 12px;
+  }
+  .sentinel-auto .sa-desc strong { color: #c084fc; }
+  .sa-jurisdiction {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    margin-bottom: 10px;
+  }
+  .sa-jurisdiction .sj-field { display: flex; flex-direction: column; gap: 4px; }
+  .sa-jurisdiction .sj-lbl {
+    font-size: 9px; color: var(--gold-soft);
+    text-transform: uppercase; letter-spacing: 0.10em;
+  }
+  .sa-jurisdiction select, .sa-jurisdiction input {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text); padding: 8px 10px;
+    font-size: 11px; border-radius: 4px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+  }
+  .sa-features {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 8px;
+  }
+  .sa-feature {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 8px 10px; background: var(--panel-2);
+    border: 1px solid var(--border); border-radius: 4px;
+    font-size: 10.5px; color: var(--muted);
+  }
+  .sa-feature .sf-check {
+    color: #c084fc; flex-shrink: 0; font-size: 13px;
+    line-height: 1.2;
+  }
+  .sa-foot {
+    margin-top: 12px; padding-top: 10px;
+    border-top: 1px dashed var(--border);
+    font-size: 9.5px; color: var(--muted);
+    line-height: 1.5;
+  }
+  .sa-foot strong { color: #c084fc; }
+  body.light-theme .sentinel-auto {
+    background: linear-gradient(135deg, rgba(147,51,234,0.06), rgba(192,132,252,0.04)),
+                var(--panel);
+  }
+  @media (max-width: 720px) {
+    .sa-jurisdiction { grid-template-columns: 1fr; }
+  }
+
+  /* ===== Fractionalize / Bridge / Social actions in asset detail ===== */
+  .asset-actions-card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px;
+    margin-bottom: 14px;
+  }
+  .asset-actions-card .aac-head {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+  }
+  .asset-actions-card .aac-head h3 {
+    margin: 0; font-size: 12px; letter-spacing: 0.10em;
+    text-transform: uppercase; color: var(--text);
+  }
+  .chain-grid, .social-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+  }
+  .chain-btn, .social-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 10px 8px; background: var(--panel-2);
+    border: 1.5px solid var(--border); border-radius: 6px;
+    cursor: pointer; transition: all 0.15s;
+    text-align: center;
+  }
+  .chain-btn:hover, .social-btn:hover {
+    border-color: var(--gold); transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(240,196,25,0.10);
+  }
+  .chain-btn .cb-logo, .social-btn .sb-logo {
+    font-size: 18px; line-height: 1; color: var(--gold);
+  }
+  .chain-btn .cb-name, .social-btn .sb-name {
+    font-size: 10.5px; color: var(--text); font-weight: 600;
+  }
+  .chain-btn .cb-detail, .social-btn .sb-detail {
+    font-size: 8.5px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .chain-btn.bridged {
+    border-color: var(--green);
+    background: rgba(74,222,128,0.06);
+  }
+  .chain-btn.bridged .cb-logo { color: var(--green); }
+  .chain-btn .cb-status {
+    font-size: 8px; padding: 1px 6px;
+    background: var(--green); color: #050606;
+    border-radius: 6px; margin-top: 3px;
+    text-transform: uppercase; letter-spacing: 0.10em;
+  }
+
+  /* Master 1/1 inline pill (used in vault cards, deed cert) */
+  .master-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 7px; font-size: 9px;
+    background: var(--gold); color: #050606;
+    border-radius: 8px; font-weight: 700;
+    letter-spacing: 0.10em; text-transform: uppercase;
+    box-shadow: 0 0 8px rgba(240,196,25,0.35);
+  }
+  .not-nft-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 7px; font-size: 9px;
+    background: rgba(239,68,68,0.12); color: #ef4444;
+    border: 1px solid rgba(239,68,68,0.4);
+    border-radius: 8px; font-weight: 700;
+    letter-spacing: 0.10em; text-transform: uppercase;
+  }
+
   /* ===== DNA fingerprint ===== */
   .dna-panel {
     background: var(--panel-2); border: 1px solid var(--border);
@@ -1357,7 +2087,7 @@
     border-radius: var(--radius); padding: 8px 10px;
   }
   .dna-meta .dm-k { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.10em; }
-  .dna-meta .dm-v { font-family: ui-monospace, monospace; font-size: 10px; color: var(--gold-soft); margin-top: 2px; word-break: break-all; }
+  .dna-meta .dm-v { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px; color: var(--gold-soft); margin-top: 2px; word-break: break-all; }
 
   /* ===== Verification progress (live) ===== */
   .verify-progress {
@@ -1425,7 +2155,7 @@
   .verdict-card .vc-body { flex: 1; }
   .verdict-card .vc-title { font-size: 12px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; margin-bottom: 4px; }
   .verdict-card .vc-detail { font-size: 11px; color: var(--text); line-height: 1.5; }
-  .verdict-card .vc-source { font-size: 9.5px; color: var(--muted); margin-top: 4px; font-family: ui-monospace, monospace; }
+  .verdict-card .vc-source { font-size: 9.5px; color: var(--muted); margin-top: 4px; font-family: "IBM Plex Mono", ui-monospace, monospace; }
 
   /* ===== Content ID (YouTube-style) ===== */
   .ytid-panel { margin-top: 12px; }
@@ -1451,8 +2181,8 @@
   .ytid-match .ytm-info { min-width: 0; }
   .ytid-match .ytm-title { font-size: 11px; color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ytid-match .ytm-channel { font-size: 9.5px; color: var(--muted); margin-top: 2px; }
-  .ytid-match .ytm-views { font-size: 9.5px; color: var(--cyan); margin-top: 2px; font-family: ui-monospace, monospace; }
-  .ytid-match .ytm-conf { font-size: 12px; font-weight: 700; color: var(--err); font-family: ui-monospace, monospace; }
+  .ytid-match .ytm-views { font-size: 9.5px; color: var(--cyan); margin-top: 2px; font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  .ytid-match .ytm-conf { font-size: 12px; font-weight: 700; color: var(--err); font-family: "IBM Plex Mono", ui-monospace, monospace; }
   .ytid-match .ytm-actions { display: flex; gap: 4px; }
   .ytid-match .ytm-actions button { padding: 3px 8px; font-size: 9.5px; }
 
@@ -1572,7 +2302,7 @@
   .code-dna-card.medium .cdc-head h4 { color: var(--warn); }
   .code-dna-card.low .cdc-head h4 { color: var(--green); }
   .code-dna-card .cdc-pct {
-    font-family: ui-monospace, monospace; font-size: 14px; font-weight: 700;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 14px; font-weight: 700;
     margin-left: auto;
   }
   .code-dna-card .cdc-strand {
@@ -1706,6 +2436,198 @@
     background: transparent; border: 1px solid var(--border-strong);
   }
 
+  /* ===== Payment-rail hero & trust ===== */
+  .rail-hero {
+    background-color: var(--panel);
+    background-image:
+      radial-gradient(ellipse at 20% 20%, rgba(240,196,25,0.10), transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(74,222,128,0.06), transparent 50%);
+    border: 1px solid var(--gold);
+    border-radius: var(--radius);
+    padding: 22px; margin-bottom: 16px;
+    position: relative; overflow: hidden;
+  }
+  .rail-hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: repeating-linear-gradient(135deg, transparent 0, transparent 39px, rgba(240,196,25,0.025) 39px, rgba(240,196,25,0.025) 40px);
+    pointer-events: none;
+  }
+  .rail-hero .rh-lede {
+    font-size: 11px; color: var(--gold-soft); text-transform: uppercase;
+    letter-spacing: 0.18em; margin-bottom: 4px;
+  }
+  .rail-hero h2 {
+    margin: 0 0 6px; padding: 0; border: none;
+    font-size: 22px; color: var(--gold); letter-spacing: 0.06em;
+    text-shadow: 0 0 14px rgba(240,196,25,0.30);
+  }
+  .rail-hero .rh-tagline {
+    font-size: 12px; color: var(--text); line-height: 1.6;
+    max-width: 760px; margin-top: 6px; position: relative; z-index: 1;
+  }
+  .rail-tpv {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px; margin-top: 18px; position: relative; z-index: 1;
+  }
+  .rail-tpv .rt-tile {
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 14px;
+  }
+  .rail-tpv .rt-lab {
+    font-size: 9px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+  .rail-tpv .rt-val {
+    font-size: 24px; font-weight: 700; color: var(--gold);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    text-shadow: 0 0 12px rgba(240,196,25,0.35);
+    margin-top: 4px; letter-spacing: 0.02em;
+  }
+  .rail-tpv .rt-tile.green .rt-val { color: var(--green); text-shadow: 0 0 12px rgba(74,222,128,0.35); }
+  .rail-tpv .rt-tile.cyan .rt-val { color: var(--cyan); text-shadow: 0 0 12px rgba(79,214,255,0.35); }
+  .rail-tpv .rt-tile.purple .rt-val { color: var(--purple); text-shadow: 0 0 12px rgba(192,132,252,0.35); }
+  .rail-tpv .rt-sub {
+    font-size: 9.5px; color: var(--green); font-family: "IBM Plex Mono", ui-monospace, monospace;
+    margin-top: 4px;
+  }
+  .rail-tpv .rt-sub.muted { color: var(--muted); }
+
+  /* Trust bar — partners + certs */
+  .trust-bar {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 12px 16px; margin-bottom: 14px;
+    background: var(--panel);
+    border: 1px solid var(--border); border-radius: var(--radius);
+  }
+  .trust-bar .tb-label {
+    font-size: 9px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.18em; font-weight: 700;
+    padding-right: 8px; border-right: 1px solid var(--border);
+  }
+  .trust-bar .tb-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 14px;
+    background: var(--panel-2); border: 1px solid var(--border-strong);
+    font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+    color: var(--text);
+  }
+  .trust-bar .tb-chip .tb-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    box-shadow: 0 0 6px currentColor;
+  }
+  .trust-bar .tb-chip.usdc { color: #2775ca; }
+  .trust-bar .tb-chip.usdt { color: #26a17b; }
+  .trust-bar .tb-chip.usd1 { color: #c084fc; }
+  .trust-bar .tb-chip.usdp { color: #4fd6ff; }
+  .trust-bar .tb-chip.wip { color: var(--gold); }
+  .trust-bar .tb-chip.cert {
+    color: var(--green); background: rgba(74,222,128,0.06);
+    border-color: rgba(74,222,128,0.35);
+  }
+  .trust-bar .tb-chip.cert .tb-dot { background: var(--green); }
+
+  /* ===== Quick-actions strip (processor dashboard look) ===== */
+  .qa-strip {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px; margin-bottom: 16px;
+  }
+  .qa-card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px;
+    cursor: pointer; transition: all 0.15s;
+    position: relative; overflow: hidden;
+  }
+  .qa-card:hover {
+    border-color: var(--gold); transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4), 0 0 14px rgba(240,196,25,0.12);
+  }
+  .qa-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--gold); opacity: 0; transition: opacity 0.15s;
+  }
+  .qa-card:hover::before { opacity: 1; }
+  .qa-card .qa-icon {
+    width: 36px; height: 36px; border-radius: var(--radius);
+    background: rgba(240,196,25,0.08);
+    border: 1px solid rgba(240,196,25,0.30);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--gold); font-size: 18px;
+    margin-bottom: 10px;
+  }
+  .qa-card.cyan .qa-icon { background: rgba(79,214,255,0.08); border-color: rgba(79,214,255,0.30); color: var(--cyan); }
+  .qa-card.green .qa-icon { background: rgba(74,222,128,0.08); border-color: rgba(74,222,128,0.30); color: var(--green); }
+  .qa-card.purple .qa-icon { background: rgba(192,132,252,0.08); border-color: rgba(192,132,252,0.30); color: var(--purple); }
+  .qa-card .qa-label {
+    font-size: 11px; color: var(--text); font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .qa-card .qa-desc {
+    font-size: 9.5px; color: var(--muted); margin-top: 3px;
+    letter-spacing: 0.04em;
+  }
+  .qa-card .qa-stat {
+    margin-top: 8px; font-size: 11px; color: var(--gold);
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-weight: 700;
+  }
+
+  /* Balance / processor account card */
+  .balance-card {
+    background: linear-gradient(135deg, rgba(240,196,25,0.06), rgba(240,196,25,0.01)),
+                var(--panel);
+    border: 1px solid var(--gold-soft); border-radius: var(--radius);
+    padding: 16px 18px; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .balance-card .bc-icon {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: linear-gradient(135deg, rgba(240,196,25,0.30), rgba(240,196,25,0.10));
+    border: 1.5px solid var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--gold); font-size: 18px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .balance-card .bc-info { flex: 1; min-width: 0; }
+  .balance-card .bc-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.14em; }
+  .balance-card .bc-val { font-size: 18px; color: var(--gold); font-weight: 700; font-family: "IBM Plex Mono", ui-monospace, monospace; margin-top: 2px; }
+  .balance-card .bc-meta { font-size: 10px; color: var(--text); margin-top: 2px; }
+  .balance-card .bc-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .balance-card .bc-actions button { padding: 6px 14px; font-size: 9.5px; }
+
+  /* Live settlement feed */
+  .settlement-feed {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 6px 10px;
+    max-height: 280px; overflow-y: auto;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px;
+  }
+  .settlement-feed .sf-row {
+    display: grid; grid-template-columns: 56px 64px 1fr 90px 56px;
+    gap: 10px; padding: 4px 4px;
+    border-bottom: 1px dashed var(--border);
+    align-items: center;
+  }
+  .settlement-feed .sf-row:last-child { border-bottom: none; }
+  .settlement-feed .sf-ts { color: var(--dim); }
+  .settlement-feed .sf-rail {
+    font-size: 8.5px; font-weight: 700; letter-spacing: 0.08em;
+    text-align: center; padding: 1px 5px;
+    border-radius: 8px; background: var(--panel-2);
+    border: 1px solid var(--border-strong);
+  }
+  .settlement-feed .sf-rail.usdc { color: #2775ca; }
+  .settlement-feed .sf-rail.usdt { color: #26a17b; }
+  .settlement-feed .sf-rail.usd1 { color: #c084fc; }
+  .settlement-feed .sf-rail.usdp { color: #4fd6ff; }
+  .settlement-feed .sf-rail.wip { color: var(--gold); }
+  .settlement-feed .sf-memo { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .settlement-feed .sf-amt { color: var(--green); text-align: right; font-weight: 700; }
+  .settlement-feed .sf-status {
+    font-size: 8.5px; padding: 1px 5px; border-radius: 6px;
+    text-align: center; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700;
+  }
+  .settlement-feed .sf-status.settled { color: var(--green); background: rgba(74,222,128,0.08); }
+  .settlement-feed .sf-status.clearing { color: var(--warn); background: rgba(245,158,11,0.08); }
+
   /* ===== Hardware / Software Store ===== */
   .product-grid {
     display: grid; grid-template-columns: 1fr 1fr;
@@ -1764,7 +2686,7 @@
     border-top: 1px solid var(--border);
   }
   .product-card .pc-price .pp-amt {
-    font-size: 22px; color: var(--gold); font-weight: 700; font-family: ui-monospace, monospace;
+    font-size: 22px; color: var(--gold); font-weight: 700; font-family: "IBM Plex Mono", ui-monospace, monospace;
   }
   .product-card .pc-price .pp-cur {
     font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.10em;
@@ -1791,7 +2713,7 @@
     letter-spacing: 0.10em; margin-bottom: 4px;
   }
   .tier-card .tc-price {
-    font-size: 16px; color: var(--text); font-weight: 700; font-family: ui-monospace, monospace;
+    font-size: 16px; color: var(--text); font-weight: 700; font-family: "IBM Plex Mono", ui-monospace, monospace;
   }
   .tier-card .tc-period {
     font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.10em;
@@ -1802,7 +2724,7 @@
   .license-key {
     background: var(--bg); border: 1px dashed var(--gold);
     border-radius: var(--radius); padding: 14px;
-    font-family: ui-monospace, monospace; font-size: 12px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px;
     color: var(--gold); text-align: center; letter-spacing: 0.10em;
     margin: 12px 0; word-break: break-all;
     text-shadow: 0 0 6px rgba(240,196,25,0.3);
@@ -2257,6 +3179,88 @@
     .ytid-match .ytm-actions { grid-column: 1 / -1; flex-wrap: wrap; }
   }
 
+  /* ===== Mobile rules for new components (master banner, sentinel auto, visualizer toggle/aspect, cross-chain, social, wallet picker) ===== */
+  @media (max-width: 720px) {
+    /* Visualizer layout — collapse preview / controls to a single column */
+    .viz-layout-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
+    #viz-preview-wrap { max-width: 320px; margin: 0 auto; }
+    .viz-controls-row { gap: 10px; }
+    .viz-toggle-pattern { padding: 8px 12px; font-size: 10.5px; min-height: 36px; }
+    .viz-aspect-row { gap: 5px; row-gap: 6px; }
+    .viz-aspect-chip { padding: 6px 10px; font-size: 10px; min-height: 30px; }
+    .viz-aspect-label { width: 100%; margin-bottom: 2px; }
+    /* Asset image overlay controls */
+    .viz-image-controls { padding: 10px; }
+    .viz-image-controls .vic-head { gap: 8px; }
+    .viz-image-controls .vic-row { flex-wrap: wrap; gap: 6px; }
+    .viz-image-controls .vic-slider-label { min-width: 60px; font-size: 9px; }
+    .viz-slider { min-width: 100%; flex: 1 0 100%; height: 28px; }
+    .viz-slider::-webkit-slider-thumb { width: 22px; height: 22px; }
+    .viz-slider::-moz-range-thumb { width: 22px; height: 22px; }
+    .viz-image-controls .vic-slider-val { flex: 0 0 auto; }
+    .viz-fit-chips { flex: 1 0 100%; }
+    .viz-fit-chip { padding: 7px 10px; font-size: 9.5px; min-height: 30px; }
+    /* AI Sentinel auto-file — already stacks via inline rules */
+    .sa-features { grid-template-columns: 1fr 1fr; gap: 6px; }
+    .sa-feature { padding: 8px; font-size: 10px; }
+    .sa-switch { width: 50px; height: 28px; }
+    .sa-switch .sa-knob { width: 22px; height: 22px; }
+    .sa-switch.on .sa-knob { transform: translateX(22px); }
+    /* Cross-chain grid */
+    .chain-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; }
+    .chain-btn { padding: 8px 6px; }
+    .chain-btn .cb-logo { font-size: 16px; }
+    .chain-btn .cb-name { font-size: 10px; }
+    .chain-btn .cb-detail { font-size: 8px; }
+    /* Social share grid */
+    .social-grid { grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 6px; }
+    .social-btn { padding: 8px 6px; min-height: 64px; }
+    .social-btn .sb-logo { font-size: 16px; }
+    .social-btn .sb-name { font-size: 10px; }
+    .social-btn .sb-detail { font-size: 8px; }
+    /* Master banner already has its own breakpoint */
+    /* 1/1 master pill + NOT NFT pill — keep them readable */
+    .master-pill, .not-nft-pill { font-size: 8.5px; padding: 2px 6px; }
+  }
+
+  /* ===== Phones ≤ 480px ===== */
+  @media (max-width: 480px) {
+    /* Visualizer chips wrap to 3 + 3 layout */
+    .viz-aspect-chip { flex: 0 0 calc(33.333% - 4px); text-align: center; padding: 7px 4px; font-size: 9.5px; }
+    .viz-controls-row { flex-direction: column; align-items: stretch; }
+    .viz-controls-row .viz-toggle-pattern,
+    .viz-controls-row .viz-randomize { width: 100%; text-align: center; justify-content: center; }
+    /* Cross-chain → strict 2 columns */
+    .chain-grid { grid-template-columns: 1fr 1fr !important; }
+    /* Social → strict 3 columns */
+    .social-grid { grid-template-columns: 1fr 1fr 1fr !important; }
+    .social-btn { padding: 6px 4px; min-height: 58px; }
+    /* Sentinel auto-file feature list → 1 col */
+    .sa-features { grid-template-columns: 1fr !important; }
+    .sa-jurisdiction { grid-template-columns: 1fr !important; }
+    .sentinel-auto .sa-head { gap: 8px; }
+    .sentinel-auto .sa-icon { width: 30px; height: 30px; font-size: 13px; }
+    .sentinel-auto .sa-title { font-size: 11px; }
+    .sentinel-auto .sa-title .sa-sub { font-size: 9px; }
+    /* Master banner — smaller badge + tighter spacing */
+    .master-banner { padding: 10px; gap: 8px; }
+    .master-banner .mb-badge { padding: 8px 10px; min-width: 48px; }
+    .master-banner .mb-badge .mb-fraction { font-size: 18px; }
+    .master-banner .mb-badge .mb-sub { font-size: 7.5px; }
+    .master-banner .mb-title { font-size: 10.5px; }
+    .master-banner .mb-title .mb-not-nft { font-size: 8px; padding: 2px 6px; }
+    .master-banner .mb-desc { font-size: 10px; }
+    /* Asset-actions cards inside detail modal */
+    .asset-actions-card { padding: 10px; }
+    .asset-actions-card .aac-head h3 { font-size: 11px; }
+    /* Top-bar wallet picker — taller touch targets */
+    .wallet-picker .wp-item { padding: 10px 10px; min-height: 48px; }
+    .wallet-picker .wp-item .wp-name { font-size: 11.5px; }
+    .wallet-picker .wp-item .wp-detail { font-size: 9px; }
+    /* Refresh balances button stays full width */
+    #btn-refresh-balances { width: 100%; margin-top: 6px; }
+  }
+
   /* ===== iPhone SE / mini / 13 mini class (≤ 380px) ===== */
   @media (max-width: 380px) {
     header.topbar { padding: 4px 6px; gap: 4px; min-height: 48px; }
@@ -2280,6 +3284,38 @@
     .asset-type .icon { font-size: 16px; }
     .asset-type .label { font-size: 9px; }
     .asset-type .desc { display: none; }
+    /* New components at iPhone SE size */
+    .master-banner { padding: 9px; }
+    .master-banner .mb-badge { padding: 6px 8px; min-width: 42px; }
+    .master-banner .mb-badge .mb-fraction { font-size: 16px; }
+    .master-banner .mb-title { font-size: 9.5px; gap: 6px; }
+    .master-banner .mb-title .mb-not-nft { font-size: 7.5px; padding: 1px 5px; }
+    .master-banner .mb-desc { font-size: 9.5px; line-height: 1.5; }
+    .sentinel-auto { padding: 12px; }
+    .sentinel-auto .sa-title { font-size: 10px; }
+    .sentinel-auto .sa-title .sa-sub { font-size: 8px; }
+    .sentinel-auto .sa-desc { font-size: 10px; }
+    .sentinel-auto .sa-foot { font-size: 8.5px; }
+    .sa-jurisdiction select, .sa-jurisdiction input { padding: 7px 8px; font-size: 10.5px; }
+    /* Cross-chain & social — keep 2 col & 3 col but tighter */
+    .chain-grid { gap: 5px; }
+    .chain-btn { padding: 7px 4px; min-height: 64px; }
+    .chain-btn .cb-logo { font-size: 14px; }
+    .chain-btn .cb-name { font-size: 9.5px; }
+    .chain-btn .cb-detail { font-size: 7.5px; }
+    .social-grid { gap: 5px; }
+    .social-btn { padding: 6px 3px; min-height: 54px; }
+    .social-btn .sb-logo { font-size: 14px; }
+    .social-btn .sb-name { font-size: 9.5px; }
+    .social-btn .sb-detail { font-size: 7.5px; }
+    /* Visualizer */
+    .viz-aspect-chip { font-size: 8.5px; padding: 6px 3px; }
+    .viz-toggle-pattern { font-size: 9.5px; padding: 7px 10px; }
+    /* DAG HUD on tiny phones — make compact */
+    .dag-hud { font-size: 8.5px; padding: 6px 8px; min-width: 0; }
+    .dag-hud h4 { font-size: 8px; }
+    .dag-hud .hud-row { font-size: 8.5px; gap: 6px; }
+    .canvas-overlay button { padding: 3px 6px; font-size: 9px; min-width: 26px; }
   }
 
   /* iPhone Pro Max class (≤ 430px but landscape gets tricky) */
@@ -2482,7 +3518,7 @@
     text-align: center; z-index: 3;
   }
   #boot-splash .splash-title {
-    font-family: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+    font-family: "IBM Plex Mono", "JetBrains Mono", "SF Mono", ui-monospace, monospace;
     color: var(--gold);
     font-size: 18px; font-weight: 700;
     letter-spacing: 0.40em;
@@ -2492,7 +3528,7 @@
   }
   #boot-splash .splash-subtitle {
     margin-top: 8px;
-    font-family: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+    font-family: "IBM Plex Mono", "JetBrains Mono", "SF Mono", ui-monospace, monospace;
     color: var(--muted); font-size: 10px;
     letter-spacing: 0.28em; text-transform: uppercase;
     opacity: 0;
@@ -2500,7 +3536,7 @@
   }
   #boot-splash .splash-status {
     margin-top: 30px;
-    font-family: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+    font-family: "IBM Plex Mono", "JetBrains Mono", "SF Mono", ui-monospace, monospace;
     color: var(--gold);
     font-size: 12px; letter-spacing: 0.30em;
     text-transform: uppercase;
@@ -2526,7 +3562,7 @@
     animation: splashFadeIn 0.8s ease-out 0.2s forwards;
   }
   #boot-splash .class-tag {
-    font-family: ui-monospace, monospace;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
     padding: 3px 10px; border-radius: 2px;
     font-size: 9px; letter-spacing: 0.20em; font-weight: 700;
   }
@@ -2535,7 +3571,7 @@
   #boot-splash .class-tag.green { background: rgba(74,222,128,0.10); border: 1px solid var(--green); color: var(--green); }
 
   #boot-splash .splash-corner {
-    position: absolute; font-family: ui-monospace, monospace;
+    position: absolute; font-family: "IBM Plex Mono", ui-monospace, monospace;
     font-size: 9px; letter-spacing: 0.18em;
     color: var(--gold-soft); opacity: 0.7;
     z-index: 3;
@@ -2730,12 +3766,12 @@
   }
   .th-stat .ths-val {
     font-size: 22px; font-weight: 700; color: var(--gold);
-    font-family: ui-monospace, monospace;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
     text-shadow: 0 0 12px rgba(240,196,25,0.4);
     margin-top: 2px;
   }
   .th-stat .ths-sub {
-    font-size: 10px; color: var(--green); font-family: ui-monospace, monospace;
+    font-size: 10px; color: var(--green); font-family: "IBM Plex Mono", ui-monospace, monospace;
     margin-top: 2px;
   }
   .th-stat .ths-sub.red { color: var(--err); }
@@ -2755,8 +3791,8 @@
   }
   .alloc-row .alloc-swatch { width: 12px; height: 12px; border-radius: 2px; }
   .alloc-row .alloc-name { color: var(--text); }
-  .alloc-row .alloc-pct { color: var(--gold); font-family: ui-monospace, monospace; text-align: right; font-weight: 700; }
-  .alloc-row .alloc-amt { color: var(--muted); font-family: ui-monospace, monospace; text-align: right; font-size: 9.5px; }
+  .alloc-row .alloc-pct { color: var(--gold); font-family: "IBM Plex Mono", ui-monospace, monospace; text-align: right; font-weight: 700; }
+  .alloc-row .alloc-amt { color: var(--muted); font-family: "IBM Plex Mono", ui-monospace, monospace; text-align: right; font-size: 9.5px; }
 
   /* Treasury asset rows */
   .asset-grid { display: grid; grid-template-columns: 1fr; gap: 6px; }
@@ -2784,11 +3820,11 @@
   }
   .asset-row .ar-name { color: var(--text); font-weight: 600; }
   .asset-row .ar-cat { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; }
-  .asset-row .ar-qty { color: var(--text); font-family: ui-monospace, monospace; text-align: right; }
-  .asset-row .ar-val { color: var(--gold); font-family: ui-monospace, monospace; text-align: right; font-weight: 700; }
-  .asset-row .ar-pct { color: var(--muted); font-family: ui-monospace, monospace; text-align: right; font-size: 9.5px; }
+  .asset-row .ar-qty { color: var(--text); font-family: "IBM Plex Mono", ui-monospace, monospace; text-align: right; }
+  .asset-row .ar-val { color: var(--gold); font-family: "IBM Plex Mono", ui-monospace, monospace; text-align: right; font-weight: 700; }
+  .asset-row .ar-pct { color: var(--muted); font-family: "IBM Plex Mono", ui-monospace, monospace; text-align: right; font-size: 9.5px; }
   .asset-row .ar-change {
-    text-align: right; font-family: ui-monospace, monospace; font-size: 10px; font-weight: 600;
+    text-align: right; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10px; font-weight: 600;
   }
   .asset-row .ar-change.up { color: var(--green); }
   .asset-row .ar-change.down { color: var(--err); }
@@ -2810,7 +3846,7 @@
     100% { transform: translateX(-50%); }
   }
   .wip-ticker .tick-item {
-    font-size: 10.5px; color: var(--text); font-family: ui-monospace, monospace;
+    font-size: 10.5px; color: var(--text); font-family: "IBM Plex Mono", ui-monospace, monospace;
     display: inline-flex; gap: 6px; align-items: center;
   }
   .wip-ticker .tick-item .tt-tag {
@@ -2858,7 +3894,7 @@
     border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
   }
   .sentinel-card .st-stat .ss-lab { font-size: 8.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
-  .sentinel-card .st-stat .ss-val { font-size: 12px; font-weight: 700; color: var(--gold); font-family: ui-monospace, monospace; }
+  .sentinel-card .st-stat .ss-val { font-size: 12px; font-weight: 700; color: var(--gold); font-family: "IBM Plex Mono", ui-monospace, monospace; }
   .sentinel-card .st-actions { display: flex; gap: 6px; }
   .sentinel-card .st-actions button { flex: 1; padding: 5px 10px; font-size: 9.5px; }
 
@@ -2880,7 +3916,7 @@
   }
   .meter-card .m-val {
     font-size: 16px; font-weight: 700; color: var(--green);
-    font-family: ui-monospace, monospace;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
   }
   .meter-card .m-bar {
     height: 6px; background: var(--bg); border-radius: 3px;
@@ -2896,7 +3932,7 @@
   .meter-card .m-fill.crit { background: linear-gradient(90deg, var(--err), #f87171); box-shadow: 0 0 10px rgba(239,68,68,0.5); animation: pulse 0.8s infinite; }
   .meter-card .m-foot {
     display: flex; justify-content: space-between; font-size: 9px;
-    color: var(--muted); margin-top: 4px; font-family: ui-monospace, monospace;
+    color: var(--muted); margin-top: 4px; font-family: "IBM Plex Mono", ui-monospace, monospace;
   }
   .meter-card .m-spark {
     height: 36px; margin: 6px 0;
@@ -2988,8 +4024,8 @@
   .stable-card.wip { border-left-color: var(--gold); background: linear-gradient(135deg, rgba(240,196,25,0.06), rgba(212,175,55,0.02)); }
   .stable-card .sc-symbol { font-size: 11px; font-weight: 700; color: var(--text); letter-spacing: 0.06em; }
   .stable-card .sc-name { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.10em; margin-bottom: 8px; }
-  .stable-card .sc-balance { font-size: 18px; font-weight: 700; color: var(--text); font-family: ui-monospace, monospace; }
-  .stable-card .sc-usd { font-size: 10px; color: var(--gold-soft); margin-top: 2px; font-family: ui-monospace, monospace; }
+  .stable-card .sc-balance { font-size: 18px; font-weight: 700; color: var(--text); font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  .stable-card .sc-usd { font-size: 10px; color: var(--gold-soft); margin-top: 2px; font-family: "IBM Plex Mono", ui-monospace, monospace; }
   .stable-card .sc-status {
     position: absolute; top: 10px; right: 10px;
     font-size: 8px; padding: 1px 6px; border-radius: 8px;
@@ -3069,9 +4105,9 @@
     margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);
   }
   .provider-card .pv-stat { text-align: center; }
-  .provider-card .pv-stat .ps-val { font-size: 12px; font-weight: 700; color: var(--gold); font-family: ui-monospace, monospace; }
+  .provider-card .pv-stat .ps-val { font-size: 12px; font-weight: 700; color: var(--gold); font-family: "IBM Plex Mono", ui-monospace, monospace; }
   .provider-card .pv-stat .ps-lab { font-size: 8.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
-  .provider-card .pv-rate { font-size: 11px; color: var(--green); font-family: ui-monospace, monospace; margin-top: 6px; }
+  .provider-card .pv-rate { font-size: 11px; color: var(--green); font-family: "IBM Plex Mono", ui-monospace, monospace; margin-top: 6px; }
   .star-rating { color: var(--gold); font-size: 10px; letter-spacing: 1px; }
   .star-rating .empty { color: var(--dim); }
 
@@ -3084,7 +4120,7 @@
   .job-card.completed { border-left-color: var(--purple); opacity: 0.8; }
   .job-card .jc-head { display: flex; gap: 10px; align-items: center; margin-bottom: 6px; }
   .job-card .jc-title { font-size: 12.5px; color: var(--text); font-weight: 600; flex: 1; }
-  .job-card .jc-budget { font-size: 12px; color: var(--green); font-family: ui-monospace, monospace; }
+  .job-card .jc-budget { font-size: 12px; color: var(--green); font-family: "IBM Plex Mono", ui-monospace, monospace; }
   .job-card .jc-meta { font-size: 10px; color: var(--muted); }
   .job-card .jc-desc { font-size: 11px; color: var(--text); margin: 8px 0; line-height: 1.5; }
 
@@ -3103,7 +4139,7 @@
     background: rgba(192,132,252,0.10); color: var(--purple); border: 1px solid rgba(192,132,252,0.4);
     text-transform: uppercase; letter-spacing: 0.08em; }
   .contract-card .cc-title { font-size: 12.5px; color: var(--text); font-weight: 600; flex: 1; }
-  .contract-card .cc-amount { font-size: 12px; color: var(--green); font-family: ui-monospace, monospace; }
+  .contract-card .cc-amount { font-size: 12px; color: var(--green); font-family: "IBM Plex Mono", ui-monospace, monospace; }
   .contract-card .cc-parties { font-size: 10px; color: var(--muted); margin: 6px 0; }
   .contract-card .cc-status-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
 
@@ -3124,7 +4160,7 @@
   }
   .ai-review-panel .arp-title { color: var(--purple); font-size: 11px; font-weight: 600; letter-spacing: 0.10em; text-transform: uppercase; }
   .ai-review-panel .arp-score {
-    margin-left: auto; font-size: 16px; font-weight: 700; font-family: ui-monospace, monospace;
+    margin-left: auto; font-size: 16px; font-weight: 700; font-family: "IBM Plex Mono", ui-monospace, monospace;
   }
   .arp-score.good { color: var(--green); }
   .arp-score.fair { color: var(--warn); }
@@ -3222,8 +4258,8 @@
     font-size: 10px; color: var(--gold-soft); text-transform: uppercase;
     letter-spacing: 0.10em; margin-bottom: 6px;
   }
-  .stream-card .sc-streams { font-size: 16px; font-weight: 700; color: var(--text); font-family: ui-monospace, monospace; }
-  .stream-card .sc-revenue { font-size: 11px; color: var(--green); font-family: ui-monospace, monospace; margin-top: 2px; }
+  .stream-card .sc-streams { font-size: 16px; font-weight: 700; color: var(--text); font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  .stream-card .sc-revenue { font-size: 11px; color: var(--green); font-family: "IBM Plex Mono", ui-monospace, monospace; margin-top: 2px; }
   .stream-card .sc-meta { font-size: 9px; color: var(--muted); margin-top: 4px; }
   .stream-card .sc-disconnect {
     position: absolute; top: 6px; right: 6px; cursor: pointer;
@@ -3259,7 +4295,7 @@
     color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-size: 9px;
   }
   .meta-panel .mp-item .mp-v {
-    color: var(--text); font-family: ui-monospace, monospace; font-size: 10.5px;
+    color: var(--text); font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px;
     word-break: break-word;
   }
   .meta-panel .mp-item.flag .mp-v { color: var(--err); }
@@ -3374,7 +4410,7 @@
   .match-confidence.medium { background: rgba(245,158,11,0.15); color: var(--warn); }
   .match-confidence.low { background: rgba(107,100,80,0.15); color: var(--muted); }
   .match-source { font-size: 11px; color: var(--gold-soft); flex: 1; }
-  .match-url { font-size: 10px; color: var(--cyan); font-family: ui-monospace, monospace; word-break: break-all; }
+  .match-url { font-size: 10px; color: var(--cyan); font-family: "IBM Plex Mono", ui-monospace, monospace; word-break: break-all; }
   .match-meta { font-size: 10px; color: var(--muted); margin-top: 6px; }
   .match-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
   .match-actions button { padding: 4px 10px; font-size: 9.5px; }
@@ -3383,10 +4419,22 @@
 <body>
 <!-- ===== Boot Splash — Clean & Quick ===== -->
 <div id="boot-splash">
-  <div class="splash-logo splash-logo-big" style="display:none;">
-    <img id="splash-logo-img" src="" alt="" style="width:100%;height:100%;object-fit:contain;">
+  <div class="splash-logo splash-logo-big">
+    <img id="splash-logo-img" src="" alt="" style="width:100%;height:100%;object-fit:contain;display:none;">
+    <svg id="splash-logo-default" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"
+         style="width:100%;height:100%;display:block;">
+      <g fill="none" stroke="#f0c419" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 100 16 A 84 84 0 1 1 116 18" stroke-width="9"/>
+        <path d="M 56 50 L 100 168 L 144 50" stroke-width="9"/>
+      </g>
+      <circle cx="100" cy="16" r="6.5" fill="#f0c419"/>
+      <circle cx="116" cy="18" r="5" fill="#f0c419"/>
+      <rect x="80" y="84" width="11" height="58" rx="5.5" ry="5.5" fill="#f0c419"/>
+      <rect x="94" y="80" width="12" height="62" rx="6" ry="6" fill="#f0c419"/>
+      <rect x="109" y="84" width="11" height="58" rx="5.5" ry="5.5" fill="#f0c419"/>
+    </svg>
   </div>
-  <div class="splash-status" id="splash-status">⌬ <span class="blink">VERIFYING ACCESS</span></div>
+  <div class="splash-status" id="splash-status">⌬ <span class="blink">CLEARING SETTLEMENT</span></div>
 </div>
 
 <div id="app">
@@ -3398,11 +4446,23 @@
     <div class="brand-block">
       <div class="brand-mark" id="brand-mark" title="OTW">
         <img id="brand-logo-img" src="" alt="OTW" style="width:100%;height:100%;object-fit:contain;display:none;">
+        <svg id="brand-logo-default" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"
+             style="width:100%;height:100%;display:block;color:#f0c419;">
+          <g fill="none" stroke="#f0c419" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M 100 16 A 84 84 0 1 1 116 18" stroke-width="9"/>
+            <path d="M 56 50 L 100 168 L 144 50" stroke-width="9"/>
+          </g>
+          <circle cx="100" cy="16" r="6.5" fill="#f0c419"/>
+          <circle cx="116" cy="18" r="5" fill="#f0c419"/>
+          <rect x="80" y="84" width="11" height="58" rx="5.5" ry="5.5" fill="#f0c419"/>
+          <rect x="94" y="80" width="12" height="62" rx="6" ry="6" fill="#f0c419"/>
+          <rect x="109" y="84" width="11" height="58" rx="5.5" ry="5.5" fill="#f0c419"/>
+        </svg>
         <input type="file" id="brand-logo-input" hidden accept="image/*,application/pdf,.pdf">
       </div>
       <div class="brand-text">
         <div class="title">WIREIP NETWORK™</div>
-        <div class="subtitle">IP Tokenization Vault</div>
+        <div class="subtitle">The Settlement Rail for Intellectual Property · DAG · $WIP-Backed</div>
       </div>
     </div>
     <div class="top-search">
@@ -3411,10 +4471,84 @@
       <div class="search-results" id="search-results"></div>
     </div>
     <div class="top-tools">
+      <button class="sound-toggle" id="sound-toggle" title="Sound: On" aria-label="Toggle sound">
+        <svg id="sound-icon-on" viewBox="0 0 20 20" width="14" height="14" style="display:block;"><g fill="currentColor"><path d="M3 7v6h3l4 3V4L6 7H3z"/><path d="M13 6.5a3.5 3.5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M15 4a6 6 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></g></svg>
+        <svg id="sound-icon-off" viewBox="0 0 20 20" width="14" height="14" style="display:none;"><g fill="currentColor"><path d="M3 7v6h3l4 3V4L6 7H3z"/><line x1="13" y1="7" x2="18" y2="13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="18" y1="7" x2="13" y2="13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></g></svg>
+      </button>
+      <button class="theme-toggle" id="theme-toggle" title="Dark Mode" aria-label="Toggle theme">
+        <span class="theme-icon sun" aria-hidden="true">
+          <svg viewBox="0 0 20 20" width="12" height="12"><g fill="currentColor"><circle cx="10" cy="10" r="3.6"/><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="10" y1="1" x2="10" y2="3.4"/><line x1="10" y1="16.6" x2="10" y2="19"/><line x1="1" y1="10" x2="3.4" y2="10"/><line x1="16.6" y1="10" x2="19" y2="10"/><line x1="3.5" y1="3.5" x2="5.2" y2="5.2"/><line x1="14.8" y1="14.8" x2="16.5" y2="16.5"/><line x1="3.5" y1="16.5" x2="5.2" y2="14.8"/><line x1="14.8" y1="5.2" x2="16.5" y2="3.5"/></g></g></svg>
+        </span>
+        <span class="theme-icon moon" aria-hidden="true">
+          <svg viewBox="0 0 20 20" width="12" height="12"><path fill="currentColor" d="M16.5 12.5A7 7 0 0 1 7.5 3.5a7 7 0 1 0 9 9z"/></svg>
+        </span>
+        <span class="theme-slider"></span>
+      </button>
       <div class="wallet-display" id="wallet-display">
-        <span style="width:6px;height:6px;border-radius:50%;background:var(--muted)"></span>
+        <span id="wallet-status-dot" style="width:6px;height:6px;border-radius:50%;background:var(--muted)"></span>
         <span class="addr" id="wallet-addr">Wallet not set</span>
-        <button id="btn-set-wallet" style="padding:2px 8px;font-size:9px">Edit</button>
+        <button id="btn-set-wallet" class="link-btn" title="Link a wallet (Ledger, Phantom, MetaMask, Coinbase, Robinhood, PayPal)">
+          <span class="link-led"></span>LINK
+        </button>
+        <div class="wallet-picker" id="wallet-picker" role="menu" aria-label="Link a wallet">
+          <div class="wp-head">
+            Link Stablecoin Wallet
+            <span class="wp-sub">USDC · USDT · USD1 · USDP · $WIP</span>
+          </div>
+          <div class="wp-item" data-wallet="metamask" role="menuitem">
+            <span class="wp-icon">🦊</span>
+            <div class="wp-info">
+              <div class="wp-name">MetaMask</div>
+              <div class="wp-detail">Browser extension</div>
+            </div>
+            <span class="wp-chain">EVM</span>
+          </div>
+          <div class="wp-item" data-wallet="phantom" role="menuitem">
+            <span class="wp-icon">👻</span>
+            <div class="wp-info">
+              <div class="wp-name">Phantom</div>
+              <div class="wp-detail">Solana · multichain</div>
+            </div>
+            <span class="wp-chain">SOL</span>
+          </div>
+          <div class="wp-item" data-wallet="coinbase" role="menuitem">
+            <span class="wp-icon">◎</span>
+            <div class="wp-info">
+              <div class="wp-name">Coinbase Wallet</div>
+              <div class="wp-detail">Coinbase account · self-custody</div>
+            </div>
+            <span class="wp-chain">EVM</span>
+          </div>
+          <div class="wp-item" data-wallet="ledger" role="menuitem">
+            <span class="wp-icon">▣</span>
+            <div class="wp-info">
+              <div class="wp-name">Ledger</div>
+              <div class="wp-detail">Hardware wallet · USB / BLE</div>
+            </div>
+            <span class="wp-chain">HW</span>
+          </div>
+          <div class="wp-item" data-wallet="robinhood" role="menuitem">
+            <span class="wp-icon">🪶</span>
+            <div class="wp-info">
+              <div class="wp-name">Robinhood Wallet</div>
+              <div class="wp-detail">Brokerage-linked crypto</div>
+            </div>
+            <span class="wp-chain">RH</span>
+          </div>
+          <div class="wp-item" data-wallet="paypal" role="menuitem">
+            <span class="wp-icon">🅿</span>
+            <div class="wp-info">
+              <div class="wp-name">PayPal</div>
+              <div class="wp-detail">PYUSD · fiat on-ramp</div>
+            </div>
+            <span class="wp-chain">FIAT</span>
+          </div>
+          <div class="wp-divider"></div>
+          <button class="wp-custom" id="wp-custom-addr" type="button">Use Custom Address →</button>
+          <div class="wp-foot">
+            WireIP never holds private keys. Connections are read/sign-only and routed through <strong>SecureNode™</strong> where available.
+          </div>
+        </div>
       </div>
     </div>
   </header>
@@ -3426,7 +4560,9 @@
     <span style="flex:1"></span>
     <span class="conn-actions">
       <button id="btn-conn-banner-help">Don't have it?</button>
-      <button id="btn-conn-banner-connect" class="primary">Connect SecureNode</button>
+      <button id="btn-conn-banner-connect" class="primary link-btn" title="Link SecureNode">
+        <span class="link-led"></span>LINK SECURENODE
+      </button>
     </span>
   </div>
 
@@ -3434,25 +4570,25 @@
   <main class="workspace">
     <div class="nav-backdrop" id="nav-backdrop"></div>
     <nav class="side" id="side-nav">
-      <div class="nav-group">
+      <div class="nav-group collapsed">
         <h4 data-nav-group>Tokenization<span class="chev">▾</span></h4>
         <div class="nav-item active" data-view="view-tokenize"><span class="icon">▲</span><span>New Asset</span></div>
         <div class="nav-item" data-view="view-vault"><span class="icon">◆</span><span>My Vault</span><span class="badge" id="nav-vault-count">0</span></div>
         <div class="nav-item" data-view="view-treasury"><span class="icon">$</span><span>Treasury / Value</span><span class="badge" id="nav-treasury-value">$0</span></div>
         <div class="nav-item" data-view="view-registry"><span class="icon">⚜</span><span>Submissions</span><span class="badge" id="nav-reg-count">0</span></div>
       </div>
-      <div class="nav-group">
+      <div class="nav-group collapsed">
         <h4 data-nav-group>Network<span class="chev">▾</span></h4>
         <div class="nav-item" data-view="view-tokenomics"><span class="icon">$</span><span>$WIP Tokenomics</span></div>
         <div class="nav-item" data-view="view-globe"><span class="icon">⌖</span><span>Validators Globe</span></div>
         <div class="nav-item" data-view="view-networks"><span class="icon">⬡</span><span>Private Networks</span><span class="badge" id="nav-network-count">0</span></div>
         <div class="nav-item" data-view="view-collaborators"><span class="icon">⚇</span><span>Collaborators</span><span class="badge" id="nav-collab-count">0</span></div>
       </div>
-      <div class="nav-group" id="nav-collab-list" style="display:none;">
+      <div class="nav-group collapsed" id="nav-collab-list" style="display:none;">
         <h4 data-nav-group>My Collaborators<span class="chev">▾</span></h4>
         <div id="nav-collab-rows"></div>
       </div>
-      <div class="nav-group">
+      <div class="nav-group collapsed">
         <h4 data-nav-group>Marketplace<span class="chev">▾</span></h4>
         <div class="nav-item" data-view="view-wallet"><span class="icon">$</span><span>Wallet &amp; Stablecoins</span></div>
         <div class="nav-item" data-view="view-marketplace"><span class="icon">⌂</span><span>Service Marketplace</span></div>
@@ -3460,17 +4596,17 @@
         <div class="nav-item" data-view="view-engagements"><span class="icon">⚒</span><span>My Engagements</span><span class="badge" id="nav-engage-count">0</span></div>
         <div class="nav-item" data-view="view-contracts"><span class="icon">⎙</span><span>Smart Contracts</span><span class="badge" id="nav-contract-count">0</span></div>
       </div>
-      <div class="nav-group">
+      <div class="nav-group collapsed">
         <h4 data-nav-group>Defense<span class="chev">▾</span></h4>
         <div class="nav-item" data-view="view-neuralnet"><span class="icon">⌬</span><span>Neural Net</span><span class="badge" id="nav-match-count">0</span></div>
         <div class="nav-item" data-view="view-security"><span class="icon">🛡</span><span>Security Center</span></div>
       </div>
-      <div class="nav-group">
+      <div class="nav-group collapsed">
         <h4 data-nav-group>Network<span class="chev">▾</span></h4>
         <div class="nav-item" data-view="view-dag"><span class="icon">◇</span><span>DAG View</span></div>
         <div class="nav-item" data-view="view-securenode"><span class="icon">●</span><span>SecureNode</span></div>
       </div>
-      <div class="nav-group">
+      <div class="nav-group collapsed">
         <h4 data-nav-group>Reference<span class="chev">▾</span></h4>
         <div class="nav-item" data-view="view-about"><span class="icon">i</span><span>About / Specs</span></div>
       </div>
@@ -3480,9 +4616,57 @@
 
       <!-- ===== VIEW: TOKENIZE ===== -->
       <section class="view active" id="view-tokenize">
-        <h1>Tokenize New Asset</h1>
+        <!-- Payment-rail hero -->
+        <div class="rail-hero">
+          <div class="rh-lede">⌬ WireIP Network™ · Settlement Rail v4.1</div>
+          <h2>The Plumbing of Intellectual Property Value</h2>
+          <div class="rh-tagline">
+            WireIP is the institutional payment rail for IP — built on an asynchronous BFT DAG, settled in audited stablecoins, and backed by $WIP and the OTW Treasury's hard-asset reserves. We process IP issuance, royalty splits, licensing, and cross-border IP commerce with the throughput of a card network and the sovereignty of a digital commodity. In a stablecoin failure, $WIP deploys as the last-resort backstop — par redemption for every tokenized creator.
+          </div>
+          <div class="rail-tpv">
+            <div class="rt-tile"><div class="rt-lab">TOTAL IP VOLUME PROCESSED</div><div class="rt-val" id="rh-tpv">$0</div><div class="rt-sub" id="rh-tpv-chg">— since genesis</div></div>
+            <div class="rt-tile green"><div class="rt-lab">SETTLEMENTS / 24H</div><div class="rt-val" id="rh-stl">0</div><div class="rt-sub" id="rh-stl-chg">soft final ~4–8s</div></div>
+            <div class="rt-tile cyan"><div class="rt-lab">CBIA™ DEEDS ISSUED</div><div class="rt-val" id="rh-deeds">0</div><div class="rt-sub muted">on the WireIP DAG</div></div>
+            <div class="rt-tile purple"><div class="rt-lab">$WIP BACKSTOP COVERAGE</div><div class="rt-val" id="rh-coverage">—</div><div class="rt-sub" id="rh-coverage-sub">treasury vs liabilities</div></div>
+            <div class="rt-tile green"><div class="rt-lab">VALIDATOR NODES</div><div class="rt-val" id="rh-validators">0</div><div class="rt-sub muted">across <span id="rh-cities">0</span> cities</div></div>
+            <div class="rt-tile"><div class="rt-lab">NETWORK UPTIME</div><div class="rt-val">99.997%</div><div class="rt-sub muted">90-day rolling</div></div>
+          </div>
+        </div>
+
+        <!-- Trust bar — stablecoin rails + compliance -->
+        <div class="trust-bar">
+          <span class="tb-label">SETTLEMENT RAILS</span>
+          <span class="tb-chip usdc"><span class="tb-dot" style="background:#2775ca;"></span>USDC</span>
+          <span class="tb-chip usdt"><span class="tb-dot" style="background:#26a17b;"></span>USDT</span>
+          <span class="tb-chip usd1"><span class="tb-dot" style="background:#c084fc;"></span>USD1</span>
+          <span class="tb-chip usdp"><span class="tb-dot" style="background:#4fd6ff;"></span>USDP</span>
+          <span class="tb-chip wip"><span class="tb-dot" style="background:#f0c419;"></span>$WIP · BACKSTOP</span>
+          <span class="tb-label" style="margin-left:auto;border-right:none;border-left:1px solid var(--border);padding-left:12px;padding-right:0;">COMPLIANCE</span>
+          <span class="tb-chip cert"><span class="tb-dot"></span>FIPS 140-2 L3</span>
+          <span class="tb-chip cert"><span class="tb-dot"></span>NIST SP 800-53</span>
+          <span class="tb-chip cert"><span class="tb-dot"></span>SOC 2 TYPE II</span>
+        </div>
+
+        <h1>Issue a CBIA™ Digital Deed</h1>
         <div class="lede">
-          Mint a CBIA™ Digital Deed for your IP. The file is hashed locally, encrypted (AES-256), and registered in your SecureNode™ SSD vault. Per protocol, all minting requires Proof of Agency™ via NFC tap. After minting you can deploy to vault only, or have AI Sentinel agents register the deed with chosen IP offices automatically.
+          Issue and settle a CBIA™ Digital Deed for your IP on the WireIP DAG. The file is hashed locally, encrypted (AES-256), anchored to your SecureNode™ SSD vault, and routed through stablecoin settlement rails — clearing in ~4–8 seconds (soft final) and finalizing in ~12–20 seconds (hard final). Per protocol, all issuance requires Proof of Agency™ via NFC tap. After mint, deploy to vault only or have AI Sentinel agents settle the deed with selected national IP offices.
+        </div>
+
+        <!-- 1/1 Master Token + NOT AN NFT banner -->
+        <div class="master-banner" role="note" aria-label="1/1 Master Token notice">
+          <div class="mb-badge">
+            <span class="mb-fraction">1/1</span>
+            <span class="mb-sub">MASTER</span>
+          </div>
+          <div class="mb-content">
+            <div class="mb-title">
+              ABSOLUTE MASTER TOKEN — ORIGINAL OF ONE
+              <span class="mb-not-nft">⚠ NOT AN NFT</span>
+            </div>
+            <div class="mb-desc">
+              Every mint issues a single, sovereign <strong>1/1 Master Token</strong> — the original, irreproducible Digital Deed of your intellectual property. Fractional royalty tokens (when enabled below) are derivatives — they reference the Master, they do not replace it. These are <strong>Tokenized IP Assets with Real-World Value</strong>, court-recognizable, leverage-eligible, and backed by hard treasury reserves — not collectibles, not JPEGs, not speculation.
+            </div>
+          </div>
         </div>
 
         <!-- STEP 1: FILE UPLOAD -->
@@ -3575,17 +4759,58 @@
           <div class="help">
             Every asset gets a unique visual ID — a generative pattern derived from your file's CBIA hash, a colorway, and your creator name. Pick a style and color (or randomize). The visualizer appears on the deed certificate, vault cards, search results, and DAG vertex.
           </div>
-          <div style="display:grid;grid-template-columns:1fr 2fr;gap:18px;margin-top:14px;align-items:start;">
+          <div class="viz-layout-grid" style="display:grid;grid-template-columns:1fr 2fr;gap:18px;margin-top:14px;align-items:start;">
             <div id="viz-preview-wrap" style="aspect-ratio:1;"></div>
             <div>
               <div style="font-size:9.5px;color:var(--gold-soft);text-transform:uppercase;letter-spacing:0.10em;margin-bottom:6px;">Style</div>
               <div class="viz-picker" id="viz-style-picker"></div>
               <div style="font-size:9.5px;color:var(--gold-soft);text-transform:uppercase;letter-spacing:0.10em;margin-top:14px;margin-bottom:6px;">Color</div>
               <div class="viz-color-row" id="viz-color-row"></div>
-              <div style="margin-top:14px;display:flex;gap:8px;align-items:center;">
+              <div class="viz-controls-row">
+                <div class="viz-toggle-pattern on" id="viz-toggle-pattern" role="switch" aria-checked="true" tabindex="0" title="Toggle generative pattern on/off — when off, only the color is shown">
+                  <span class="vtp-led"></span>
+                  <span id="viz-toggle-label">Pattern: ON</span>
+                </div>
                 <button class="viz-randomize" id="viz-rand">⟳ Randomize</button>
                 <span style="font-size:9.5px;color:var(--muted);" id="viz-hex-display">#000000</span>
               </div>
+              <div class="viz-aspect-row">
+                <span class="viz-aspect-label">Canvas Dimensions</span>
+                <div class="viz-aspect-chip active" data-aspect="1:1" title="Square — 1:1">⬛ 1:1</div>
+                <div class="viz-aspect-chip" data-aspect="4:3" title="Landscape 4:3">▭ 4:3</div>
+                <div class="viz-aspect-chip" data-aspect="3:4" title="Portrait 3:4">▯ 3:4</div>
+                <div class="viz-aspect-chip" data-aspect="16:9" title="Landscape 16:9 (video)">▭ 16:9</div>
+                <div class="viz-aspect-chip" data-aspect="9:16" title="Portrait 9:16 (reels/stories)">▯ 9:16</div>
+                <div class="viz-aspect-chip" data-aspect="match" title="Match uploaded asset's dimensions automatically">⤓ Match Asset</div>
+              </div>
+
+              <!-- Asset image overlay controls — populated when an image asset is uploaded -->
+              <div class="viz-image-controls" id="viz-image-controls" style="display:none;">
+                <div class="vic-head">
+                  <span class="vic-label">Asset Image on Canvas</span>
+                  <div class="viz-toggle-pattern on" id="viz-image-toggle" role="switch" aria-checked="true" tabindex="0" title="Show or hide the uploaded asset image on the canvas">
+                    <span class="vtp-led"></span>
+                    <span id="viz-image-toggle-label">Image: ON</span>
+                  </div>
+                </div>
+                <div class="vic-row">
+                  <span class="vic-slider-label">Image Size</span>
+                  <input type="range" id="viz-image-scale" class="viz-slider" min="20" max="100" step="1" value="70">
+                  <span class="vic-slider-val" id="viz-image-scale-val">70%</span>
+                </div>
+                <div class="vic-row">
+                  <span class="vic-slider-label">Fit Mode</span>
+                  <div class="viz-fit-chips">
+                    <div class="viz-fit-chip active" data-fit="contain" title="Contain — fit whole image inside (no crop)">⊟ Contain</div>
+                    <div class="viz-fit-chip" data-fit="cover" title="Cover — fill canvas (may crop)">⊠ Cover</div>
+                    <div class="viz-fit-chip" data-fit="match-canvas" title="Match — resize canvas + image together to original ratio">⤳ Match Canvas to Image</div>
+                  </div>
+                </div>
+                <div class="vic-foot">
+                  Image preview reflects what appears on your CBIA™ deed certificate, vault card, search result, and DAG vertex. <strong>Original bytes</strong> are still encrypted to your SecureNode™ vault — this overlay only changes how the asset is <em>displayed</em>.
+                </div>
+              </div>
+
               <div class="viz-logo-uploader">
                 <div class="vlu-thumb" id="viz-logo-thumb">⬆</div>
                 <div class="vlu-text">
@@ -3702,6 +4927,53 @@
           <div class="qual-banner none" id="own-banner">
             <span class="qb-icon">○</span>
             <span id="own-banner-text">No ownership proof attached. Asset can still be minted but will not be leverage-qualified.</span>
+          </div>
+        </div>
+
+        <!-- STEP 5c: AI SENTINEL AUTO-FILE OPTION -->
+        <div class="card sentinel-auto" id="sentinel-auto-card">
+          <div class="sa-head">
+            <span class="sa-icon">⚔</span>
+            <div class="sa-title">
+              AI Sentinel Soldier™ — Auto-File to IP Office
+              <span class="sa-sub">Scan · analyze · submit · return proof of entry</span>
+            </div>
+            <div class="sa-switch" id="sa-toggle" role="switch" aria-checked="false" tabindex="0" title="Enable AI Sentinel auto-filing">
+              <div class="sa-knob"></div>
+            </div>
+          </div>
+          <div class="sa-desc">
+            Enable an <strong>AI Sentinel Soldier (AI Agent)</strong> to automatically scan and analyze this asset, then submit it to your <strong>local jurisdictional IP office</strong> on your behalf — U.S. Copyright Office, USPTO Patent / Trademark, WIPO, EPO, UKIPO, CIPO, JPO, KIPO, or CNIPA. The Sentinel handles the filing, pays the fee from your wallet, tracks the case, and returns a <strong>signed proof-of-entry receipt</strong> with the official case number anchored to your CBIA™ Deed.
+          </div>
+          <div class="sa-jurisdiction" id="sa-jurisdiction-wrap" style="display:none;">
+            <div class="sj-field">
+              <span class="sj-lbl">Your Local Jurisdiction</span>
+              <select id="sa-jurisdiction">
+                <option value="us">🇺🇸 United States — US Copyright Office / USPTO</option>
+                <option value="eu">🇪🇺 European Union — EUIPO / EPO</option>
+                <option value="gb">🇬🇧 United Kingdom — UK IPO</option>
+                <option value="ca">🇨🇦 Canada — CIPO</option>
+                <option value="jp">🇯🇵 Japan — JPO</option>
+                <option value="kr">🇰🇷 South Korea — KIPO</option>
+                <option value="cn">🇨🇳 China — CNIPA</option>
+                <option value="wipo">🌐 International — WIPO (PCT / Madrid)</option>
+              </select>
+            </div>
+            <div class="sj-field">
+              <span class="sj-lbl">Target Office (Auto-Selected by Type)</span>
+              <input type="text" id="sa-target-office" readonly value="—" style="cursor:not-allowed;color:var(--gold-soft);">
+            </div>
+          </div>
+          <div class="sa-features" id="sa-features-list" style="display:none;">
+            <div class="sa-feature"><span class="sf-check">✓</span><div>Scan asset bytes &amp; metadata (EXIF, AI-fingerprints, PHash)</div></div>
+            <div class="sa-feature"><span class="sf-check">✓</span><div>Auto-fill registration application from your asset details</div></div>
+            <div class="sa-feature"><span class="sf-check">✓</span><div>Submit to office &amp; pay filing fee (stablecoin from wallet)</div></div>
+            <div class="sa-feature"><span class="sf-check">✓</span><div>Track case · respond to examiner · confirm registration</div></div>
+            <div class="sa-feature"><span class="sf-check">✓</span><div>Return signed <strong>Proof-of-Entry™</strong> receipt to your vault</div></div>
+            <div class="sa-feature"><span class="sf-check">✓</span><div>Anchor official case # to your CBIA™ Digital Deed on-chain</div></div>
+          </div>
+          <div class="sa-foot" id="sa-foot">
+            <strong>Off:</strong> The deed mints to your sovereign WireIP vault only. You can still dispatch a Sentinel later from <em>Deploy &amp; Register</em>. <strong>On:</strong> Auto-dispatch begins immediately after mint — first proof-of-entry typically returns in 24–72 hours.
           </div>
         </div>
 
@@ -3956,6 +5228,21 @@
               <div class="wo-name">Ledger</div>
               <div class="wo-detail">Hardware wallet</div>
             </div>
+            <div class="wallet-option" data-wallet="phantom">
+              <span class="wo-icon">👻</span>
+              <div class="wo-name">Phantom</div>
+              <div class="wo-detail">Solana · multichain</div>
+            </div>
+            <div class="wallet-option" data-wallet="robinhood">
+              <span class="wo-icon">🪶</span>
+              <div class="wo-name">Robinhood Wallet</div>
+              <div class="wo-detail">Brokerage-linked crypto</div>
+            </div>
+            <div class="wallet-option" data-wallet="paypal">
+              <span class="wo-icon">🅿</span>
+              <div class="wo-name">PayPal</div>
+              <div class="wo-detail">PYUSD · fiat on-ramp</div>
+            </div>
             <div class="wallet-option" data-wallet="securenode">
               <span class="wo-icon">⚜</span>
               <div class="wo-name">SecureNode™</div>
@@ -3979,6 +5266,7 @@
               <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.10em;">Total Balance</div>
               <div id="wallet-conn-total" style="color:var(--gold);font-size:18px;font-weight:700;font-family:ui-monospace,monospace;">$0.00</div>
             </div>
+            <button id="btn-refresh-balances" class="green" title="Re-read on-chain stablecoin balances from your wallet">↻ Refresh Live Balances</button>
             <button id="btn-disconnect-wallet" class="danger">Disconnect</button>
           </div>
 
@@ -5448,6 +6736,7 @@ function audioCtx() {
   return _audioCtx;
 }
 function playTone(freq, duration = 0.18, type = 'sine', vol = 0.10, when = 0) {
+  if (typeof SOUND_ENABLED !== 'undefined' && !SOUND_ENABLED) return;
   const ctx = audioCtx(); if (!ctx) return;
   try {
     if (ctx.state === 'suspended') ctx.resume();
@@ -5684,6 +6973,7 @@ function showView(id) {
   $$('.nav-item').forEach(n => n.classList.remove('active'));
   $('#' + id).classList.add('active');
   $$('.nav-item').forEach(n => { if (n.dataset.view === id) n.classList.add('active'); });
+  if (id === 'view-tokenize') refreshRailHero();
   if (id === 'view-vault') renderVault();
   if (id === 'view-treasury') renderTreasury();
   if (id === 'view-registry') renderRegistry();
@@ -5692,7 +6982,13 @@ function showView(id) {
   if (id === 'view-collaborators') renderCollaborators();
   if (id === 'view-networks') renderNetworks();
   if (id === 'view-globe') initGlobe();
-  if (id === 'view-wallet') renderWalletView();
+  if (id === 'view-wallet') {
+    renderWalletView();
+    // Silent auto-refresh of live balances when entering the wallet view
+    if (state.walletConnected && state.walletAddr) {
+      refreshLiveBalances && refreshLiveBalances({ silent: true });
+    }
+  }
   if (id === 'view-marketplace') renderMarketplace();
   if (id === 'view-engagements') renderEngagements();
   if (id === 'view-contracts') renderContracts();
@@ -6205,6 +7501,60 @@ $('#bid-confirm').addEventListener('click', () => {
 });
 
 // ============================================================
+// RAIL HERO — institutional TPV / settlement / coverage display
+// ============================================================
+function refreshRailHero() {
+  // Total Payment Volume — sum of every payment ever processed through the rail
+  let tpv = 0, count24h = 0;
+  const cutoff = Date.now() - 86400000;
+  for (const p of state.payments || []) {
+    if (p.amount && p.currency) {
+      // Normalize $WIP to USD-equivalent at current price
+      const usd = p.currency === 'WIP' ? p.amount * (state.wipPrice || 0.85) : p.amount;
+      tpv += usd;
+      if (new Date(p.created_at).getTime() > cutoff) count24h++;
+    }
+  }
+  // Add aggregated valuation of all CBIA deeds (IP value secured by the network)
+  let ipValueSecured = 0;
+  for (const a of state.assets || []) {
+    if (typeof computeAssetValue === 'function') {
+      try { ipValueSecured += computeAssetValue(a).total || 0; } catch(e) {}
+    }
+  }
+  // Total volume = rail-processed + IP value secured
+  const totalRailVolume = tpv + ipValueSecured;
+  // Treasury vs liabilities for backstop coverage
+  let treasuryTotal = 0;
+  if (typeof TREASURY_ASSETS !== 'undefined') {
+    for (const a of TREASURY_ASSETS) treasuryTotal += (a._livePrice || a.price) * a.qty;
+  }
+  let totalLoans = 0;
+  for (const x of state.assets || []) if (x.leverage?.active) totalLoans += x.leverage.loan_amount_usd || 0;
+  // Coverage = treasury / liabilities (loans + circulating $WIP value)
+  const wipLiability = (state.wipCirculating || 32_400_000) * (state.wipPrice || 0.85);
+  const totalLiabilities = wipLiability + totalLoans + (ipValueSecured * 0.10); // 10% backstop reserve against IP
+  const coverage = totalLiabilities > 0 ? (treasuryTotal / totalLiabilities) * 100 : 0;
+  // Unique validator cities
+  const cities = new Set();
+  for (const v of state.validators || []) {
+    if (v.location?.city) cities.add(v.location.city);
+  }
+  // Render
+  const tpvEl = $('#rh-tpv'); if (tpvEl) tpvEl.textContent = fmtUSD(totalRailVolume);
+  const tpvChg = $('#rh-tpv-chg');
+  if (tpvChg) tpvChg.textContent = '+' + fmtUSD(tpv) + ' settled · ' + fmtUSD(ipValueSecured) + ' IP value secured';
+  const stl = $('#rh-stl'); if (stl) stl.textContent = fmtNum(count24h);
+  const deeds = $('#rh-deeds'); if (deeds) deeds.textContent = fmtNum((state.assets || []).length);
+  const cov = $('#rh-coverage');
+  if (cov) cov.textContent = coverage >= 1000 ? '∞' : coverage.toFixed(1) + '%';
+  const covSub = $('#rh-coverage-sub');
+  if (covSub) covSub.textContent = fmtUSD(treasuryTotal) + ' vs ' + fmtUSD(totalLiabilities);
+  const valids = $('#rh-validators'); if (valids) valids.textContent = fmtNum((state.validators || []).length);
+  const citiesEl = $('#rh-cities'); if (citiesEl) citiesEl.textContent = cities.size;
+}
+
+// ============================================================
 // $WIP TOKENOMICS & TREASURY
 // ============================================================
 const WIP_ALLOCATION = [
@@ -6220,33 +7570,33 @@ const WIP_ALLOCATION = [
 
 const TREASURY_ASSETS = [
   // Precious Metals
-  { id: 'gold',       cat: 'commodity',     name: 'Gold (XAU)',                    icon: '⚜', qty: 4280,    qty_unit: 'kg',     price: 67_200,    price_label: '/kg' },
-  { id: 'silver',     cat: 'commodity',     name: 'Silver (XAG)',                  icon: '◯', qty: 38_400,  qty_unit: 'kg',     price: 894,       price_label: '/kg' },
-  { id: 'platinum',   cat: 'commodity',     name: 'Platinum (XPT)',                icon: '◇', qty: 220,     qty_unit: 'kg',     price: 32_400,    price_label: '/kg' },
+  { id: 'gold',       cat: 'commodity',     name: 'Gold (XAU)',                    icon: '🥇', qty: 4280,    qty_unit: 'kg',     price: 67_200,    price_label: '/kg' },
+  { id: 'silver',     cat: 'commodity',     name: 'Silver (XAG)',                  icon: '🥈', qty: 38_400,  qty_unit: 'kg',     price: 894,       price_label: '/kg' },
+  { id: 'platinum',   cat: 'commodity',     name: 'Platinum (XPT)',                icon: '💎', qty: 220,     qty_unit: 'kg',     price: 32_400,    price_label: '/kg' },
   { id: 'palladium',  cat: 'commodity',     name: 'Palladium (XPD)',               icon: '◈', qty: 80,      qty_unit: 'kg',     price: 28_500,    price_label: '/kg' },
   // Energy
-  { id: 'oil_wti',    cat: 'energy',        name: 'WTI Crude Futures',             icon: '⛽', qty: 180_000, qty_unit: 'bbl',    price: 78.40,     price_label: '/bbl' },
-  { id: 'natgas',     cat: 'energy',        name: 'Natural Gas Futures',           icon: '◐', qty: 52_000,  qty_unit: 'MMBtu',  price: 3.42,      price_label: '/MMBtu' },
-  { id: 'uranium',    cat: 'energy',        name: 'Uranium U3O8 Futures',          icon: '⚛', qty: 14_000,  qty_unit: 'lbs',    price: 88.20,     price_label: '/lb' },
+  { id: 'oil_wti',    cat: 'energy',        name: 'WTI Crude Futures',             icon: '🛢️', qty: 180_000, qty_unit: 'bbl',    price: 78.40,     price_label: '/bbl' },
+  { id: 'natgas',     cat: 'energy',        name: 'Natural Gas Futures',           icon: '🔥', qty: 52_000,  qty_unit: 'MMBtu',  price: 3.42,      price_label: '/MMBtu' },
+  { id: 'uranium',    cat: 'energy',        name: 'Uranium U3O8 Futures',          icon: '⚛️', qty: 14_000,  qty_unit: 'lbs',    price: 88.20,     price_label: '/lb' },
   // Sovereign / Bonds
-  { id: 'tbill_3mo',  cat: 'bonds',         name: 'US T-Bills (3mo)',              icon: '⌂', qty: 1,       qty_unit: 'pos',    price: 22_400_000,price_label: ' notional' },
-  { id: 'tbill_2yr',  cat: 'bonds',         name: 'US Treasury Notes (2yr)',       icon: '⌂', qty: 1,       qty_unit: 'pos',    price: 14_800_000,price_label: ' notional' },
-  { id: 'sov_jp',     cat: 'bonds',         name: 'Japan Sovereign Debt (JGB 10y)',icon: '◇', qty: 1,       qty_unit: 'pos',    price: 6_200_000, price_label: ' notional' },
-  { id: 'sov_de',     cat: 'bonds',         name: 'German Bunds (10y)',            icon: '◇', qty: 1,       qty_unit: 'pos',    price: 5_400_000, price_label: ' notional' },
+  { id: 'tbill_3mo',  cat: 'bonds',         name: 'US T-Bills (3mo)',              icon: '🇺🇸', qty: 1,       qty_unit: 'pos',    price: 22_400_000,price_label: ' notional' },
+  { id: 'tbill_2yr',  cat: 'bonds',         name: 'US Treasury Notes (2yr)',       icon: '🇺🇸', qty: 1,       qty_unit: 'pos',    price: 14_800_000,price_label: ' notional' },
+  { id: 'sov_jp',     cat: 'bonds',         name: 'Japan Sovereign Debt (JGB 10y)',icon: '🇯🇵', qty: 1,       qty_unit: 'pos',    price: 6_200_000, price_label: ' notional' },
+  { id: 'sov_de',     cat: 'bonds',         name: 'German Bunds (10y)',            icon: '🇩🇪', qty: 1,       qty_unit: 'pos',    price: 5_400_000, price_label: ' notional' },
   // Cryptocurrencies
   { id: 'btc',        cat: 'crypto',        name: 'Bitcoin (BTC)',                 icon: '₿', qty: 480,     qty_unit: 'BTC',    price: 67_400,    price_label: '/BTC' },
   { id: 'eth',        cat: 'crypto',        name: 'Ethereum (ETH)',                icon: 'Ξ', qty: 12_400,  qty_unit: 'ETH',    price: 3_640,     price_label: '/ETH' },
   { id: 'sol',        cat: 'crypto',        name: 'Solana (SOL)',                  icon: '◉', qty: 84_000,  qty_unit: 'SOL',    price: 165,       price_label: '/SOL' },
   // Real Estate
-  { id: 'cre_atl',    cat: 'real-estate',   name: 'Commercial RE — Atlanta, GA',   icon: '🏛', qty: 8,       qty_unit: 'props',  price: 4_200_000, price_label: '/prop' },
-  { id: 'cre_nyc',    cat: 'real-estate',   name: 'Commercial RE — New York, NY',  icon: '🏛', qty: 3,       qty_unit: 'props',  price: 12_400_000,price_label: '/prop' },
-  { id: 'cre_la',     cat: 'real-estate',   name: 'Commercial RE — Los Angeles',   icon: '🏛', qty: 4,       qty_unit: 'props',  price: 7_800_000, price_label: '/prop' },
-  { id: 'cre_lon',    cat: 'real-estate',   name: 'Commercial RE — London, UK',    icon: '🏛', qty: 2,       qty_unit: 'props',  price: 14_200_000,price_label: '/prop' },
+  { id: 'cre_atl',    cat: 'real-estate',   name: 'Commercial RE — Atlanta, GA',   icon: '🏙️', qty: 8,       qty_unit: 'props',  price: 4_200_000, price_label: '/prop' },
+  { id: 'cre_nyc',    cat: 'real-estate',   name: 'Commercial RE — New York, NY',  icon: '🏙️', qty: 3,       qty_unit: 'props',  price: 12_400_000,price_label: '/prop' },
+  { id: 'cre_la',     cat: 'real-estate',   name: 'Commercial RE — Los Angeles',   icon: '🌴', qty: 4,       qty_unit: 'props',  price: 7_800_000, price_label: '/prop' },
+  { id: 'cre_lon',    cat: 'real-estate',   name: 'Commercial RE — London, UK',    icon: '🇬🇧', qty: 2,       qty_unit: 'props',  price: 14_200_000,price_label: '/prop' },
   // Infrastructure
-  { id: 'datactr',    cat: 'infrastructure', name: 'Data Center Capacity (Atlanta)', icon: '⛁', qty: 24,    qty_unit: 'racks',  price: 480_000,   price_label: '/rack/yr' },
-  { id: 'cloud',      cat: 'infrastructure', name: 'Cloud Infrastructure (AWS/GCP/Azure RIs)', icon: '☁', qty: 1, qty_unit: 'pool', price: 8_400_000, price_label: ' contract value' },
-  { id: 'physdata',   cat: 'infrastructure', name: 'Physical Data Storage (cold archive)',     icon: '⛁', qty: 14_400, qty_unit: 'TB', price: 480, price_label: '/TB' },
-  { id: 'fiber',      cat: 'infrastructure', name: 'Fiber Network Capacity (transatlantic)',   icon: '◌', qty: 1,    qty_unit: 'lease', price: 6_800_000, price_label: ' lease' },
+  { id: 'datactr',    cat: 'infrastructure', name: 'Data Center Capacity (Atlanta)', icon: '🖥️', qty: 24,    qty_unit: 'racks',  price: 480_000,   price_label: '/rack/yr' },
+  { id: 'cloud',      cat: 'infrastructure', name: 'Cloud Infrastructure (AWS/GCP/Azure RIs)', icon: '☁️', qty: 1, qty_unit: 'pool', price: 8_400_000, price_label: ' contract value' },
+  { id: 'physdata',   cat: 'infrastructure', name: 'Physical Data Storage (cold archive)',     icon: '💾', qty: 14_400, qty_unit: 'TB', price: 480, price_label: '/TB' },
+  { id: 'fiber',      cat: 'infrastructure', name: 'Fiber Network Capacity (transatlantic)',   icon: '🌐', qty: 1,    qty_unit: 'lease', price: 6_800_000, price_label: ' lease' },
 ];
 
 let _tokenomicsTimer = null;
@@ -6875,10 +8225,13 @@ window.addEventListener('resize', () => {
 // ============================================================
 function renderWallet() {
   const a = state.wallet.address, n = state.wallet.name;
+  const btn = $('#btn-set-wallet');
   if (!a) {
     $('#wallet-addr').textContent = 'Wallet not set';
+    if (btn) { btn.classList.remove('linked'); btn.innerHTML = '<span class="link-led"></span>LINK'; }
   } else {
     $('#wallet-addr').textContent = (n ? n + ' · ' : '') + (a.length > 14 ? a.slice(0,6) + '…' + a.slice(-4) : a);
+    if (btn) { btn.classList.add('linked'); btn.innerHTML = '<span class="link-led"></span>LINKED'; }
   }
 }
 $('#btn-set-wallet').addEventListener('click', () => {
@@ -6996,10 +8349,14 @@ async function handleFile(file) {
     const url = URL.createObjectURL(file);
     state.current.dataURL = url;
     thumb.appendChild(el('img', { src: url, alt: file.name }));
+    // Capture a downscaled data URL of the uploaded image for the visualizer overlay
+    captureAssetImageForVisualizer(file).catch(()=>{});
   } else if (isSmall && (mimeType.startsWith('video/') || /^(mp4|webm|mov|m4v)$/.test(ext))) {
     const url = URL.createObjectURL(file);
     const v = el('video', { controls: '', src: url });
     thumb.appendChild(v);
+    // Grab a thumbnail frame for the visualizer overlay
+    captureVideoFrameForVisualizer(file).catch(()=>{});
   } else if (isSmall && (mimeType.startsWith('audio/') || /^(mp3|wav|ogg|m4a|flac|aac)$/.test(ext))) {
     const url = URL.createObjectURL(file);
     thumb.appendChild(el('audio', { controls: '', src: url }));
@@ -7069,6 +8426,15 @@ function resetFile() {
   state.current.originality = null;
   state.current.extractedMeta = null;
   state.current.aiSoftwareDetected = null;
+  // Clear the asset image overlay on the visualizer
+  if (state.current.visualizer) {
+    state.current.visualizer.assetImageDataURL = null;
+    state.current.visualizer.assetImageW = null;
+    state.current.visualizer.assetImageH = null;
+  }
+  const vic = document.getElementById('viz-image-controls');
+  if (vic) vic.style.display = 'none';
+  if (typeof refreshVizPreview === 'function') refreshVizPreview();
   $('#file-preview-wrap').innerHTML = '';
   $('#file-preview-wrap').style.display = 'none';
   $('#hash-status').className = 'pill';
@@ -7077,6 +8443,107 @@ function resetFile() {
   resetOrigMetrics();
   fi.value = '';
   updateMintReady();
+}
+
+// Downscale an uploaded image for use as the visualizer overlay (and persisted thumbnail)
+async function captureAssetImageForVisualizer(file) {
+  try {
+    const dataURL = await downscaleImage(file, 1024, 0.90);
+    if (!state.current.visualizer) state.current.visualizer = defaultViz();
+    // Read dimensions for the "Match Asset" canvas option
+    const dim = await readImageDimensions(file).catch(() => null);
+    state.current.visualizer.assetImageDataURL = dataURL;
+    state.current.visualizer.showAssetImage = state.current.visualizer.showAssetImage !== false;
+    if (state.current.visualizer.assetImageScale == null) state.current.visualizer.assetImageScale = 70;
+    if (!state.current.visualizer.assetFitMode) state.current.visualizer.assetFitMode = 'contain';
+    if (dim) {
+      state.current.visualizer.assetImageW = dim.w;
+      state.current.visualizer.assetImageH = dim.h;
+      // Auto-set "match" aspect ratio if user hasn't picked one yet
+      state.current.visualizer.matchedAspect = dim.w + ' / ' + dim.h;
+    }
+    refreshAssetImageControls();
+    refreshVizPreview();
+    toast('Asset image loaded into visualizer canvas · resize with the slider below', 'ok', 3500);
+  } catch (e) {
+    // Silent — visualizer still works without the overlay
+  }
+}
+
+// Capture a still frame from a video file at ~0.5s for the visualizer overlay
+async function captureVideoFrameForVisualizer(file) {
+  try {
+    const url = URL.createObjectURL(file);
+    const dataURL = await new Promise((resolve, reject) => {
+      const v = document.createElement('video');
+      v.muted = true; v.preload = 'auto';
+      v.crossOrigin = 'anonymous';
+      v.addEventListener('loadeddata', () => {
+        // Seek a small offset in to avoid black first frame
+        const target = Math.min(0.5, (v.duration || 1) * 0.05);
+        v.currentTime = target;
+      }, { once: true });
+      v.addEventListener('seeked', () => {
+        try {
+          const c = document.createElement('canvas');
+          const maxEdge = 1024;
+          const ratio = Math.min(1, maxEdge / Math.max(v.videoWidth, v.videoHeight));
+          c.width = Math.round(v.videoWidth * ratio);
+          c.height = Math.round(v.videoHeight * ratio);
+          const ctx = c.getContext('2d');
+          ctx.drawImage(v, 0, 0, c.width, c.height);
+          const url2 = c.toDataURL('image/jpeg', 0.88);
+          URL.revokeObjectURL(url);
+          resolve(url2);
+        } catch (e) { URL.revokeObjectURL(url); reject(e); }
+      }, { once: true });
+      v.addEventListener('error', (e) => { URL.revokeObjectURL(url); reject(e); }, { once: true });
+      v.src = url;
+    });
+    if (!state.current.visualizer) state.current.visualizer = defaultViz();
+    state.current.visualizer.assetImageDataURL = dataURL;
+    state.current.visualizer.showAssetImage = state.current.visualizer.showAssetImage !== false;
+    if (state.current.visualizer.assetImageScale == null) state.current.visualizer.assetImageScale = 70;
+    if (!state.current.visualizer.assetFitMode) state.current.visualizer.assetFitMode = 'contain';
+    // Read intrinsic video dimensions
+    try {
+      const dim = await readVideoDimensions(file);
+      if (dim && dim.w && dim.h) {
+        state.current.visualizer.assetImageW = dim.w;
+        state.current.visualizer.assetImageH = dim.h;
+        state.current.visualizer.matchedAspect = dim.w + ' / ' + dim.h;
+      }
+    } catch (e) {}
+    refreshAssetImageControls();
+    refreshVizPreview();
+    toast('Video frame captured · use the canvas to position/resize it', 'ok', 3500);
+  } catch (e) {
+    // Silent
+  }
+}
+
+function refreshAssetImageControls() {
+  const vic = document.getElementById('viz-image-controls');
+  if (!vic) return;
+  const has = !!(state.current.visualizer && state.current.visualizer.assetImageDataURL);
+  vic.style.display = has ? 'block' : 'none';
+  if (!has) return;
+  const v = state.current.visualizer;
+  // Show/hide image toggle
+  const tg = document.getElementById('viz-image-toggle');
+  const lbl = document.getElementById('viz-image-toggle-label');
+  const showing = v.showAssetImage !== false;
+  if (tg) { tg.classList.toggle('on', showing); tg.classList.toggle('off', !showing); tg.setAttribute('aria-checked', String(showing)); }
+  if (lbl) lbl.textContent = showing ? 'Image: ON' : 'Image: OFF';
+  // Scale slider
+  const slider = document.getElementById('viz-image-scale');
+  const valOut = document.getElementById('viz-image-scale-val');
+  if (slider) slider.value = v.assetImageScale || 70;
+  if (valOut) valOut.textContent = (v.assetImageScale || 70) + '%';
+  // Fit chips
+  document.querySelectorAll('.viz-fit-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.fit === (v.assetFitMode || 'contain'));
+  });
 }
 
 // Render extracted metadata panel inside the file preview wrapper
@@ -7157,13 +8624,47 @@ function defaultViz() {
     style: 'ai-generated',
     seed: Math.floor(Math.random() * 0xffffff),
     logoDataURL: null,
+    patternOff: false,
+    aspect: '1:1',
+    // Asset image overlay (populated when an image/video is uploaded)
+    assetImageDataURL: null,
+    assetImageW: null,
+    assetImageH: null,
+    showAssetImage: true,
+    assetImageScale: 70,       // percent of canvas
+    assetFitMode: 'contain',   // 'contain' | 'cover' | 'match-canvas'
+    matchedAspect: null,       // CSS aspect-ratio like '1920 / 1080'
   };
+}
+
+// Aspect ratio mapping — returns CSS aspect-ratio value
+function vizAspectCSS(aspect) {
+  switch (aspect) {
+    case '4:3':   return '4 / 3';
+    case '3:4':   return '3 / 4';
+    case '16:9':  return '16 / 9';
+    case '9:16':  return '9 / 16';
+    case 'match': return '1 / 1'; // resolved separately when bound to file
+    default:      return '1 / 1';
+  }
 }
 
 function buildVisualizerSVG(viz, creatorName, options = {}) {
   const size = options.size || 'normal';
   const cls = 'visualizer' + (size === 'small' ? ' small' : size === 'tiny' ? ' tiny' : size === 'banner' ? ' banner' : '');
   const wrap = el('div', { class: cls });
+  // Apply user-selected aspect ratio for normal-size visualizers
+  if (size === 'normal' && viz.aspect && viz.aspect !== '1:1') {
+    if (viz.aspect === 'match' && viz.matchedAspect) {
+      wrap.style.aspectRatio = viz.matchedAspect;
+    } else {
+      const css = vizAspectCSS(viz.aspect);
+      wrap.style.aspectRatio = css;
+    }
+    wrap.style.width = '100%';
+    wrap.style.height = 'auto';
+  }
+  if (viz.patternOff) wrap.classList.add('pattern-off');
   const color = viz.color || '#f0c419';
   const lite = lighten(color, 90);
   const accent = lighten(color, 50);
@@ -7225,6 +8726,7 @@ function buildVisualizerSVG(viz, creatorName, options = {}) {
   let s = seed || 1;
   function next() { s = (s * 9301 + 49297) % 233280; return s; }
 
+  if (!viz.patternOff) {
   if (viz.style === 'ai-generated') {
     // AI-generated CBIA emblem: layered procedural geometry derived from CBIA hash
     // Outer ring (institutional frame)
@@ -7469,6 +8971,7 @@ function buildVisualizerSVG(viz, creatorName, options = {}) {
       svg.appendChild(c);
     }
   }
+  } // end if(!viz.patternOff) — color-only mode skips style-specific layers
   // Subtle grain layer
   const grain = document.createElementNS(svgNs, 'rect');
   grain.setAttribute('x','0'); grain.setAttribute('y','0');
@@ -7477,6 +8980,47 @@ function buildVisualizerSVG(viz, creatorName, options = {}) {
   grain.setAttribute('filter', `url(#${uniq}_grain)`);
   svg.appendChild(grain);
   wrap.appendChild(svg);
+
+  // ===== Asset image overlay — the user's uploaded image, sized via the slider =====
+  if (viz.assetImageDataURL && viz.showAssetImage !== false && size !== 'tiny') {
+    const fit = viz.assetFitMode || 'contain';
+    const scale = Math.max(20, Math.min(100, Number(viz.assetImageScale) || 70));
+    const overlay = document.createElement('div');
+    overlay.className = 'viz-asset-overlay ' + fit;
+    // Inner box centered in the overlay; its size = scale% for contain, 100% for cover/match
+    const inner = document.createElement('div');
+    inner.style.position = 'relative';
+    inner.style.display = 'flex';
+    inner.style.alignItems = 'center';
+    inner.style.justifyContent = 'center';
+    if (fit === 'cover' || fit === 'match-canvas') {
+      inner.style.width = '100%';
+      inner.style.height = '100%';
+    } else {
+      inner.style.width = scale + '%';
+      inner.style.height = scale + '%';
+    }
+    const im = document.createElement('img');
+    im.src = viz.assetImageDataURL;
+    im.alt = 'asset';
+    im.style.display = 'block';
+    if (fit === 'cover' || fit === 'match-canvas') {
+      im.style.width = '100%';
+      im.style.height = '100%';
+      im.style.objectFit = (fit === 'match-canvas') ? 'fill' : 'cover';
+      im.style.maxWidth = 'none';
+      im.style.maxHeight = 'none';
+    } else {
+      im.style.maxWidth = '100%';
+      im.style.maxHeight = '100%';
+      im.style.width = 'auto';
+      im.style.height = 'auto';
+      im.style.objectFit = 'contain';
+    }
+    inner.appendChild(im);
+    overlay.appendChild(inner);
+    wrap.appendChild(overlay);
+  }
 
   // Vignette
   wrap.appendChild(el('div', { class:'viz-vignette' }));
@@ -7514,11 +9058,18 @@ function buildVisualizerSVG(viz, creatorName, options = {}) {
 function refreshVizPreview() {
   if (!state.current.visualizer) state.current.visualizer = defaultViz();
   const viz = state.current.visualizer;
+  if (viz.patternOff === undefined) viz.patternOff = false;
+  if (!viz.aspect) viz.aspect = '1:1';
   const creator = state.current.fields?.creator?.value || state.wallet.name || 'Creator';
-  // Preview
+  // Preview wrapper takes the user-selected aspect ratio
   const wrap = $('#viz-preview-wrap');
   if (!wrap) return;
   wrap.innerHTML = '';
+  if (viz.aspect === 'match' && viz.matchedAspect) {
+    wrap.style.aspectRatio = viz.matchedAspect;
+  } else {
+    wrap.style.aspectRatio = vizAspectCSS(viz.aspect);
+  }
   wrap.appendChild(buildVisualizerSVG(viz, creator));
   $('#viz-hex-display').textContent = viz.color.toUpperCase();
   // Style picker
@@ -7526,9 +9077,13 @@ function refreshVizPreview() {
   if (styleWrap) {
     styleWrap.innerHTML = '';
     for (const s of VIZ_STYLES) {
-      const opt = el('div', { class: 'viz-opt' + (viz.style === s ? ' selected' : '') });
-      opt.appendChild(buildVisualizerSVG({ ...viz, style: s }, creator, { size: 'tiny' }));
-      opt.addEventListener('click', () => { viz.style = s; refreshVizPreview(); });
+      const opt = el('div', { class: 'viz-opt' + (viz.style === s ? ' selected' : '') + (viz.patternOff ? ' disabled' : '') });
+      opt.appendChild(buildVisualizerSVG({ ...viz, style: s, patternOff: false, aspect: '1:1' }, creator, { size: 'tiny' }));
+      opt.addEventListener('click', () => {
+        viz.style = s;
+        if (viz.patternOff) { viz.patternOff = false; updatePatternToggleUI(); }
+        refreshVizPreview();
+      });
       styleWrap.appendChild(opt);
     }
   }
@@ -7543,6 +9098,161 @@ function refreshVizPreview() {
       colorWrap.appendChild(sw);
     }
   }
+  // Sync aspect-ratio chip active state
+  document.querySelectorAll('.viz-aspect-chip').forEach(chip => {
+    chip.classList.toggle('active', chip.dataset.aspect === viz.aspect);
+  });
+  // Sync fit-mode chip active state
+  document.querySelectorAll('.viz-fit-chip').forEach(chip => {
+    chip.classList.toggle('active', chip.dataset.fit === (viz.assetFitMode || 'contain'));
+  });
+  updatePatternToggleUI();
+  refreshAssetImageControls();
+}
+
+function updatePatternToggleUI() {
+  const t = document.getElementById('viz-toggle-pattern');
+  const lbl = document.getElementById('viz-toggle-label');
+  if (!t || !lbl) return;
+  const off = !!(state.current.visualizer && state.current.visualizer.patternOff);
+  t.classList.toggle('on', !off);
+  t.classList.toggle('off', off);
+  t.setAttribute('aria-checked', String(!off));
+  lbl.textContent = off ? 'Pattern: OFF · color only' : 'Pattern: ON';
+}
+
+// ===== Visualizer pattern toggle wiring =====
+(function initVizPatternToggle() {
+  const t = document.getElementById('viz-toggle-pattern');
+  if (!t) return;
+  const togglePattern = () => {
+    if (!state.current.visualizer) state.current.visualizer = defaultViz();
+    state.current.visualizer.patternOff = !state.current.visualizer.patternOff;
+    refreshVizPreview();
+  };
+  t.addEventListener('click', togglePattern);
+  t.addEventListener('keydown', (e) => {
+    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); togglePattern(); }
+  });
+})();
+
+// ===== Visualizer aspect-ratio chips wiring =====
+(function initVizAspectChips() {
+  document.querySelectorAll('.viz-aspect-chip').forEach(chip => {
+    chip.addEventListener('click', async () => {
+      if (!state.current.visualizer) state.current.visualizer = defaultViz();
+      const aspect = chip.dataset.aspect;
+      state.current.visualizer.aspect = aspect;
+      // If "match" was chosen, try to read the uploaded image's actual dimensions
+      if (aspect === 'match') {
+        const f = state.current.file;
+        if (f && f.type && f.type.startsWith('image/')) {
+          try {
+            const dim = await readImageDimensions(f);
+            if (dim && dim.w && dim.h) {
+              state.current.visualizer.matchedAspect = dim.w + ' / ' + dim.h;
+              toast('Visualizer canvas matched to asset · ' + dim.w + '×' + dim.h, 'ok');
+            } else {
+              state.current.visualizer.matchedAspect = '1 / 1';
+              toast('Could not detect asset dimensions — using 1:1', 'warn');
+            }
+          } catch (err) {
+            state.current.visualizer.matchedAspect = '1 / 1';
+            toast('Asset dimension detection failed — using 1:1', 'warn');
+          }
+        } else if (f && f.type && f.type.startsWith('video/')) {
+          // For video, attempt to read intrinsic dimensions
+          try {
+            const dim = await readVideoDimensions(f);
+            if (dim && dim.w && dim.h) {
+              state.current.visualizer.matchedAspect = dim.w + ' / ' + dim.h;
+              toast('Visualizer canvas matched to video · ' + dim.w + '×' + dim.h, 'ok');
+            }
+          } catch (err) {
+            state.current.visualizer.matchedAspect = '16 / 9';
+            toast('Video dimensions not detected — defaulting to 16:9', 'warn');
+          }
+        } else {
+          state.current.visualizer.matchedAspect = '1 / 1';
+          toast('Match Asset requires an image or video — using 1:1', 'info');
+        }
+      }
+      refreshVizPreview();
+    });
+  });
+})();
+
+// ===== Asset-image overlay controls (show/hide toggle, scale slider, fit chips) =====
+(function initVizAssetImageControls() {
+  const tg = document.getElementById('viz-image-toggle');
+  const slider = document.getElementById('viz-image-scale');
+  const valOut = document.getElementById('viz-image-scale-val');
+
+  function toggleAssetImage() {
+    if (!state.current.visualizer) state.current.visualizer = defaultViz();
+    state.current.visualizer.showAssetImage = !(state.current.visualizer.showAssetImage !== false);
+    refreshAssetImageControls();
+    refreshVizPreview();
+  }
+  if (tg) {
+    tg.addEventListener('click', toggleAssetImage);
+    tg.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleAssetImage(); }
+    });
+  }
+  if (slider) {
+    slider.addEventListener('input', () => {
+      if (!state.current.visualizer) state.current.visualizer = defaultViz();
+      state.current.visualizer.assetImageScale = Number(slider.value);
+      if (valOut) valOut.textContent = slider.value + '%';
+      // Switch to contain mode if user adjusts scale while cover/match are active (scale is a contain-only control)
+      if (state.current.visualizer.assetFitMode !== 'contain') {
+        state.current.visualizer.assetFitMode = 'contain';
+        document.querySelectorAll('.viz-fit-chip').forEach(c => c.classList.toggle('active', c.dataset.fit === 'contain'));
+      }
+      refreshVizPreview();
+    });
+  }
+  document.querySelectorAll('.viz-fit-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      if (!state.current.visualizer) state.current.visualizer = defaultViz();
+      const mode = chip.dataset.fit;
+      state.current.visualizer.assetFitMode = mode;
+      // If user picks "Match Canvas to Image", also flip the aspect chip to "match"
+      if (mode === 'match-canvas') {
+        state.current.visualizer.aspect = 'match';
+        document.querySelectorAll('.viz-aspect-chip').forEach(a => a.classList.toggle('active', a.dataset.aspect === 'match'));
+        // Use the stored asset dimensions
+        const v = state.current.visualizer;
+        if (v.assetImageW && v.assetImageH) {
+          v.matchedAspect = v.assetImageW + ' / ' + v.assetImageH;
+          toast('Canvas matched to asset image dimensions · ' + v.assetImageW + '×' + v.assetImageH, 'ok', 3500);
+        }
+      }
+      document.querySelectorAll('.viz-fit-chip').forEach(c => c.classList.toggle('active', c.dataset.fit === mode));
+      refreshVizPreview();
+    });
+  });
+})();
+
+function readImageDimensions(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve({ w: img.naturalWidth, h: img.naturalHeight }); };
+    img.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
+    img.src = url;
+  });
+}
+function readVideoDimensions(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement('video');
+    v.preload = 'metadata';
+    v.onloadedmetadata = () => { URL.revokeObjectURL(url); resolve({ w: v.videoWidth, h: v.videoHeight }); };
+    v.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
+    v.src = url;
+  });
 }
 
 const vizRand = $('#viz-rand');
@@ -9164,6 +10874,8 @@ $('#btn-mint').addEventListener('click', async () => {
     await setStage('dag', 'done', 'Vertex: ' + vertex.vertex_id);
 
     asset.royalty_tokens = asset.fractionalize !== 'no' ? Number(asset.fractionalize) : 0;
+    asset.master_token = true;
+    asset.master_edition = '1/1';
     asset.status = 'minted';
     state.assets.unshift(asset);
     lastMintedAsset = asset;
@@ -9173,7 +10885,17 @@ $('#btn-mint').addEventListener('click', async () => {
     showDeployCard(asset);
     soundSubmit();
     hideFloatingSubmit();
-    toast('CBIA™ Deed minted · ' + asset.wip_issued + ' $WIP issued', 'ok', 4000);
+    showCompletionToast(asset);
+    // ⚔ If AI Sentinel auto-file was enabled, dispatch immediately to the local jurisdictional office
+    if (state.current.autoFile) {
+      setTimeout(() => autoFileSentinelDispatch(asset), 600);
+    }
+    // Auto-navigate to vault after the user has had a moment to read the deed
+    if (window._mintAutoNav) clearTimeout(window._mintAutoNav);
+    window._mintAutoNav = setTimeout(() => {
+      closeModal('modal-deed');
+      showView('view-vault');
+    }, 3200);
     // If Neural Net is active, auto-scan this asset against the internet
     if (state.neuralNet.active) {
       setTimeout(() => runNeuralNetScan(), 1200);
@@ -9208,9 +10930,20 @@ function mintTipVertex(asset) {
   return v;
 }
 
+function showCompletionToast(asset) {
+  // Big institutional completion toast — settled like a payment processor confirmation
+  const msg = '✓ TOKENIZATION COMPLETE · CBIA-' + (asset.cbiaHash || '').slice(0,8).toUpperCase() + ' · ' + asset.wip_issued + ' $WIP ISSUED · ROUTING TO VAULT';
+  toast(msg, 'ok', 3200);
+}
+
 function showDeedCertificate(asset) {
   const body = $('#deed-body');
   body.innerHTML = '';
+  // Completion banner at the top — clear "tokenization complete" signal
+  const banner = el('div', { style: 'background:linear-gradient(135deg,rgba(74,222,128,0.14),rgba(74,222,128,0.04));border:1px solid var(--green);border-radius:var(--radius);padding:14px 18px;margin-bottom:14px;text-align:center;' });
+  banner.appendChild(el('div', { style: 'font-size:18px;color:var(--green);font-weight:800;letter-spacing:0.16em;text-shadow:0 0 14px rgba(74,222,128,0.40);' }, '✓ TOKENIZATION COMPLETE'));
+  banner.appendChild(el('div', { style: 'font-size:10px;color:var(--text);letter-spacing:0.12em;text-transform:uppercase;margin-top:6px;' }, 'Deed settled on WireIP DAG · routing to your vault…'));
+  body.appendChild(banner);
   const cert = el('div', { class: 'deed-cert' });
   cert.appendChild(el('div', { class: 'cert-title' }, '⚜ CBIA™ DIGITAL DEED ⚜'));
   function row(k, v, color) {
@@ -9249,7 +10982,10 @@ function showDeedCertificate(asset) {
   body.appendChild(cert);
   openModal('modal-deed');
 }
-$('#deed-view-vault').addEventListener('click', () => { closeModal('modal-deed'); showView('view-vault'); });
+$('#deed-view-vault').addEventListener('click', () => {
+  if (window._mintAutoNav) clearTimeout(window._mintAutoNav);
+  closeModal('modal-deed'); showView('view-vault');
+});
 
 // ============================================================
 // DEPLOY & REGISTER (post-mint)
@@ -9380,6 +11116,118 @@ function updateAgentRow(reg, msg) {
   row.querySelector('.ag-status').textContent = reg.status;
 }
 
+// ============================================================
+// AI SENTINEL AUTO-FILE — pre-mint toggle wiring
+// ============================================================
+// Maps a (jurisdiction, asset type) → preferred office IDs
+const JURISDICTION_OFFICE_MAP = {
+  us:   { copyright: ['us-copyright'], patent: ['uspto-patent'], trademark: ['uspto-tm'],  tradesecret: ['wireip-vault'] },
+  eu:   { copyright: ['euipo'],        patent: ['epo'],          trademark: ['euipo'],     tradesecret: ['wireip-vault'] },
+  gb:   { copyright: ['ukipo'],        patent: ['ukipo'],        trademark: ['ukipo'],     tradesecret: ['wireip-vault'] },
+  ca:   { copyright: ['cipo'],         patent: ['cipo'],         trademark: ['cipo'],      tradesecret: ['wireip-vault'] },
+  jp:   { copyright: ['wireip-vault'], patent: ['jpo'],          trademark: ['jpo'],       tradesecret: ['wireip-vault'] },
+  kr:   { copyright: ['wireip-vault'], patent: ['kipo'],         trademark: ['kipo'],      tradesecret: ['wireip-vault'] },
+  cn:   { copyright: ['wireip-vault'], patent: ['cnipa'],        trademark: ['cnipa'],     tradesecret: ['wireip-vault'] },
+  wipo: { copyright: ['euipo'],        patent: ['wipo-pct'],     trademark: ['wipo-madrid'], tradesecret: ['wireip-vault'] },
+};
+
+function detectDefaultJurisdiction() {
+  try {
+    const lang = (navigator.language || 'en-US').toLowerCase();
+    const region = lang.split('-')[1] || lang;
+    if (region === 'us') return 'us';
+    if (['gb','uk','en-gb'].includes(region)) return 'gb';
+    if (region === 'ca') return 'ca';
+    if (region === 'jp') return 'jp';
+    if (['kr','ko'].includes(region)) return 'kr';
+    if (region === 'cn' || region === 'zh') return 'cn';
+    if (['de','fr','es','it','nl','pl','pt','sv','fi','dk'].includes(region)) return 'eu';
+    return 'us';
+  } catch (e) { return 'us'; }
+}
+
+function jurisdictionTargetOfficeLabel(juris, assetType) {
+  const ids = (JURISDICTION_OFFICE_MAP[juris] && JURISDICTION_OFFICE_MAP[juris][assetType]) || [];
+  if (!ids.length) return '— select asset type above —';
+  return ids.map(id => {
+    const o = OFFICES.find(x => x.id === id);
+    return o ? (o.flag + ' ' + o.name) : id;
+  }).join(' · ');
+}
+
+function refreshSentinelAutoTarget() {
+  const sel = document.getElementById('sa-jurisdiction');
+  const target = document.getElementById('sa-target-office');
+  if (!sel || !target) return;
+  const juris = sel.value || detectDefaultJurisdiction();
+  const type = state.current.type;
+  target.value = type ? jurisdictionTargetOfficeLabel(juris, type) : '— select asset type first —';
+}
+
+(function initSentinelAutoFile() {
+  const toggle = document.getElementById('sa-toggle');
+  const wrap = document.getElementById('sa-jurisdiction-wrap');
+  const features = document.getElementById('sa-features-list');
+  const sel = document.getElementById('sa-jurisdiction');
+  if (!toggle || !wrap || !sel) return;
+  // Pre-select detected jurisdiction
+  sel.value = detectDefaultJurisdiction();
+  state.current.autoFileJurisdiction = sel.value;
+  function setOn(on) {
+    toggle.classList.toggle('on', on);
+    toggle.setAttribute('aria-checked', String(on));
+    wrap.style.display = on ? 'grid' : 'none';
+    if (features) features.style.display = on ? 'grid' : 'none';
+    state.current.autoFile = on;
+    if (on) refreshSentinelAutoTarget();
+  }
+  toggle.addEventListener('click', () => setOn(!toggle.classList.contains('on')));
+  toggle.addEventListener('keydown', (e) => {
+    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setOn(!toggle.classList.contains('on')); }
+  });
+  sel.addEventListener('change', () => {
+    state.current.autoFileJurisdiction = sel.value;
+    refreshSentinelAutoTarget();
+  });
+  // Hook into asset-type clicks to refresh the target preview
+  document.querySelectorAll('.asset-type').forEach(at => {
+    at.addEventListener('click', () => setTimeout(refreshSentinelAutoTarget, 50));
+  });
+})();
+
+// Auto-dispatch Sentinel to local jurisdictional office (called from mint flow)
+async function autoFileSentinelDispatch(asset) {
+  const juris = state.current.autoFileJurisdiction || detectDefaultJurisdiction();
+  const ids = (JURISDICTION_OFFICE_MAP[juris] && JURISDICTION_OFFICE_MAP[juris][asset.type]) || [];
+  if (!ids.length) {
+    toast('AI Sentinel: no office available for asset type · routed to WireIP Vault', 'warn');
+    return;
+  }
+  asset.status = 'deployed';
+  asset.deployment = 'registered';
+  asset.autoFiled = true;
+  asset.autoFileJurisdiction = juris;
+  const dispatched = [];
+  for (const officeId of ids) {
+    const office = OFFICES.find(o => o.id === officeId);
+    if (!office) continue;
+    const agentId = 'AGNT-' + Math.random().toString(36).slice(2, 8).toUpperCase();
+    const reg = {
+      id: uid('reg'), asset_id: asset.id,
+      asset_title: asset.fields?.title?.value || asset.deed_id,
+      asset_type: asset.type, office_id: officeId, office_name: office.name,
+      agent_id: agentId, status: 'queued', dispatched_at: nowISO(),
+      auto_filed: true, jurisdiction: juris,
+      updates: [{ at: nowISO(), label: 'Auto-dispatched from mint flow · pre-authorized' }],
+    };
+    state.registrations.unshift(reg);
+    dispatched.push(reg);
+  }
+  save();
+  toast('⚔ AI Sentinel auto-dispatched · ' + dispatched.length + ' office' + (dispatched.length === 1 ? '' : 's') + ' · Proof-of-Entry incoming', 'ok', 4500);
+  for (const reg of dispatched) progressAgent(reg);
+}
+
 function currentViewIs(id) {
   return $('#' + id)?.classList.contains('active');
 }
@@ -9452,7 +11300,11 @@ function renderVault() {
     } else if (a.thumbDataURL) thumb.appendChild(el('img', { src: a.thumbDataURL }));
     else thumb.appendChild(el('div', { class:'vc-icon' }, assetIcon(a.type)));
     card.appendChild(thumb);
-    card.appendChild(el('div', { class:'vc-type' }, a.type + ' · ' + a.privacyMode));
+    const typeRow = el('div', { class:'vc-type', style:'display:flex;align-items:center;gap:6px;flex-wrap:wrap;' });
+    typeRow.appendChild(el('span', {}, a.type + ' · ' + a.privacyMode));
+    typeRow.appendChild(el('span', { class:'master-pill', title:'Absolute 1/1 Master Token' }, '1/1 MASTER'));
+    typeRow.appendChild(el('span', { class:'not-nft-pill', title:'Not an NFT — Tokenized IP with Real World Value' }, 'NOT NFT'));
+    card.appendChild(typeRow);
     const titleVal = getFieldVal(a, 'title') || (a.fields?.title?.private ? '⚿ Private title' : '(no title)');
     card.appendChild(el('div', { class:'vc-title' }, titleVal));
     const meta = el('div', { class:'vc-meta' });
@@ -9523,8 +11375,28 @@ function showAssetDetail(a) {
     banner.style.marginBottom = '14px';
     body.appendChild(banner);
   }
+
+  // ⚜ 1/1 MASTER TOKEN banner — emphasized at the top of every asset detail
+  const masterTop = el('div', { class: 'master-banner', style: 'margin-bottom:14px;' });
+  const badge = el('div', { class: 'mb-badge' });
+  badge.appendChild(el('span', { class: 'mb-fraction' }, '1/1'));
+  badge.appendChild(el('span', { class: 'mb-sub' }, 'MASTER'));
+  masterTop.appendChild(badge);
+  const mtContent = el('div', { class: 'mb-content' });
+  const mtTitle = el('div', { class: 'mb-title' });
+  mtTitle.appendChild(document.createTextNode('ABSOLUTE 1/1 MASTER TOKEN — ORIGINAL OF ONE '));
+  mtTitle.appendChild(el('span', { class: 'mb-not-nft' }, '⚠ NOT AN NFT'));
+  mtContent.appendChild(mtTitle);
+  const mtDesc = el('div', { class: 'mb-desc' });
+  mtDesc.innerHTML = 'This is the sovereign original — the irreproducible Master Deed for this IP. ' +
+    (a.royalty_tokens > 0 ? '<strong>' + a.royalty_tokens.toLocaleString() + ' royalty tokens</strong> reference this Master but do not replace it. ' : '') +
+    'Tokenized IP Asset with <strong>Real-World Value</strong> — court-recognizable, leverage-eligible, treasury-backed.';
+  mtContent.appendChild(mtDesc);
+  masterTop.appendChild(mtContent);
+  body.appendChild(masterTop);
+
   const cert = el('div', { class: 'deed-cert' });
-  cert.appendChild(el('div', { class: 'cert-title' }, '⚜ CBIA™ DEED ⚜'));
+  cert.appendChild(el('div', { class: 'cert-title' }, '⚜ CBIA™ DEED · 1/1 MASTER ⚜'));
   function row(k, v, color) {
     const r = el('div', { class: 'cert-row' });
     r.appendChild(el('div', { class: 'k' }, k));
@@ -9716,6 +11588,12 @@ function showAssetDetail(a) {
     stSection.appendChild(grid);
     body.appendChild(stSection);
   }
+
+  // ===== CROSS-CHAIN FRACTIONALIZATION =====
+  body.appendChild(buildCrossChainPanel(a));
+  // ===== SOCIAL MEDIA SHARE =====
+  body.appendChild(buildSocialSharePanel(a));
+
   $('#asset-delete').onclick = () => {
     if (!confirm('Delete this asset and its DAG vertex?')) return;
     state.assets = state.assets.filter(x => x.id !== a.id);
@@ -9734,6 +11612,160 @@ function showAssetDetail(a) {
     save(); renderVault(); closeModal('modal-asset'); toast('Asset deleted', 'info');
   };
   openModal('modal-asset');
+}
+
+// ============================================================
+// CROSS-CHAIN FRACTIONALIZATION
+// ============================================================
+const CROSS_CHAINS = [
+  { id: 'ethereum', name: 'Ethereum',  logo: '◆', detail: 'ERC-20 / ERC-721',  bridge: 'LayerZero',  feeUSD: '$14–$45' },
+  { id: 'polygon',  name: 'Polygon',   logo: '⬢', detail: 'Low fees · L2',     bridge: 'LxLy',       feeUSD: '<$0.05' },
+  { id: 'base',     name: 'Base',      logo: '◐', detail: 'Coinbase L2',       bridge: 'OP Bridge',  feeUSD: '<$0.10' },
+  { id: 'arbitrum', name: 'Arbitrum',  logo: '◉', detail: 'L2 · low gas',      bridge: 'Arb Bridge', feeUSD: '<$0.20' },
+  { id: 'optimism', name: 'Optimism',  logo: '◑', detail: 'L2 · OP Stack',     bridge: 'OP Bridge',  feeUSD: '<$0.15' },
+  { id: 'solana',   name: 'Solana',    logo: '◎', detail: 'SPL · Wormhole',    bridge: 'Wormhole',   feeUSD: '<$0.01' },
+  { id: 'bnb',      name: 'BNB Chain', logo: '◇', detail: 'BEP-20',            bridge: 'cBridge',    feeUSD: '<$0.30' },
+  { id: 'avalanche',name: 'Avalanche', logo: '◈', detail: 'C-Chain',           bridge: 'Avax Bridge',feeUSD: '<$0.30' },
+];
+
+function buildCrossChainPanel(a) {
+  const section = el('div', { class: 'asset-actions-card' });
+  const head = el('div', { class: 'aac-head' });
+  head.appendChild(el('h3', {}, '⌬ Cross-Chain Fractionalization'));
+  head.appendChild(el('div', { class:'spacer' }));
+  head.appendChild(el('span', { class:'master-pill' }, '1/1 MASTER STAYS HOME'));
+  section.appendChild(head);
+  section.appendChild(el('div', { class:'help', style:'margin:0 0 10px;' },
+    'Issue royalty-token derivatives of this Master Deed on other chains. The 1/1 Master Token always remains on the WireIP DAG — bridges only mirror fractional royalty rights, never the original.'));
+
+  a.bridges = a.bridges || {};
+  const grid = el('div', { class:'chain-grid' });
+  for (const c of CROSS_CHAINS) {
+    const btn = el('div', { class: 'chain-btn' + (a.bridges[c.id] ? ' bridged' : '') });
+    btn.appendChild(el('span', { class:'cb-logo' }, c.logo));
+    btn.appendChild(el('span', { class:'cb-name' }, c.name));
+    btn.appendChild(el('span', { class:'cb-detail' }, c.detail));
+    btn.appendChild(el('span', { class:'cb-detail' }, c.bridge + ' · ' + c.feeUSD));
+    if (a.bridges[c.id]) {
+      btn.appendChild(el('span', { class:'cb-status' }, '✓ BRIDGED'));
+    }
+    btn.addEventListener('click', () => onBridgeAsset(a, c));
+    grid.appendChild(btn);
+  }
+  section.appendChild(grid);
+
+  if (a.royalty_tokens === 0) {
+    section.appendChild(el('div', { class:'help', style:'margin-top:10px;color:var(--warn);' },
+      '⚠ This Master Deed has 0 royalty tokens. Cross-chain bridging mirrors fractional royalty rights — issue royalty tokens on the WireIP DAG first to enable.'));
+  }
+  return section;
+}
+
+function onBridgeAsset(a, chain) {
+  if (a.royalty_tokens === 0) {
+    return toast('Enable royalty token issuance first (Tokenization Parameters → Fractionalize)', 'warn', 4500);
+  }
+  if (a.bridges && a.bridges[chain.id]) {
+    if (!confirm('Already bridged to ' + chain.name + '. Unbridge?')) return;
+    delete a.bridges[chain.id];
+    save();
+    showAssetDetail(a);
+    toast('Unbridged from ' + chain.name, 'info');
+    return;
+  }
+  // Simulate bridge dispatch — in production this would call the LayerZero/Wormhole/etc adapter
+  toast('⌬ Bridging to ' + chain.name + ' via ' + chain.bridge + '…', 'info', 3500);
+  setTimeout(() => {
+    a.bridges = a.bridges || {};
+    a.bridges[chain.id] = {
+      bridge: chain.bridge,
+      bridged_at: nowISO(),
+      shares: a.royalty_tokens,
+      tx_hash: '0x' + Math.random().toString(16).slice(2, 18),
+      contract: '0x' + Math.random().toString(16).slice(2, 42),
+    };
+    save();
+    if (!$('#modal-asset').classList.contains('hidden')) showAssetDetail(a);
+    if (currentViewIs('view-vault')) renderVault();
+    toast('✓ Bridged ' + a.royalty_tokens + ' royalty tokens to ' + chain.name + ' · Master stays on WireIP DAG', 'ok', 5000);
+    try { soundVerify && soundVerify(); } catch(e) {}
+  }, 1800);
+}
+
+// ============================================================
+// SOCIAL MEDIA SHARE
+// ============================================================
+function buildSocialSharePanel(a) {
+  const section = el('div', { class: 'asset-actions-card' });
+  const head = el('div', { class: 'aac-head' });
+  head.appendChild(el('h3', {}, '⤴ Share Tokenized Asset'));
+  head.appendChild(el('div', { class:'spacer' }));
+  head.appendChild(el('span', { class:'not-nft-pill' }, 'NOT AN NFT'));
+  section.appendChild(head);
+  section.appendChild(el('div', { class:'help', style:'margin:0 0 10px;' },
+    'Show the world this is a Tokenized IP Asset with Real-World Value — not a JPEG, not a collectible. Each share links back to the public Deed page on WireIP, anchoring provenance on-chain.'));
+
+  const title = getFieldVal(a, 'title') || a.deed_id;
+  const creator = getFieldVal(a, 'creator') || a.walletName || 'Creator';
+  const url = (typeof location !== 'undefined' ? location.origin + location.pathname : 'https://wireip.network') + '#deed=' + encodeURIComponent(a.deed_id || a.id);
+  const shareText = `⚜ ${title} — 1/1 MASTER Tokenized IP Asset by ${creator}. NOT an NFT — a court-recognizable Digital Deed on the WireIP DAG with real-world value.`;
+
+  const grid = el('div', { class:'social-grid' });
+  const networks = [
+    { id:'facebook',  name:'Facebook',  logo:'ⓕ', detail:'Profile · Page',     href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(shareText)}` },
+    { id:'instagram', name:'Instagram', logo:'⬛', detail:'Story · Post',       href: null }, // IG doesn't expose web share intent
+    { id:'x',         name:'X',         logo:'𝕏', detail:'Tweet · Post',       href: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(url)}` },
+    { id:'linkedin',  name:'LinkedIn',  logo:'ⓘ', detail:'Professional',       href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}` },
+    { id:'threads',   name:'Threads',   logo:'⌬', detail:'Meta · Threads',     href: `https://www.threads.net/intent/post?text=${encodeURIComponent(shareText + ' ' + url)}` },
+    { id:'reddit',    name:'Reddit',    logo:'ⓡ', detail:'r/IP r/Web3',        href: `https://www.reddit.com/submit?url=${encodeURIComponent(url)}&title=${encodeURIComponent(shareText)}` },
+    { id:'tiktok',    name:'TikTok',    logo:'♪', detail:'Video share',         href: null },
+    { id:'copy',      name:'Copy Link', logo:'⎘', detail:'Direct URL',          href: null },
+  ];
+
+  for (const n of networks) {
+    const btn = el('div', { class:'social-btn' });
+    btn.appendChild(el('span', { class:'sb-logo' }, n.logo));
+    btn.appendChild(el('span', { class:'sb-name' }, n.name));
+    btn.appendChild(el('span', { class:'sb-detail' }, n.detail));
+    btn.addEventListener('click', async () => {
+      if (n.id === 'copy') {
+        try {
+          await navigator.clipboard.writeText(shareText + '\n\n' + url);
+          toast('Share text + link copied to clipboard', 'ok');
+        } catch (e) { toast('Clipboard unavailable — copy manually: ' + url, 'warn', 5000); }
+        return;
+      }
+      if (n.id === 'instagram' || n.id === 'tiktok') {
+        // No web share intent — try Web Share API then fall back to clipboard
+        if (navigator.share) {
+          try {
+            await navigator.share({ title, text: shareText, url });
+            return;
+          } catch (e) { if (e.name === 'AbortError') return; }
+        }
+        try {
+          await navigator.clipboard.writeText(shareText + '\n\n' + url);
+          toast(n.name + ' has no web share — text + link copied · open ' + n.name + ' and paste', 'ok', 5000);
+        } catch (e) { toast(n.name + ' requires native app · open it and paste this URL: ' + url, 'info', 6000); }
+        return;
+      }
+      window.open(n.href, '_blank', 'noopener,noreferrer,width=620,height=540');
+    });
+    grid.appendChild(btn);
+  }
+  section.appendChild(grid);
+
+  // Native web-share fallback (single button if available, mobile-friendly)
+  if (navigator.share) {
+    const nativeBtn = el('button', { class:'primary', style:'margin-top:10px;width:100%;' }, '⤴ Share via System (mobile)');
+    nativeBtn.addEventListener('click', async () => {
+      try {
+        await navigator.share({ title, text: shareText, url });
+      } catch (e) { if (e.name !== 'AbortError') toast('Share cancelled', 'info'); }
+    });
+    section.appendChild(nativeBtn);
+  }
+  return section;
 }
 
 // ============================================================
@@ -10688,7 +12720,8 @@ function renderWalletView() {
   $('#wallet-connected').style.display = connected ? 'block' : 'none';
   if (connected) {
     $('#wallet-conn-addr').textContent = state.walletAddr;
-    $('#wallet-conn-pill').textContent = (state.walletProvider || 'wallet') + ' connected';
+    const chainLabel = state.walletChainId ? (' · ' + describeChain(state.walletChainId)) : (state.walletProvider === 'phantom' ? ' · Solana mainnet' : '');
+    $('#wallet-conn-pill').textContent = (state.walletProvider || 'wallet') + ' connected (live)' + chainLabel;
     $('#wallet-conn-total').textContent = '$' + totalUSDBalance().toLocaleString(undefined, { maximumFractionDigits: 2 });
     renderStablecoinGrid();
     renderBackstop();
@@ -10749,46 +12782,385 @@ function renderPaymentHistory() {
   }
 }
 
-$$('.wallet-option').forEach(opt => {
-  opt.addEventListener('click', async () => {
-    const provider = opt.dataset.wallet;
-    state.walletProvider = provider;
-    // Try real Web3 connect for MetaMask / Coinbase / WalletConnect injected providers
-    let addr = null, chainId = null;
-    if ((provider === 'metamask' || provider === 'coinbase') && window.ethereum) {
-      try {
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        if (accounts && accounts[0]) {
-          addr = accounts[0];
-          try { chainId = await window.ethereum.request({ method: 'eth_chainId' }); } catch(e) {}
-          // Listen for account / chain changes
-          window.ethereum.on?.('accountsChanged', (a) => {
-            state.walletAddr = a[0] || ''; if (!a[0]) state.walletConnected = false; save(); renderWalletView();
-          });
-          window.ethereum.on?.('chainChanged', () => renderWalletView());
-        }
-      } catch (e) {
-        if (e.code === 4001) { toast('Wallet connection rejected', 'warn'); return; }
-        toast('Web3 unavailable — using sandbox wallet', 'warn');
+// ====== Wallet provider metadata (real-only — no demo seeding) ======
+const WALLET_PROVIDERS = {
+  metamask:     { name: 'MetaMask',         chain: 'EVM',   install: 'https://metamask.io/download/',          detect: 'isMetaMask' },
+  walletconnect:{ name: 'WalletConnect',    chain: 'EVM',   install: 'https://walletconnect.com/explorer',     detect: null },
+  coinbase:     { name: 'Coinbase Wallet',  chain: 'EVM',   install: 'https://www.coinbase.com/wallet',        detect: 'isCoinbaseWallet' },
+  ledger:       { name: 'Ledger',           chain: 'HW',    install: 'https://www.ledger.com/ledger-live',     detect: null },
+  phantom:      { name: 'Phantom',          chain: 'SOL',   install: 'https://phantom.app/download',           detect: 'solana.isPhantom' },
+  robinhood:    { name: 'Robinhood Wallet', chain: 'RH',    install: 'https://robinhood.com/wallet',           detect: null },
+  paypal:       { name: 'PayPal · PYUSD',   chain: 'FIAT',  install: 'https://www.paypal.com/us/digital-wallet/cryptocurrency', detect: null },
+  securenode:   { name: 'SecureNode™',      chain: 'WIP',   install: null,                                     detect: null },
+};
+
+// Stablecoin contract addresses for real on-chain balance reads
+const ERC20_TOKENS_BY_CHAIN = {
+  '0x1':     { USDC: { addr:'0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', decimals:6 }, USDT: { addr:'0xdac17f958d2ee523a2206206994597c13d831ec7', decimals:6 }, USDP: { addr:'0x8e870d67f660d95d5be530380d0ec0bd388289e1', decimals:18 }, USD1: { addr:'0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d', decimals:18 } }, // Ethereum mainnet
+  '0x89':    { USDC: { addr:'0x3c499c542cef5e3811e1192ce70d8cc03d5c3359', decimals:6 }, USDT: { addr:'0xc2132d05d31c914a87c6611c10748aeb04b58e8f', decimals:6 } }, // Polygon
+  '0x2105':  { USDC: { addr:'0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', decimals:6 } }, // Base
+  '0xa4b1':  { USDC: { addr:'0xaf88d065e77c8cc2239327c5edb3a432268e5831', decimals:6 }, USDT: { addr:'0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9', decimals:6 } }, // Arbitrum
+  '0xa':     { USDC: { addr:'0x0b2c639c533813f4aa9d7837caf62653d097ff85', decimals:6 } }, // Optimism
+};
+// Solana SPL token mints
+const SPL_MINTS = {
+  USDC: { mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', decimals: 6 },
+  USDT: { mint: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', decimals: 6 },
+};
+const SOLANA_RPC = 'https://api.mainnet-beta.solana.com';
+
+function describeChain(chainIdHex) {
+  return ({
+    '0x1':'Ethereum mainnet','0x89':'Polygon','0x2105':'Base','0xa4b1':'Arbitrum One','0xa':'Optimism',
+    '0x38':'BNB Chain','0xa86a':'Avalanche C-Chain'
+  })[chainIdHex] || ('chain ' + chainIdHex);
+}
+
+function setWalletConnectedUI(provider, addr, balances) {
+  const meta = WALLET_PROVIDERS[provider] || { name: provider };
+  state.walletProvider = provider;
+  state.walletConnected = true;
+  state.walletAddr = addr;
+  state.wallet.address = addr;
+  state.wallet.name = meta.name;
+  state.walletBalances = Object.assign({ USDC:0, USDT:0, USD1:0, USDP:0, WIP:0 }, balances || {});
+  save();
+  const dot = $('#wallet-status-dot');
+  if (dot) dot.style.background = 'var(--green)';
+  renderWallet();
+  renderWalletView();
+}
+
+async function connectWalletProvider(provider) {
+  if (!WALLET_PROVIDERS[provider]) { toast('Unknown wallet provider: ' + provider, 'err'); return false; }
+  const meta = WALLET_PROVIDERS[provider];
+
+  // ===== EVM (MetaMask / Coinbase / generic ethereum injected) =====
+  if (provider === 'metamask' || provider === 'coinbase') {
+    if (!window.ethereum) {
+      toast(meta.name + ' not detected · install from ' + meta.install, 'err', 6500);
+      if (confirm(meta.name + ' is not installed in this browser. Open the install page now?')) {
+        window.open(meta.install, '_blank', 'noopener,noreferrer');
       }
+      return false;
     }
-    state.walletConnected = true;
-    state.walletAddr = addr || state.wallet.address || genFakeWallet();
+    // Disambiguate when multiple providers are injected (MetaMask + Coinbase together)
+    let chosenProvider = window.ethereum;
+    if (Array.isArray(window.ethereum.providers)) {
+      const pick = window.ethereum.providers.find(p =>
+        (provider === 'metamask'  && p.isMetaMask && !p.isCoinbaseWallet) ||
+        (provider === 'coinbase'  && p.isCoinbaseWallet)
+      );
+      if (pick) chosenProvider = pick;
+    }
+    // If we want MetaMask but only Coinbase is present (or vice-versa), warn
+    if (provider === 'metamask' && !chosenProvider.isMetaMask) {
+      toast('MetaMask not detected (another EVM wallet is installed). Install MetaMask?', 'warn', 5500);
+    }
+    if (provider === 'coinbase' && !chosenProvider.isCoinbaseWallet) {
+      toast('Coinbase Wallet not detected (another EVM wallet is installed). Install Coinbase Wallet?', 'warn', 5500);
+    }
+    let addr = null, chainId = null;
+    try {
+      const accounts = await chosenProvider.request({ method: 'eth_requestAccounts' });
+      addr = accounts && accounts[0];
+      if (!addr) { toast('No accounts returned from ' + meta.name, 'warn'); return false; }
+      try { chainId = await chosenProvider.request({ method: 'eth_chainId' }); } catch(e) {}
+      chosenProvider.on?.('accountsChanged', async (a) => {
+        if (!a[0]) {
+          state.walletConnected = false; state.walletAddr = ''; save(); renderWallet(); renderWalletView();
+          toast('Wallet disconnected', 'info');
+          return;
+        }
+        state.walletAddr = a[0];
+        state.wallet.address = a[0];
+        const bals = await readEvmStablecoinBalances(chosenProvider, a[0], chainId).catch(()=>({}));
+        state.walletBalances = Object.assign({ USDC:0, USDT:0, USD1:0, USDP:0, WIP:0 }, bals);
+        save(); renderWallet(); renderWalletView();
+      });
+      chosenProvider.on?.('chainChanged', async (cid) => {
+        state.walletChainId = cid;
+        const bals = await readEvmStablecoinBalances(chosenProvider, state.walletAddr, cid).catch(()=>({}));
+        state.walletBalances = Object.assign({ USDC:0, USDT:0, USD1:0, USDP:0, WIP:0 }, bals);
+        save(); renderWalletView();
+        toast('Network: ' + describeChain(cid), 'info');
+      });
+    } catch (e) {
+      if (e.code === 4001) { toast('Connection rejected by user', 'warn'); return false; }
+      toast(meta.name + ' connect failed: ' + (e.message || e.code), 'err', 5000); return false;
+    }
     state.walletChainId = chainId;
-    // Seed plausible starting balances if first time (test sandbox)
-    if (!state.walletBalances || Object.values(state.walletBalances).every(v => !v)) {
-      state.walletBalances = { USDC: 5000, USDT: 2500, USD1: 0, USDP: 0, WIP: 1000 };
+    toast('Reading on-chain balances on ' + describeChain(chainId) + '…', 'info', 2500);
+    const balances = await readEvmStablecoinBalances(chosenProvider, addr, chainId).catch(()=>({}));
+    setWalletConnectedUI(provider, addr, balances);
+    try { soundVerify && soundVerify(); } catch(e) {}
+    toast(meta.name + ' linked · ' + describeChain(chainId) + ' · live balances loaded', 'ok', 4500);
+    return true;
+  }
+
+  // ===== Phantom (Solana) =====
+  if (provider === 'phantom') {
+    if (!(window.solana && window.solana.isPhantom)) {
+      toast('Phantom not detected · install from ' + meta.install, 'err', 6500);
+      if (confirm('Phantom is not installed. Open the install page now?')) {
+        window.open(meta.install, '_blank', 'noopener,noreferrer');
+      }
+      return false;
     }
-    // If real wallet, attempt to read on-chain stablecoin balances via ERC20 balanceOf
-    if (addr && window.ethereum) {
-      readOnchainBalances(addr).catch(()=>{});
+    let addr = null;
+    try {
+      const resp = await window.solana.connect();
+      addr = resp && resp.publicKey ? resp.publicKey.toString() : null;
+      if (!addr) { toast('Phantom returned no public key', 'warn'); return false; }
+      window.solana.on?.('disconnect', () => {
+        state.walletConnected = false; state.walletAddr = ''; save(); renderWallet(); renderWalletView();
+        toast('Phantom disconnected', 'info');
+      });
+      window.solana.on?.('accountChanged', async (pk) => {
+        if (!pk) return;
+        state.walletAddr = pk.toString();
+        const bals = await readSolanaSplBalances(state.walletAddr).catch(()=>({}));
+        state.walletBalances = Object.assign({ USDC:0, USDT:0, USD1:0, USDP:0, WIP:0 }, bals);
+        save(); renderWallet(); renderWalletView();
+      });
+    } catch (e) {
+      if (e && (e.code === 4001 || /user rejected/i.test(e.message || ''))) {
+        toast('Phantom connection rejected', 'warn'); return false;
+      }
+      toast('Phantom connect failed: ' + (e.message || e), 'err'); return false;
     }
-    save();
-    soundVerify();
-    toast(provider + ' wallet connected', 'ok');
-    renderWalletView();
-  });
+    toast('Reading SPL balances on Solana…', 'info', 2500);
+    const balances = await readSolanaSplBalances(addr).catch(()=>({}));
+    setWalletConnectedUI(provider, addr, balances);
+    try { soundVerify && soundVerify(); } catch(e) {}
+    toast('Phantom linked · Solana mainnet · live SPL balances loaded', 'ok', 4500);
+    return true;
+  }
+
+  // ===== WalletConnect — requires SDK (not bundled); guide the user =====
+  if (provider === 'walletconnect') {
+    toast('WalletConnect requires the WalletConnect Web3Modal SDK to be loaded · using injected EVM provider as fallback', 'info', 5000);
+    if (window.ethereum) return connectWalletProvider('metamask');
+    toast('No EVM provider detected — install MetaMask, Coinbase Wallet, or Phantom (SOL)', 'warn', 5500);
+    return false;
+  }
+
+  // ===== Ledger — hardware wallet, requires Ledger Connect Kit / WalletConnect =====
+  if (provider === 'ledger') {
+    if (!confirm('Ledger Live connection requires the Ledger Connect Kit + a connected hardware device.\n\nUnlock your Ledger now, open the Ethereum app, and we will attempt to read your address via the injected EVM provider. Continue?')) {
+      return false;
+    }
+    if (window.ethereum) {
+      toast('Routing through your installed EVM provider — confirm the Ledger account in the popup', 'info', 4500);
+      return connectWalletProvider('metamask');
+    }
+    toast('Ledger Live requires WalletConnect or MetaMask bridge — install one to proceed', 'warn', 6000);
+    return false;
+  }
+
+  // ===== Robinhood — no public Web3 provider, requires their app + OAuth =====
+  if (provider === 'robinhood') {
+    toast('Robinhood Wallet has no browser provider · use the Robinhood app and paste your receive address below', 'warn', 6500);
+    const addr = prompt('Paste your Robinhood Wallet address (the receive address from the Robinhood Crypto app):');
+    if (!addr || !addr.trim()) return false;
+    if (!/^0x[a-fA-F0-9]{40}$/.test(addr.trim())) {
+      toast('That does not look like a valid EVM address. Robinhood Wallet supports ETH-style addresses.', 'err', 5000);
+      return false;
+    }
+    // Read balances via a public RPC (no signing required, only read)
+    toast('Reading on-chain balances for ' + addr.slice(0,6) + '… via public RPC…', 'info');
+    const balances = await readEvmStablecoinBalancesPublic(addr.trim()).catch(()=>({}));
+    setWalletConnectedUI(provider, addr.trim(), balances);
+    try { soundVerify && soundVerify(); } catch(e) {}
+    toast('Robinhood Wallet linked (read-only) · live Ethereum balances loaded', 'ok', 4500);
+    return true;
+  }
+
+  // ===== PayPal — fiat + PYUSD via custodial; requires OAuth (out of scope) =====
+  if (provider === 'paypal') {
+    toast('PayPal/Venmo crypto wallets are custodial · linking requires PayPal OAuth (not available in this static build)', 'warn', 6500);
+    const addr = prompt('Paste your PayPal Crypto wallet ETH address (Transfer → Receive in the PayPal app):');
+    if (!addr || !addr.trim()) return false;
+    if (!/^0x[a-fA-F0-9]{40}$/.test(addr.trim())) {
+      toast('Invalid EVM address.', 'err'); return false;
+    }
+    toast('Reading on-chain balances for ' + addr.slice(0,6) + '… via public RPC…', 'info');
+    const balances = await readEvmStablecoinBalancesPublic(addr.trim()).catch(()=>({}));
+    setWalletConnectedUI(provider, addr.trim(), balances);
+    try { soundVerify && soundVerify(); } catch(e) {}
+    toast('PayPal Crypto linked (read-only) · live balances loaded · PYUSD support coming soon', 'ok', 4500);
+    return true;
+  }
+
+  // ===== SecureNode — native, no Web3 needed =====
+  if (provider === 'securenode') {
+    if (!state.secureNode.connected) {
+      toast('SecureNode not connected · use LINK SECURENODE at the top to authenticate first', 'warn', 5000);
+      return false;
+    }
+    setWalletConnectedUI(provider, state.secureNode.slot || state.wallet.address || '⚜ SecureNode Vault', {
+      USDC: 0, USDT: 0, USD1: 0, USDP: 0, WIP: state.wipBurned ? 0 : 0,
+    });
+    try { soundVerify && soundVerify(); } catch(e) {}
+    toast('SecureNode™ Vault linked · balances from local node', 'ok');
+    return true;
+  }
+
+  toast('Provider ' + provider + ' is not yet supported.', 'warn');
+  return false;
+}
+
+// Read ERC20 stablecoin balances via the connected provider (signed by user)
+async function readEvmStablecoinBalances(prov, addr, chainIdHex) {
+  const tokens = ERC20_TOKENS_BY_CHAIN[chainIdHex] || ERC20_TOKENS_BY_CHAIN['0x1'];
+  const data = '0x70a08231' + '000000000000000000000000' + addr.replace(/^0x/, '').toLowerCase();
+  const out = { USDC: 0, USDT: 0, USDP: 0, USD1: 0, WIP: 0 };
+  for (const [sym, t] of Object.entries(tokens)) {
+    try {
+      const result = await prov.request({ method: 'eth_call', params: [{ to: t.addr, data }, 'latest'] });
+      out[sym] = parseTokenAmount(result, t.decimals);
+    } catch(e) {}
+  }
+  return out;
+}
+
+// Read ERC20 stablecoin balances via a public Ethereum RPC (for non-injected providers)
+async function readEvmStablecoinBalancesPublic(addr) {
+  const RPC = 'https://ethereum-rpc.publicnode.com';
+  const tokens = ERC20_TOKENS_BY_CHAIN['0x1'];
+  const data = '0x70a08231' + '000000000000000000000000' + addr.replace(/^0x/, '').toLowerCase();
+  const out = { USDC: 0, USDT: 0, USDP: 0, USD1: 0, WIP: 0 };
+  for (const [sym, t] of Object.entries(tokens)) {
+    try {
+      const r = await fetch(RPC, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ jsonrpc:'2.0', id:1, method:'eth_call', params:[{ to:t.addr, data }, 'latest'] }),
+      });
+      const j = await r.json();
+      if (j && j.result) out[sym] = parseTokenAmount(j.result, t.decimals);
+    } catch(e) {}
+  }
+  return out;
+}
+
+// Read Solana SPL token balances via public RPC
+async function readSolanaSplBalances(ownerPubkey) {
+  const out = { USDC: 0, USDT: 0, USD1: 0, USDP: 0, WIP: 0 };
+  for (const [sym, t] of Object.entries(SPL_MINTS)) {
+    try {
+      const r = await fetch(SOLANA_RPC, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0', id: 1, method: 'getTokenAccountsByOwner',
+          params: [ownerPubkey, { mint: t.mint }, { encoding: 'jsonParsed' }],
+        }),
+      });
+      const j = await r.json();
+      const accounts = j && j.result && j.result.value || [];
+      let total = 0;
+      for (const acc of accounts) {
+        const info = acc?.account?.data?.parsed?.info?.tokenAmount;
+        if (info && typeof info.uiAmount === 'number') total += info.uiAmount;
+      }
+      out[sym] = total;
+    } catch (e) {}
+  }
+  return out;
+}
+
+function parseTokenAmount(hexResult, decimals) {
+  try {
+    const raw = BigInt(hexResult || '0x0');
+    const div = BigInt(10) ** BigInt(decimals);
+    const whole = Number(raw / div);
+    const frac = Number(raw % div) / Number(div);
+    return whole + frac;
+  } catch (e) { return 0; }
+}
+
+// Allow manual balance refresh from the wallet view
+async function refreshLiveBalances(opts) {
+  const silent = !!(opts && opts.silent);
+  if (!state.walletConnected || !state.walletAddr) {
+    if (!silent) toast('Connect a wallet first', 'warn'); return;
+  }
+  if (!silent) toast('Refreshing live balances…', 'info', 2000);
+  let bals = {};
+  const prov = state.walletProvider;
+  if (prov === 'metamask' || prov === 'coinbase' || prov === 'walletconnect') {
+    if (window.ethereum) bals = await readEvmStablecoinBalances(window.ethereum, state.walletAddr, state.walletChainId || '0x1');
+    else bals = await readEvmStablecoinBalancesPublic(state.walletAddr);
+  } else if (prov === 'phantom') {
+    bals = await readSolanaSplBalances(state.walletAddr);
+  } else if (prov === 'robinhood' || prov === 'paypal') {
+    bals = await readEvmStablecoinBalancesPublic(state.walletAddr);
+  }
+  state.walletBalances = Object.assign({ USDC:0, USDT:0, USD1:0, USDP:0, WIP:0 }, bals);
+  save();
+  renderWalletView();
+  if (!silent) toast('Live balances updated', 'ok');
+}
+
+// Wire the in-view wallet grid
+$$('.wallet-option').forEach(opt => {
+  opt.addEventListener('click', () => connectWalletProvider(opt.dataset.wallet));
 });
+
+// ====== Top-bar wallet picker dropdown ======
+(function initWalletPicker() {
+  const picker = document.getElementById('wallet-picker');
+  const linkBtn = document.getElementById('btn-set-wallet');
+  if (!picker || !linkBtn) return;
+
+  function openPicker() {
+    picker.classList.add('open');
+    linkBtn.setAttribute('aria-expanded', 'true');
+  }
+  function closePicker() {
+    picker.classList.remove('open');
+    linkBtn.setAttribute('aria-expanded', 'false');
+  }
+  function togglePicker(e) {
+    e.preventDefault(); e.stopPropagation();
+    picker.classList.contains('open') ? closePicker() : openPicker();
+  }
+
+  // Replace existing click handler — open picker instead of modal
+  linkBtn.replaceWith(linkBtn.cloneNode(true));
+  const freshBtn = document.getElementById('btn-set-wallet');
+  freshBtn.addEventListener('click', togglePicker);
+
+  // Wallet item picks
+  picker.querySelectorAll('.wp-item').forEach(item => {
+    item.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const provider = item.dataset.wallet;
+      closePicker();
+      await connectWalletProvider(provider);
+    });
+  });
+
+  // Custom address fallback → opens the original modal
+  document.getElementById('wp-custom-addr')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closePicker();
+    $('#wallet-input').value = state.wallet.address || '';
+    $('#wallet-name').value = state.wallet.name || '';
+    openModal('modal-wallet');
+  });
+
+  // Close on outside click
+  document.addEventListener('click', (e) => {
+    if (!picker.classList.contains('open')) return;
+    if (e.target.closest('#wallet-picker')) return;
+    if (e.target.closest('#btn-set-wallet')) return;
+    closePicker();
+  });
+  // Close on Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && picker.classList.contains('open')) closePicker();
+  });
+})();
 
 // Read ERC20 stablecoin balances from connected provider (Ethereum mainnet)
 async function readOnchainBalances(addr) {
@@ -10816,9 +13188,33 @@ async function readOnchainBalances(addr) {
   save();
   renderWalletView();
 }
-$('#btn-disconnect-wallet').addEventListener('click', () => {
-  state.walletConnected = false; save(); renderWalletView(); toast('Wallet disconnected', 'info');
+$('#btn-disconnect-wallet').addEventListener('click', async () => {
+  // Real disconnect — request provider session termination where supported
+  try {
+    if (state.walletProvider === 'phantom' && window.solana && window.solana.disconnect) {
+      await window.solana.disconnect();
+    }
+    // EVM providers (MetaMask/Coinbase) — there's no standard disconnect; clear local state and revoke permissions where supported
+    if ((state.walletProvider === 'metamask' || state.walletProvider === 'coinbase') && window.ethereum?.request) {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_revokePermissions',
+          params: [{ eth_accounts: {} }],
+        });
+      } catch (e) { /* not supported on older providers; that's ok */ }
+    }
+  } catch (e) {}
+  state.walletConnected = false;
+  state.walletAddr = '';
+  state.walletProvider = '';
+  state.walletBalances = { USDC:0, USDT:0, USD1:0, USDP:0, WIP:0 };
+  save(); renderWallet(); renderWalletView();
+  const dot = $('#wallet-status-dot');
+  if (dot) dot.style.background = 'var(--muted)';
+  toast('Wallet disconnected · session cleared', 'info');
 });
+
+$('#btn-refresh-balances')?.addEventListener('click', () => refreshLiveBalances());
 
 $('#btn-simulate-depeg').addEventListener('click', () => {
   // Toggle depeg of USDT to demonstrate backstop
@@ -13251,12 +15647,18 @@ const SecureNode = {
     banner.classList.remove('disconnected','connecting','connected');
     banner.classList.add(yes ? 'connected' : 'disconnected');
     $('#conn-banner-text').textContent = yes
-      ? 'SecureNode™ Connected — vault writable at ' + state.secureNode.url
+      ? 'SecureNode™ Linked — vault writable at ' + state.secureNode.url
       : 'SecureNode™ Disconnected — assets cannot be encrypted to SSD vault';
     const pill = $('#sn-pill');
     if (pill) {
       pill.classList.remove('ok','err'); pill.classList.add(yes ? 'ok' : 'err');
       pill.querySelector('span:last-child').textContent = yes ? 'Connected' : 'Disconnected';
+    }
+    // Update the LINK button LED state
+    const linkBtn = $('#btn-conn-banner-connect');
+    if (linkBtn) {
+      linkBtn.classList.toggle('linked', yes);
+      linkBtn.innerHTML = '<span class="link-led"></span>' + (yes ? 'LINKED' : 'LINK SECURENODE');
     }
   },
   setVault(mounted) {
@@ -13577,6 +15979,75 @@ if (zf) zf.addEventListener('click', fitView);
 // INIT
 // ============================================================
 // ============================================================
+// SOUND TOGGLE — global mute, persists in localStorage
+// ============================================================
+const SOUND_KEY = 'wireip-sound-v1';
+let SOUND_ENABLED = true;
+function applySoundState(enabled) {
+  SOUND_ENABLED = !!enabled;
+  const t = document.getElementById('sound-toggle');
+  const on = document.getElementById('sound-icon-on');
+  const off = document.getElementById('sound-icon-off');
+  if (t) { t.classList.toggle('muted', !enabled); t.title = enabled ? 'Sound: On (click to mute)' : 'Sound: Off (click to enable)'; }
+  if (on) on.style.display = enabled ? 'block' : 'none';
+  if (off) off.style.display = enabled ? 'none' : 'block';
+}
+(function initSound() {
+  let saved = true;
+  try { const v = localStorage.getItem(SOUND_KEY); if (v !== null) saved = v === '1'; } catch(e) {}
+  applySoundState(saved);
+  setTimeout(() => {
+    const t = document.getElementById('sound-toggle');
+    if (!t) return;
+    t.classList.add('intro-blink');
+    setTimeout(() => t.classList.remove('intro-blink'), 1500);
+  }, 1900);
+})();
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('#sound-toggle');
+  if (!t) return;
+  const next = !SOUND_ENABLED;
+  applySoundState(next);
+  try { localStorage.setItem(SOUND_KEY, next ? '1' : '0'); } catch(e) {}
+  if (next && typeof soundVerify === 'function') soundVerify();
+});
+
+// ============================================================
+// THEME TOGGLE — light is default, persists in localStorage
+// ============================================================
+const THEME_KEY = 'wireip-theme-v1';
+function applyTheme(theme) {
+  if (theme === 'light') document.body.classList.add('light-theme');
+  else document.body.classList.remove('light-theme');
+  // Hover tooltip says what the toggle will switch TO
+  const t = document.getElementById('theme-toggle');
+  if (t) t.title = theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode';
+  // iOS browser chrome theme-color
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', theme === 'light' ? '#f7f5ed' : '#050606');
+}
+(function initTheme() {
+  let saved = 'light';
+  try { saved = localStorage.getItem(THEME_KEY) || 'light'; } catch(e) {}
+  applyTheme(saved);
+  // Intro blink — pulse 3 times shortly after the splash fades
+  setTimeout(() => {
+    const t = document.getElementById('theme-toggle');
+    if (!t) return;
+    t.classList.add('intro-blink');
+    setTimeout(() => t.classList.remove('intro-blink'), 1500);
+  }, 1700);
+})();
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('#theme-toggle');
+  if (!t) return;
+  const next = document.body.classList.contains('light-theme') ? 'dark' : 'light';
+  applyTheme(next);
+  try { localStorage.setItem(THEME_KEY, next); } catch(e) {}
+  if (typeof soundClick === 'function') soundClick();
+});
+
+// ============================================================
 // BRAND LOGO — auto-discovers a logo file in the project folder,
 //   falls back to localStorage, supports drop/click upload.
 // ============================================================
@@ -13619,10 +16090,13 @@ async function discoverBrandLogo() {
 function applyBrandLogo(src) {
   if (!src) return;
   const img = document.getElementById('brand-logo-img');
+  const defaultSvg = document.getElementById('brand-logo-default');
   const empty = document.getElementById('brand-logo-empty');
   if (img) { img.src = src; img.style.display = 'block'; }
+  if (defaultSvg) defaultSvg.style.display = 'none';
   if (empty) empty.style.display = 'none';
   const splashImg = document.getElementById('splash-logo-img');
+  const splashSvg = document.getElementById('splash-logo-default');
   if (splashImg) {
     splashImg.src = src;
     splashImg.style.display = 'block';
@@ -13632,6 +16106,7 @@ function applyBrandLogo(src) {
     const wrap = splashImg.closest('.splash-logo');
     if (wrap) wrap.style.display = 'flex';
   }
+  if (splashSvg) splashSvg.style.display = 'none';
 }
 
 // Try to extract the cover logo from a Black Paper PDF in the project folder
