@@ -2800,7 +2800,9 @@
     .menu-toggle { display: inline-flex; }
     header.topbar { padding: 0 10px; gap: 8px; }
     .brand-text { display: none; }
-    .brand-mark { width: 36px; height: 36px; }
+    /* Bump mobile brand-mark so the OTW logo has the same visual presence as desktop */
+    .brand-mark { width: 44px; height: 44px; }
+    .brand-mark svg, .brand-mark img { overflow: visible; }
     .top-search { max-width: none; flex: 1; }
     .top-search input { font-size: 11px; padding: 6px 10px 6px 30px; }
     .top-search .icon { left: 10px; font-size: 11px; }
@@ -2888,7 +2890,9 @@
     .threat-feed .tf-row { grid-template-columns: 60px 50px 1fr; gap: 6px; font-size: 9px; }
     .stable-card .sc-balance { font-size: 14px; }
     .provider-card .pv-stats { gap: 4px; }
-    #boot-splash .splash-logo.splash-logo-big { width: min(70vmin, 320px); height: min(70vmin, 320px); }
+    /* Match desktop splash visual presence — at least 60-70vmin so the OTW logo is the dominant element */
+    #boot-splash .splash-logo.splash-logo-big { width: min(72vmin, 380px); height: min(72vmin, 380px); }
+    #boot-splash .splash-logo svg { overflow: visible; }
     .globe-tooltip { min-width: 160px; max-width: 240px; font-size: 9.5px; padding: 8px 10px; }
     .dropzone { padding: 24px 14px; }
     .file-preview { grid-template-columns: 1fr; gap: 12px; }
@@ -3012,7 +3016,7 @@
     }
     .menu-toggle { width: 32px; height: 32px; }
     .menu-toggle svg { width: 16px; height: 16px; }
-    .brand-mark { width: 32px; height: 32px; }
+    .brand-mark { width: 40px; height: 40px; }
     .top-search {
       order: 99;
       flex: 1 0 100%;
@@ -3149,9 +3153,9 @@
     /* Nav drawer items larger taps */
     nav.side .nav-item { padding: 12px 14px; font-size: 11.5px; }
     nav.side .nav-group h4 { padding: 0 14px; font-size: 8.5px; }
-    /* Boot splash */
+    /* Boot splash — keep visual presence even on iPhone */
     #boot-splash .splash-logo.splash-logo-big {
-      width: min(70vmin, 280px); height: min(70vmin, 280px);
+      width: min(72vmin, 320px); height: min(72vmin, 320px);
     }
     #boot-splash .splash-status { font-size: 11px; letter-spacing: 0.20em; margin-top: 24px; }
     /* Drop zones */
@@ -3266,7 +3270,7 @@
     header.topbar { padding: 4px 6px; gap: 4px; min-height: 48px; }
     .menu-toggle { width: 28px; height: 28px; }
     .menu-toggle svg { width: 14px; height: 14px; }
-    .brand-mark { width: 28px; height: 28px; }
+    .brand-mark { width: 36px; height: 36px; }
     .top-search input { font-size: 10.5px; padding: 5px 8px 5px 24px; }
     .wallet-display { padding: 2px 5px; font-size: 8px; gap: 3px; }
     .wallet-display button { padding: 1px 3px; font-size: 7.5px; }
@@ -4421,11 +4425,13 @@
 <div id="boot-splash">
   <div class="splash-logo splash-logo-big">
     <img id="splash-logo-img" src="" alt="" style="width:100%;height:100%;object-fit:contain;display:none;">
-    <svg id="splash-logo-default" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"
-         style="width:100%;height:100%;display:block;">
-      <g fill="none" stroke="#f0c419" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M 100 16 A 84 84 0 1 1 116 18" stroke-width="9"/>
-        <path d="M 56 50 L 100 168 L 144 50" stroke-width="9"/>
+    <!-- ⚜ OTW MASTER LOGO — single source of truth, mirrored exactly in #brand-logo-default below. Do not diverge. -->
+    <svg id="splash-logo-default" class="otw-master-logo" xmlns="http://www.w3.org/2000/svg" viewBox="-6 -6 212 212"
+         preserveAspectRatio="xMidYMid meet" overflow="visible"
+         style="width:100%;height:100%;display:block;overflow:visible;">
+      <g fill="none" stroke="#f0c419" stroke-linecap="round" stroke-linejoin="round" stroke-width="9">
+        <path d="M 100 16 A 84 84 0 1 1 116 18"/>
+        <path d="M 56 50 L 100 168 L 144 50"/>
       </g>
       <circle cx="100" cy="16" r="6.5" fill="#f0c419"/>
       <circle cx="116" cy="18" r="5" fill="#f0c419"/>
@@ -4446,11 +4452,13 @@
     <div class="brand-block">
       <div class="brand-mark" id="brand-mark" title="OTW">
         <img id="brand-logo-img" src="" alt="OTW" style="width:100%;height:100%;object-fit:contain;display:none;">
-        <svg id="brand-logo-default" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"
-             style="width:100%;height:100%;display:block;color:#f0c419;">
-          <g fill="none" stroke="#f0c419" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M 100 16 A 84 84 0 1 1 116 18" stroke-width="9"/>
-            <path d="M 56 50 L 100 168 L 144 50" stroke-width="9"/>
+        <!-- ⚜ OTW MASTER LOGO — exact mirror of #splash-logo-default above. Same artwork is rendered for desktop top-left, mobile top-left, and the boot/splash access screen. -->
+        <svg id="brand-logo-default" class="otw-master-logo" xmlns="http://www.w3.org/2000/svg" viewBox="-6 -6 212 212"
+             preserveAspectRatio="xMidYMid meet" overflow="visible"
+             style="width:100%;height:100%;display:block;overflow:visible;color:#f0c419;">
+          <g fill="none" stroke="#f0c419" stroke-linecap="round" stroke-linejoin="round" stroke-width="9">
+            <path d="M 100 16 A 84 84 0 1 1 116 18"/>
+            <path d="M 56 50 L 100 168 L 144 50"/>
           </g>
           <circle cx="100" cy="16" r="6.5" fill="#f0c419"/>
           <circle cx="116" cy="18" r="5" fill="#f0c419"/>
