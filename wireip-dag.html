@@ -7,6 +7,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#050606">
 <title>WireIP Network™ — IP Tokenization Vault · Institutional Edition v4.1</title>
+<!-- Preload the OTW brand logo so it's available before the splash paints on both desktop and mobile.
+     If the file is missing in the deploy, the inline SVG default (below) is used as a fallback. -->
+<link rel="preload" as="image" href="/otw-logo.png" fetchpriority="high">
+<link rel="icon" type="image/png" href="/otw-logo.png">
+<link rel="apple-touch-icon" href="/otw-logo.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -4424,7 +4429,11 @@
 <!-- ===== Boot Splash — Clean & Quick ===== -->
 <div id="boot-splash">
   <div class="splash-logo splash-logo-big">
-    <img id="splash-logo-img" src="" alt="" style="width:100%;height:100%;object-fit:contain;display:none;">
+    <!-- PNG attempt first — if /otw-logo.png exists in the deploy, the browser loads it eagerly (preloaded in <head>) and onload hides the SVG. If it 404s, onerror hides the img and the SVG below stays visible. Same code path on desktop and mobile, no JS race. -->
+    <img id="splash-logo-img" src="/otw-logo.png" alt="OTW"
+         style="width:100%;height:100%;object-fit:contain;display:none;"
+         onload="this.style.display='block';var s=document.getElementById('splash-logo-default');if(s)s.style.display='none';"
+         onerror="this.style.display='none';this.removeAttribute('src');">
     <!-- ⚜ OTW MASTER LOGO — single source of truth, mirrored exactly in #brand-logo-default below. Do not diverge. -->
     <svg id="splash-logo-default" class="otw-master-logo" xmlns="http://www.w3.org/2000/svg" viewBox="-6 -6 212 212"
          preserveAspectRatio="xMidYMid meet" overflow="visible"
@@ -4451,7 +4460,10 @@
     </button>
     <div class="brand-block">
       <div class="brand-mark" id="brand-mark" title="OTW">
-        <img id="brand-logo-img" src="" alt="OTW" style="width:100%;height:100%;object-fit:contain;display:none;">
+        <img id="brand-logo-img" src="/otw-logo.png" alt="OTW"
+             style="width:100%;height:100%;object-fit:contain;display:none;"
+             onload="this.style.display='block';var s=document.getElementById('brand-logo-default');if(s)s.style.display='none';"
+             onerror="this.style.display='none';this.removeAttribute('src');">
         <!-- ⚜ OTW MASTER LOGO — exact mirror of #splash-logo-default above. Same artwork is rendered for desktop top-left, mobile top-left, and the boot/splash access screen. -->
         <svg id="brand-logo-default" class="otw-master-logo" xmlns="http://www.w3.org/2000/svg" viewBox="-6 -6 212 212"
              preserveAspectRatio="xMidYMid meet" overflow="visible"
