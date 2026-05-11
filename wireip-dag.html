@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#050606">
@@ -261,13 +261,24 @@
   .priv-toggle.private { color: var(--red); border-color: rgba(239,68,68,0.4); }
   .priv-toggle .icon { font-size: 10px; }
 
-  /* ===== App layout ===== */
+  /* ===== App layout =====
+     Uses dynamic viewport (`100dvh`) so mobile keyboards and browser chrome
+     don't clip the bottom. `min-height: 100%` keeps the shell snug when
+     content is short. `overflow-x: hidden` is the canary against rogue
+     elements that try to blow out horizontal space.
+     ===================== */
+  html, body { margin: 0; padding: 0; }
+  html, body { width: 100%; max-width: 100vw; overflow-x: hidden; }
+  body { min-height: 100vh; min-height: 100dvh; }
   #app {
     display: grid;
     grid-template-rows: 64px 36px 1fr 28px;
     height: 100vh; height: 100dvh;
-    max-width: 100vw; overflow-x: hidden;
+    width: 100%; max-width: 100vw;
+    overflow-x: hidden;
+    box-sizing: border-box;
   }
+  #app, #app * { box-sizing: border-box; }
   header.topbar {
     display: flex; align-items: center; gap: 16px; padding: 0 20px;
     background: linear-gradient(180deg, rgba(240,196,25,0.04), transparent);
@@ -580,10 +591,18 @@
   .conn-banner button { padding: 4px 10px; font-size: 9.5px; }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 
-  main.workspace { display: grid; grid-template-columns: 200px 1fr; overflow: hidden; }
+  /* `min-width: 0` on the right column lets grid children honor max-width. */
+  main.workspace {
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    overflow: hidden;
+    width: 100%; max-width: 100%;
+    min-height: 0;
+  }
   nav.side {
     background: var(--panel); border-right: 1px solid var(--border);
     padding: 16px 0; overflow-y: auto;
+    min-width: 0;
   }
   nav.side .nav-group { margin-bottom: 18px; }
   nav.side .nav-group h4 {
@@ -608,8 +627,19 @@
     border-radius: 8px; padding: 0 6px; font-size: 9px; color: var(--muted);
   }
 
-  .content-area { overflow-y: auto; background: var(--bg); }
-  .view { display: none; padding: 24px 28px; max-width: 1400px; }
+  .content-area { overflow-y: auto; background: var(--bg); min-width: 0; }
+  /* Center the view container on big desktops so content doesn't hug the left
+     edge when the sidebar is much narrower than the viewport.
+     `min-width: 0` lets nested grids shrink instead of overflowing. */
+  .view {
+    display: none;
+    padding: 24px 28px;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+  }
   .view.active { display: block; }
   .view h1 {
     margin: 0 0 6px 0; font-size: 18px; color: var(--gold);
@@ -2088,11 +2118,13 @@
     text-shadow: 0 1px 6px rgba(0,0,0,0.7);
     font-weight: 400;
   }
+  /* Added logo always sits over top of the uploaded asset file. Inline styles
+     in the render fn enforce absolute centering + z-index 4 so the brand mark
+     reads on top of the asset image (z-index 3). */
   .visualizer .viz-logo {
-    position: relative; z-index: 3;
+    position: absolute; z-index: 4;
     max-width: 60%; max-height: 50%;
     filter: drop-shadow(0 2px 12px rgba(0,0,0,0.7));
-    margin-bottom: 10px;
   }
   /* Text labels — extra breathing room from the canvas edges per user request.
      Default corners now sit ~5% in from the bottom + side edges so text never hugs
@@ -3319,6 +3351,32 @@
     z-index: 79; animation: fadeIn 0.18s ease;
   }
   .nav-backdrop.show { display: block; }
+
+  /* ===== Wide desktop (≥1600px) =====
+     Open up the content max-width and pad more generously so the layout
+     doesn't look stranded on ultrawide monitors. */
+  @media (min-width: 1600px) {
+    .view { max-width: 1640px; padding: 28px 36px; }
+  }
+  @media (min-width: 2000px) {
+    .view { max-width: 1840px; padding: 32px 44px; }
+  }
+
+  /* ===== Narrow laptop / large tablet (901-1180px) =====
+     The visualizer's 1fr/2fr split gets cramped on smaller laptops — collapse
+     to a single column so the sticky preview stacks above its controls. The
+     mobile breakpoint below already handles ≤900px. */
+  @media (max-width: 1180px) {
+    .viz-layout-grid {
+      grid-template-columns: 1fr !important;
+      gap: 14px !important;
+    }
+    /* When the visualizer stacks, the preview column shouldn't try to be
+       sticky — it'd cover the controls. Reset to natural flow. */
+    .viz-layout-grid > div[style*="sticky"] {
+      position: static !important;
+    }
+  }
 
   /* ===== Mobile breakpoint ===== */
   @media (max-width: 900px) {
@@ -5397,23 +5455,23 @@
                 ✦ AUTO — Generate Full Asset ID Design
               </button>
 
-              <!-- ===== SOP (Standard Operating Procedure) — save / load full visualizer config ===== -->
-              <details id="viz-sop-panel" class="viz-settings-group" style="margin-bottom:12px;border:1px solid var(--gold-soft);border-radius:6px;background:rgba(240,196,25,0.03);">
-                <summary class="viz-section-label" style="cursor:pointer;padding:8px 10px;display:flex;align-items:center;gap:8px;">
-                  <span style="color:var(--gold);">▸ Save as SOP (Standard Operating Procedure)</span>
+              <!-- ===== VISUALIZER TEMPLATE (SOP) — always visible, save / load the entire visualizer config as a reusable template ===== -->
+              <div id="viz-sop-panel" class="viz-settings-group" style="margin-bottom:12px;border:1px solid var(--gold-soft);border-radius:6px;background:rgba(240,196,25,0.03);">
+                <div class="viz-section-label" style="padding:10px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--gold-soft);">
+                  <span style="color:var(--gold);font-weight:700;letter-spacing:0.10em;">⛬ SAVE AS VISUALIZER TEMPLATE</span>
                   <span style="flex:1"></span>
                   <span id="viz-sop-count" style="color:var(--muted);font-size:9px;font-family:'IBM Plex Mono',ui-monospace,monospace;">0 saved</span>
-                </summary>
-                <div style="padding:6px 10px 10px 10px;display:flex;flex-direction:column;gap:8px;">
+                </div>
+                <div style="padding:10px 12px 12px 12px;display:flex;flex-direction:column;gap:8px;">
                   <div style="font-size:9px;color:var(--muted);line-height:1.4;">
-                    Save the entire current visualizer config — font, position, colors, pattern, FX, animation, waveform, shake — as a named SOP. Re-apply it to any future asset in one click.
+                    Save the entire current visualizer setup — font, position, colors, pattern, FX, animation, waveform, shake — as a named template. Apply it to any future asset in one click.
                   </div>
                   <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-                    <input type="text" id="viz-sop-name" maxlength="48" placeholder="SOP name (e.g. Studio Master · Gold Mandala)" style="flex:1;min-width:180px;padding:7px 10px;font-size:11px;background:var(--panel-2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'IBM Plex Mono',ui-monospace,monospace;letter-spacing:0.04em;">
-                    <button id="viz-sop-save" class="primary" style="padding:7px 14px;font-size:10px;letter-spacing:0.08em;background:var(--gold);color:#050606;font-weight:700;border:none;">＋ SAVE SOP</button>
+                    <input type="text" id="viz-sop-name" maxlength="48" placeholder="Template name (e.g. Studio Master · Gold Mandala)" style="flex:1;min-width:180px;padding:7px 10px;font-size:11px;background:var(--panel-2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'IBM Plex Mono',ui-monospace,monospace;letter-spacing:0.04em;">
+                    <button id="viz-sop-save" class="primary" style="padding:7px 14px;font-size:10px;letter-spacing:0.08em;background:var(--gold);color:#050606;font-weight:700;border:none;">＋ SAVE TEMPLATE</button>
                   </div>
                   <div id="viz-sop-list" style="display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto;">
-                    <div id="viz-sop-empty" style="font-size:9.5px;color:var(--muted);font-style:italic;padding:4px 0;">No SOPs saved yet — save the current design above.</div>
+                    <div id="viz-sop-empty" style="font-size:9.5px;color:var(--muted);font-style:italic;padding:4px 0;">No templates saved yet — save the current design above.</div>
                   </div>
                   <div style="display:flex;gap:6px;flex-wrap:wrap;">
                     <button id="viz-sop-export" style="flex:1;padding:6px 10px;font-size:9.5px;letter-spacing:0.06em;border:1px solid var(--gold-soft);background:var(--panel-2);color:var(--gold);cursor:pointer;border-radius:4px;">⬇ EXPORT ALL (.json)</button>
@@ -5421,7 +5479,7 @@
                     <input type="file" id="viz-sop-import-input" hidden accept=".json,application/json">
                   </div>
                 </div>
-              </details>
+              </div>
 
               <!-- Asset name (shown on the canvas instead of creator name) -->
               <div style="font-size:9.5px;color:var(--gold-soft);text-transform:uppercase;letter-spacing:0.10em;margin-bottom:6px;">Asset Name (shown on canvas)</div>
@@ -11277,7 +11335,10 @@ function buildVisualizerSVG(viz, creatorName, options = {}) {
     overlay.style.display = 'flex';
     overlay.style.alignItems = 'center';
     overlay.style.justifyContent = 'center';
-    overlay.style.zIndex = '4';
+    // Z-index 3 — sits ABOVE the procedural pattern + waveform but BELOW the
+    // added logo (z-index 4) so the brand mark always reads on top of the
+    // uploaded asset file, per user spec.
+    overlay.style.zIndex = '3';
     overlay.style.pointerEvents = 'none';
 
     const inner = document.createElement('div');
@@ -11399,15 +11460,17 @@ function buildVisualizerSVG(viz, creatorName, options = {}) {
     img.style.maxWidth = logoSizePct + '%';
     img.style.maxHeight = logoSizePct + '%';
     img.src = viz.logoDataURL;
-    // Vertical position offset — slider value is a % of canvas height (-45 → +45).
-    // Implemented via absolute positioning so the logo can slide above/below center.
+    // The logo ALWAYS sits absolutely positioned over the uploaded asset file
+    // so it renders on top regardless of DOM flow. Default = centered; the Y
+    // slider shifts it up / down. Z-index 4 keeps it above the asset overlay
+    // (z-index 3) per user request "LOGO SHOULD BE OVER TOP OF UPLOADED FILE".
     const logoY = (typeof viz.logoY === 'number') ? Math.max(-45, Math.min(45, viz.logoY)) : 0;
-    if (logoY !== 0) {
-      img.style.position = 'absolute';
-      img.style.left = '50%';
-      img.style.top = (50 + logoY) + '%';
-      img.style.transform = 'translate(-50%, -50%)';
-    }
+    img.style.position = 'absolute';
+    img.style.left = '50%';
+    img.style.top = (50 + logoY) + '%';
+    img.style.transform = 'translate(-50%, -50%)';
+    img.style.zIndex = '4';
+    img.style.pointerEvents = 'none';
     wrap.appendChild(img);
     if (size === 'banner') {
       let fc;
@@ -12215,7 +12278,7 @@ function loadVizSOPs() {
 function saveVizSOPs(arr) {
   try { localStorage.setItem(VIZ_SOP_STORAGE_KEY, JSON.stringify(arr)); }
   catch (e) {
-    if (typeof toast === 'function') toast('Could not save SOP (storage quota exceeded?)', 'err', 4000);
+    if (typeof toast === 'function') toast('Could not save template (storage quota exceeded?)', 'err', 4000);
   }
 }
 
@@ -12277,7 +12340,7 @@ function renderVizSOPList() {
     applyBtn.style.cssText = 'padding:4px 9px;font-size:9px;letter-spacing:0.06em;border:1px solid var(--gold);background:rgba(240,196,25,0.10);color:var(--gold);border-radius:4px;cursor:pointer;';
     applyBtn.addEventListener('click', () => {
       applyVizSOP(sop.config);
-      if (typeof toast === 'function') toast('SOP "' + sop.name + '" applied', 'ok', 3000);
+      if (typeof toast === 'function') toast('Template "' + sop.name + '" applied', 'ok', 3000);
     });
     const delBtn = document.createElement('button');
     delBtn.textContent = '✕';
@@ -12288,7 +12351,7 @@ function renderVizSOPList() {
       const remaining = loadVizSOPs().filter(s => s.id !== sop.id);
       saveVizSOPs(remaining);
       renderVizSOPList();
-      if (typeof toast === 'function') toast('SOP deleted', 'ok', 2500);
+      if (typeof toast === 'function') toast('Template deleted', 'ok', 2500);
     });
     row.appendChild(name);
     row.appendChild(meta);
@@ -12718,7 +12781,7 @@ if (_vizSopSave) _vizSopSave.addEventListener('click', () => {
   const nameInput = document.getElementById('viz-sop-name');
   const name = (nameInput && nameInput.value || '').trim() || ('SOP · ' + new Date().toLocaleDateString());
   if (!state.current.visualizer) {
-    if (typeof toast === 'function') toast('Configure the visualizer first, then save as SOP', 'warn', 3500);
+    if (typeof toast === 'function') toast('Configure the visualizer first, then save as template', 'warn', 3500);
     return;
   }
   const sop = {
@@ -12732,14 +12795,14 @@ if (_vizSopSave) _vizSopSave.addEventListener('click', () => {
   saveVizSOPs(sops);
   if (nameInput) nameInput.value = '';
   renderVizSOPList();
-  if (typeof toast === 'function') toast('SOP "' + sop.name + '" saved — re-apply it to any asset', 'ok', 4000);
+  if (typeof toast === 'function') toast('Template "' + sop.name + '" saved — re-apply it to any asset', 'ok', 4000);
 });
 
 const _vizSopExport = document.getElementById('viz-sop-export');
 if (_vizSopExport) _vizSopExport.addEventListener('click', () => {
   const sops = loadVizSOPs();
   if (!sops.length) {
-    if (typeof toast === 'function') toast('No SOPs to export yet', 'warn', 2500);
+    if (typeof toast === 'function') toast('No templates to export yet', 'warn', 2500);
     return;
   }
   const blob = new Blob([JSON.stringify({ format: 'wireip-viz-sop-v1', exportedAt: new Date().toISOString(), sops }, null, 2)], { type: 'application/json' });
@@ -12762,7 +12825,7 @@ if (_vizSopImportBtn && _vizSopImportInp) {
       const text = await f.text();
       const parsed = JSON.parse(text);
       const incoming = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.sops) ? parsed.sops : []);
-      if (!incoming.length) throw new Error('No SOPs found in file');
+      if (!incoming.length) throw new Error('No templates found in file');
       const existing = loadVizSOPs();
       // Dedupe by id; rename collisions by appending " (imported)".
       const ids = new Set(existing.map(s => s.id));
@@ -12773,9 +12836,9 @@ if (_vizSopImportBtn && _vizSopImportInp) {
       });
       saveVizSOPs(existing);
       renderVizSOPList();
-      if (typeof toast === 'function') toast('Imported ' + incoming.length + ' SOP(s)', 'ok', 3500);
+      if (typeof toast === 'function') toast('Imported ' + incoming.length + ' template(s)', 'ok', 3500);
     } catch (e) {
-      if (typeof toast === 'function') toast('Import failed — invalid SOP file', 'err', 3500);
+      if (typeof toast === 'function') toast('Import failed — invalid template file', 'err', 3500);
     }
     _vizSopImportInp.value = '';
   });
