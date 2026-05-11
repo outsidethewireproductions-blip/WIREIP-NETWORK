@@ -7,11 +7,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#050606">
 <title>WireIP Network™ — IP Tokenization Vault · Institutional Edition v4.1</title>
-<!-- Preload the OTW brand logo so it's available before the splash paints on both desktop and mobile.
-     If the file is missing in the deploy, the inline SVG default (below) is used as a fallback. -->
-<link rel="preload" as="image" href="/otw-logo.png" fetchpriority="high">
-<link rel="icon" type="image/png" href="/otw-logo.png">
-<link rel="apple-touch-icon" href="/otw-logo.png">
+<!-- OTW logo references removed at user request. -->
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -4428,26 +4425,9 @@
 <body>
 <!-- ===== Boot Splash — Clean & Quick ===== -->
 <div id="boot-splash">
-  <div class="splash-logo splash-logo-big">
-    <!-- PNG attempt first — if /otw-logo.png exists in the deploy, the browser loads it eagerly (preloaded in <head>) and onload hides the SVG. If it 404s, onerror hides the img and the SVG below stays visible. Same code path on desktop and mobile, no JS race. -->
-    <img id="splash-logo-img" src="/otw-logo.png" alt="OTW"
-         style="width:100%;height:100%;object-fit:contain;display:none;"
-         onload="this.style.display='block';var s=document.getElementById('splash-logo-default');if(s)s.style.display='none';"
-         onerror="this.style.display='none';this.removeAttribute('src');">
-    <!-- ⚜ OTW MASTER LOGO — single source of truth, mirrored exactly in #brand-logo-default below. Do not diverge. -->
-    <svg id="splash-logo-default" class="otw-master-logo" xmlns="http://www.w3.org/2000/svg" viewBox="-6 -6 212 212"
-         preserveAspectRatio="xMidYMid meet" overflow="visible"
-         style="width:100%;height:100%;display:block;overflow:visible;">
-      <g fill="none" stroke="#f0c419" stroke-linecap="round" stroke-linejoin="round" stroke-width="9">
-        <path d="M 100 16 A 84 84 0 1 1 116 18"/>
-        <path d="M 56 50 L 100 168 L 144 50"/>
-      </g>
-      <circle cx="100" cy="16" r="6.5" fill="#f0c419"/>
-      <circle cx="116" cy="18" r="5" fill="#f0c419"/>
-      <rect x="80" y="84" width="11" height="58" rx="5.5" ry="5.5" fill="#f0c419"/>
-      <rect x="94" y="80" width="12" height="62" rx="6" ry="6" fill="#f0c419"/>
-      <rect x="109" y="84" width="11" height="58" rx="5.5" ry="5.5" fill="#f0c419"/>
-    </svg>
+  <!-- OTW logo removed at user request — splash now shows just the wordmark. -->
+  <div class="splash-logo splash-logo-big" style="display:flex;align-items:center;justify-content:center;color:#f0c419;font-family:'IBM Plex Mono',ui-monospace,monospace;letter-spacing:0.20em;text-transform:uppercase;text-align:center;">
+    <div style="font-size:22px;font-weight:700;">WIREIP&nbsp;NETWORK™</div>
   </div>
   <div class="splash-status" id="splash-status">⌬ <span class="blink">CLEARING SETTLEMENT</span></div>
 </div>
@@ -4459,25 +4439,8 @@
       <svg viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
     </button>
     <div class="brand-block">
-      <div class="brand-mark" id="brand-mark" title="OTW">
-        <img id="brand-logo-img" src="/otw-logo.png" alt="OTW"
-             style="width:100%;height:100%;object-fit:contain;display:none;"
-             onload="this.style.display='block';var s=document.getElementById('brand-logo-default');if(s)s.style.display='none';"
-             onerror="this.style.display='none';this.removeAttribute('src');">
-        <!-- ⚜ OTW MASTER LOGO — exact mirror of #splash-logo-default above. Same artwork is rendered for desktop top-left, mobile top-left, and the boot/splash access screen. -->
-        <svg id="brand-logo-default" class="otw-master-logo" xmlns="http://www.w3.org/2000/svg" viewBox="-6 -6 212 212"
-             preserveAspectRatio="xMidYMid meet" overflow="visible"
-             style="width:100%;height:100%;display:block;overflow:visible;color:#f0c419;">
-          <g fill="none" stroke="#f0c419" stroke-linecap="round" stroke-linejoin="round" stroke-width="9">
-            <path d="M 100 16 A 84 84 0 1 1 116 18"/>
-            <path d="M 56 50 L 100 168 L 144 50"/>
-          </g>
-          <circle cx="100" cy="16" r="6.5" fill="#f0c419"/>
-          <circle cx="116" cy="18" r="5" fill="#f0c419"/>
-          <rect x="80" y="84" width="11" height="58" rx="5.5" ry="5.5" fill="#f0c419"/>
-          <rect x="94" y="80" width="12" height="62" rx="6" ry="6" fill="#f0c419"/>
-          <rect x="109" y="84" width="11" height="58" rx="5.5" ry="5.5" fill="#f0c419"/>
-        </svg>
+      <!-- Brand mark removed at user request. Hidden file input kept for future custom logo uploads. -->
+      <div class="brand-mark" id="brand-mark" style="display:none;">
         <input type="file" id="brand-logo-input" hidden accept="image/*,application/pdf,.pdf">
       </div>
       <div class="brand-text">
@@ -16071,10 +16034,11 @@ document.addEventListener('click', (e) => {
 // BRAND LOGO — auto-discovers a logo file in the project folder,
 //   falls back to localStorage, supports drop/click upload.
 // ============================================================
-// v2 — invalidates the previous cached value so stale/wrong logos cleared by previous auto-discovery don't leak through.
-const BRAND_LOGO_KEY = 'wireip-brand-logo-v2';
-const BRAND_LOGO_OLD_KEYS = ['wireip-brand-logo-v1'];
-// Clean up any old keys so the SVG default always shows unless the user explicitly uploads.
+// v3 — Black Paper cover is now the canonical brand. The previous SVG placeholder
+// has been deleted forever. Bumping to v3 invalidates every prior cached value
+// (including the stale ones cached under v1/v2) so the user starts clean.
+const BRAND_LOGO_KEY = 'wireip-brand-logo-v3';
+const BRAND_LOGO_OLD_KEYS = ['wireip-brand-logo-v1', 'wireip-brand-logo-v2'];
 try { BRAND_LOGO_OLD_KEYS.forEach(k => localStorage.removeItem(k)); } catch(e) {}
 
 // Common filenames the user might have saved their logo as
@@ -16136,61 +16100,52 @@ async function urlToDataURL(url) {
   }
 }
 
-// Re-shows the SVG default if the PNG/URL we set fails to load (silently revert)
+// Clears any custom brand image override. No derivative artwork exists to revert to —
+// if the user clears their override, the deploy's /otw-logo.png is fetched again.
 function restoreSvgDefaults() {
   const img = document.getElementById('brand-logo-img');
-  const defaultSvg = document.getElementById('brand-logo-default');
-  if (img) { img.style.display = 'none'; img.removeAttribute('src'); }
-  if (defaultSvg) defaultSvg.style.display = 'block';
+  if (img) { img.style.display = 'block'; img.src = '/otw-logo.png'; }
   const splashImg = document.getElementById('splash-logo-img');
-  const splashSvg = document.getElementById('splash-logo-default');
-  if (splashImg) { splashImg.style.display = 'none'; splashImg.removeAttribute('src'); }
-  if (splashSvg) splashSvg.style.display = 'block';
+  if (splashImg) { splashImg.style.display = 'block'; splashImg.src = '/otw-logo.png'; }
 }
 
 function applyBrandLogo(src) {
   if (!src) return;
   const img = document.getElementById('brand-logo-img');
-  const defaultSvg = document.getElementById('brand-logo-default');
-  const empty = document.getElementById('brand-logo-empty');
   const splashImg = document.getElementById('splash-logo-img');
-  const splashSvg = document.getElementById('splash-logo-default');
+  const loadingFrame = document.getElementById('splash-logo-loading');
 
-  // Helper: only hide the SVG fallback once the image has actually loaded.
-  // If the image fails or never loads, the SVG stays visible — so desktop and
-  // mobile always show *some* OTW logo (never a broken-image icon).
-  function attachLoadHandlers(target, fallbackSvg) {
+  function attachLoadHandlers(target) {
     if (!target) return;
     target.onload = () => {
       target.style.display = 'block';
-      if (fallbackSvg) fallbackSvg.style.display = 'none';
+      if (loadingFrame) loadingFrame.style.display = 'none';
     };
     target.onerror = () => {
       target.style.display = 'none';
-      if (fallbackSvg) fallbackSvg.style.display = 'block';
+      target.removeAttribute('src');
+      if (loadingFrame) loadingFrame.style.display = 'flex';
+      if (typeof window.bootstrapLogoFromBlackPaper === 'function') {
+        window.bootstrapLogoFromBlackPaper();
+      }
     };
   }
 
   if (img) {
-    attachLoadHandlers(img, defaultSvg);
+    attachLoadHandlers(img);
     img.src = src;
-    // If image is cached, the onload may have already fired before src was set.
-    if (img.complete && img.naturalWidth > 0) {
-      img.style.display = 'block';
-      if (defaultSvg) defaultSvg.style.display = 'none';
-    }
+    if (img.complete && img.naturalWidth > 0) img.style.display = 'block';
   }
-  if (empty) empty.style.display = 'none';
 
   if (splashImg) {
     splashImg.style.width = '100%';
     splashImg.style.height = '100%';
     splashImg.style.objectFit = 'contain';
-    attachLoadHandlers(splashImg, splashSvg);
+    attachLoadHandlers(splashImg);
     splashImg.src = src;
     if (splashImg.complete && splashImg.naturalWidth > 0) {
       splashImg.style.display = 'block';
-      if (splashSvg) splashSvg.style.display = 'none';
+      if (loadingFrame) loadingFrame.style.display = 'none';
     }
     const wrap = splashImg.closest('.splash-logo');
     if (wrap) wrap.style.display = 'flex';
@@ -16237,39 +16192,45 @@ async function autoExtractFromBlackPaper() {
   return null;
 }
 
-(async function initBrandLogo() {
-  // The inline SVG default (#splash-logo-default and #brand-logo-default) is the
-  // source of truth and renders immediately. Mobile and desktop both show this
-  // same SVG by default — no network races, no PNG auto-discovery, no PDF
-  // extraction. A custom logo only replaces the SVG when the user explicitly
-  // uploads one (click the brand mark → file picker → PNG/JPG/SVG/PDF).
-  let appliedSrc = null;
+// OTW logo bootstrap fully disabled at user request — this is now a no-op stub.
+let _bootstrapInFlight = false;
+let _bootstrapDone = true;  // pretend we're done so any callers exit immediately
+window.bootstrapLogoFromBlackPaper = async function bootstrapLogoFromBlackPaper() {
+  return; // disabled
+};
+async function _disabledBootstrapLogoFromBlackPaper() {
+  if (_bootstrapInFlight || _bootstrapDone) return;
+  _bootstrapInFlight = true;
+  // Show "Awaiting OTW Brand…" indicator inside the splash while extraction runs
+  const loadingFrame = document.getElementById('splash-logo-loading');
+  if (loadingFrame) loadingFrame.style.display = 'flex';
   try {
-    const saved = localStorage.getItem(BRAND_LOGO_KEY);
-    if (saved) { applyBrandLogo(saved); appliedSrc = saved; }
-  } catch(e) {}
-  // (Auto-discovery + Black Paper auto-extraction intentionally disabled.
-  // They previously caused mobile to show the wrong logo on slow networks
-  // and to cache stale/incorrect images. To re-enable in dev only:
-  //   ?autologo=1 in the URL  →  see below.)
-  if (!appliedSrc && /[?&]autologo=1/.test(location.search)) {
-    try {
-      const found = await discoverBrandLogo();
-      if (found) {
-        let dataURL = null;
-        try { dataURL = await urlToDataURL(found); } catch(e) {}
-        const next = dataURL || found;
-        if (next) {
-          applyBrandLogo(next);
-          appliedSrc = next;
-          if (dataURL) {
-            try { localStorage.setItem(BRAND_LOGO_KEY, dataURL); } catch(e) {}
-          }
-        }
+    const dataURL = await autoExtractFromBlackPaper();
+    if (dataURL) {
+      applyBrandLogo(dataURL);
+      try { localStorage.setItem(BRAND_LOGO_KEY, dataURL); } catch(e) {}
+      _bootstrapDone = true;
+      if (loadingFrame) loadingFrame.style.display = 'none';
+    } else {
+      // Extraction failed — likely the PDF isn't in the deploy yet. Keep the
+      // loading frame visible so the user can see what's expected.
+      if (loadingFrame) {
+        loadingFrame.style.display = 'flex';
+        loadingFrame.textContent = '⌬ Push Black Paper PDF to repo for auto-extract';
+        loadingFrame.style.fontSize = '9px';
       }
-    } catch(e) {}
+    }
+  } catch (e) {} finally {
+    _bootstrapInFlight = false;
   }
-  // The SVG default stays visible by default — desktop + mobile match exactly.
+};
+
+(async function initBrandLogo() {
+  // OTW logo handling fully disabled at user request. No image, no extraction, no cache.
+  try {
+    localStorage.removeItem(BRAND_LOGO_KEY);
+    (BRAND_LOGO_OLD_KEYS || []).forEach(k => { try { localStorage.removeItem(k); } catch(e) {} });
+  } catch(e) {}
   // Wire the setup modal's drop zone
   const lsmDrop = document.getElementById('lsm-drop');
   const lsmInput = document.getElementById('lsm-input');
@@ -16394,24 +16355,30 @@ async function extractLogoFromPDF(file) {
   const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
   const page = await pdf.getPage(1);
   const baseViewport = page.getViewport({ scale: 1 });
-  const targetWidth = 1400;
+  // High-resolution render so the cropped logo stays sharp at large splash sizes
+  const targetWidth = 2400;
   const scale = targetWidth / baseViewport.width;
   const viewport = page.getViewport({ scale });
   const canvas = document.createElement('canvas');
   canvas.width = Math.ceil(viewport.width);
   canvas.height = Math.ceil(viewport.height);
   const ctx = canvas.getContext('2d');
-  await page.render({ canvasContext: ctx, viewport }).promise;
-  // Find dense gold-pixel bounding box
+  // Use white background so the alpha channel is preserved cleanly through crop
+  await page.render({ canvasContext: ctx, viewport, background: 'rgba(0,0,0,0)' }).promise;
+
+  // Scan only the TOP HALF of the cover (logos are nearly always above the fold).
+  // This avoids accidentally picking up a gold accent rule lower on the page.
   const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const px = img.data, w = canvas.width, h = canvas.height;
-  let minX = w, minY = h, maxX = 0, maxY = 0, gold = 0;
-  // Gold is roughly: R 180-255, G 140-220, B 0-80
-  for (let y = 0; y < h; y += 2) {
+  const scanH = Math.floor(h * 0.55);
+  let minX = w, minY = scanH, maxX = 0, maxY = 0, gold = 0;
+  // Gold-paint pixel detector (tuned for the OTW yellow #f0c419 on dark backgrounds):
+  //   R ≥ 170, G between 110 and 230, B ≤ 110, R-B contrast ≥ 90
+  for (let y = 0; y < scanH; y += 2) {
     for (let x = 0; x < w; x += 2) {
       const i = (y * w + x) * 4;
       const r = px[i], g = px[i+1], b = px[i+2];
-      if (r > 170 && r < 255 && g > 130 && g < 220 && b < 90 && r - b > 100) {
+      if (r >= 170 && g >= 110 && g <= 230 && b <= 110 && (r - b) >= 90) {
         if (x < minX) minX = x;
         if (x > maxX) maxX = x;
         if (y < minY) minY = y;
@@ -16420,17 +16387,19 @@ async function extractLogoFromPDF(file) {
       }
     }
   }
-  if (gold < 200 || maxX <= minX || maxY <= minY) {
-    // Fallback: just use the top-center quarter where covers tend to put logos
-    const cropX = Math.floor(w * 0.30), cropY = Math.floor(h * 0.05);
-    const cropW = Math.floor(w * 0.40), cropH = Math.floor(h * 0.30);
+  if (gold < 400 || maxX <= minX || maxY <= minY) {
+    // Fallback: top-center quarter where covers tend to put logos
+    const cropX = Math.floor(w * 0.30), cropY = Math.floor(h * 0.03);
+    const cropW = Math.floor(w * 0.40), cropH = Math.floor(h * 0.32);
     return cropCanvasToDataURL(canvas, cropX, cropY, cropW, cropH);
   }
-  // Pad the bbox by ~6% of width
-  const pad = Math.floor(w * 0.025);
-  minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
-  maxX = Math.min(w - 1, maxX + pad); maxY = Math.min(h - 1, maxY + pad);
-  // Make square for nicer brand-mark
+  // Pad the bbox by ~4% of width on each side for some breathing room
+  const pad = Math.floor(w * 0.04);
+  minX = Math.max(0, minX - pad);
+  minY = Math.max(0, minY - pad);
+  maxX = Math.min(w - 1, maxX + pad);
+  maxY = Math.min(h - 1, maxY + pad);
+  // Make square for a consistent brand-mark crop (logos look best square)
   const cw = maxX - minX, ch = maxY - minY;
   const side = Math.max(cw, ch);
   let cx = minX - Math.floor((side - cw) / 2);
@@ -16444,7 +16413,10 @@ function cropCanvasToDataURL(canvas, x, y, cw, ch) {
   const out = document.createElement('canvas');
   out.width = cw; out.height = ch;
   const octx = out.getContext('2d');
+  octx.imageSmoothingEnabled = true;
+  octx.imageSmoothingQuality = 'high';
   octx.drawImage(canvas, x, y, cw, ch, 0, 0, cw, ch);
+  // Keep PNG so the spray-paint edges + transparency on the black background stay crisp
   return out.toDataURL('image/png');
 }
 
