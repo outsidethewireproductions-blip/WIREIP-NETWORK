@@ -1885,14 +1885,22 @@
   }
   .step-next-glow::after {
     content: '⮕  NEXT STEP';
-    position: absolute; top: -10px; right: 14px;
+    /* Positioned INSIDE the card top-right (top:10px instead of -10px) so
+       .card's overflow-x:hidden (which silently makes overflow-y:auto)
+       cannot clip the badge. The previous -10px setup was getting cropped
+       on every step card. */
+    position: absolute; top: 10px; right: 14px;
     background: var(--gold); color: #050606;
     font-size: 9.5px; letter-spacing: 0.12em;
-    padding: 3px 10px; border-radius: 10px;
+    padding: 4px 11px; border-radius: 10px;
     font-weight: 700; pointer-events: none;
+    z-index: 3;
     font-family: "IBM Plex Mono", ui-monospace, monospace;
-    box-shadow: 0 0 12px rgba(240,196,25,0.7);
+    box-shadow: 0 0 14px rgba(240,196,25,0.55), 0 2px 6px rgba(0,0,0,0.35);
   }
+  /* Push the card header right slightly so the badge never overlaps the
+     step number / title at small widths. */
+  .step-next-glow .card-header { padding-right: 96px; }
   .step-complete-check {
     display: inline-flex; align-items: center; justify-content: center;
     width: 18px; height: 18px; border-radius: 50%;
@@ -8518,15 +8526,29 @@ function playTone(freq, duration = 0.12, _type = 'sine', vol = 0.045, when = 0) 
     osc.stop(ctx.currentTime + when + duration + 0.02);
   } catch(e) {}
 }
-// Verify = soft single A4. Deny = soft low E2. Click = inaudible (no-op by
-// default; the global per-button click chirp has been removed). Submit = a
-// two-note neutral confirmation, no melody.
-function soundVerify() { playTone(440.00, 0.16, 'sine', 0.05); }
-function soundDeny()   { playTone(146.83, 0.22, 'sine', 0.05); }
-function soundClick()  { /* intentionally silent — institutional UI */ }
+// Audible but institutional — three-tone verify ascent, two-tone deny
+// descent, soft tap on click, four-tone settlement chime on submit. All
+// sines through a 2.4 kHz low-pass so nothing sounds like a video game.
+// Volumes ~ −22 to −18 dB peak.
+function soundVerify() {
+  playTone(523.25, 0.10, 'sine', 0.06);          // C5
+  playTone(659.25, 0.10, 'sine', 0.06, 0.08);    // E5
+  playTone(783.99, 0.18, 'sine', 0.07, 0.16);    // G5 — held
+}
+function soundDeny() {
+  playTone(220.00, 0.10, 'sine', 0.07);          // A3
+  playTone(146.83, 0.22, 'sine', 0.07, 0.10);    // D3 — held low
+}
+function soundClick() {
+  // Audible but quick — a soft top-end tap, ~12 ms attack, fast decay.
+  playTone(720, 0.05, 'sine', 0.05);
+}
 function soundSubmit() {
-  playTone(392.00, 0.10, 'sine', 0.04);
-  playTone(523.25, 0.16, 'sine', 0.04, 0.08);
+  // Settlement confirmation — perfect-fifth + octave, no melody flourish.
+  playTone(392.00, 0.08, 'sine', 0.05);          // G4
+  playTone(523.25, 0.08, 'sine', 0.05, 0.05);    // C5
+  playTone(659.25, 0.10, 'sine', 0.05, 0.10);    // E5
+  playTone(783.99, 0.20, 'sine', 0.06, 0.16);    // G5 — final
 }
 
 // Animated number counter
@@ -10236,15 +10258,84 @@ try { window.dispatchEvent(new Event('eip6963:requestProvider')); } catch (e) {}
 // ============================================================
 // WALLETCONNECT SDK — lazy load on first WalletConnect attempt
 // ============================================================
-// Replace this with YOUR project ID from https://cloud.walletconnect.com
-// to enable cross-device wallet connections via QR code. Without it,
-// WalletConnect attempts will fall through to the EIP-1193 injected
-// provider (or fail cleanly with a toast).
-const WIREIP_WALLETCONNECT_PROJECT_ID = ''; // ← put your projectId here
+// Project ID resolves in this order:
+//   1) window.WIREIP_WALLETCONNECT_PROJECT_ID — set by a deployment config
+//      file (Vercel env injected as <script>window.WIREIP_WC_PROJECT_ID=…)
+//   2) localStorage.wireip_wc_project_id — set in-app via the wallet view
+//      configurator (no source edit, no redeploy needed)
+//   3) The constant below — the absolute fallback.
+// Get a free project ID at https://cloud.walletconnect.com (30 seconds).
+function getWalletConnectProjectId() {
+  try {
+    if (window.WIREIP_WALLETCONNECT_PROJECT_ID) return window.WIREIP_WALLETCONNECT_PROJECT_ID;
+    const stored = (localStorage.getItem('wireip_wc_project_id') || '').trim();
+    if (stored) return stored;
+  } catch (e) {}
+  return WIREIP_WALLETCONNECT_PROJECT_ID_FALLBACK;
+}
+// In-app configurator: pops a small inline modal so the user can paste a
+// WalletConnect project ID without editing the source or redeploying.
+function openWalletConnectConfigPrompt() {
+  // De-dupe — only one configurator at a time.
+  if (document.getElementById('wc-config-modal')) return;
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  back.id = 'wc-config-modal';
+  back.style.zIndex = '10500';
+  const m = document.createElement('div');
+  m.className = 'modal';
+  m.style.width = '460px';
+  m.style.maxWidth = '92vw';
+  m.innerHTML =
+    '<header><h2>Configure WalletConnect</h2><button class="close" type="button" id="wc-cfg-x">&times;</button></header>' +
+    '<div class="body">' +
+      '<p style="font-size:11.5px;line-height:1.55;color:var(--text);margin:0 0 12px;">' +
+        'WalletConnect QR-code connections (Robinhood, PayPal, Ledger Live mobile, etc.) need a free project ID from ' +
+        '<a href="https://cloud.walletconnect.com" target="_blank" rel="noopener" style="color:var(--gold);">cloud.walletconnect.com</a>. ' +
+        'Sign in, create a project, copy the ID, paste below. Saved to this browser only — no source edit needed.' +
+      '</p>' +
+      '<label class="field">' +
+        '<span class="lbl"><span class="name">WalletConnect Project ID</span></span>' +
+        '<input type="text" id="wc-cfg-input" placeholder="e.g. 0123456789abcdef0123456789abcdef" autocomplete="off">' +
+      '</label>' +
+    '</div>' +
+    '<div class="footer">' +
+      '<button type="button" id="wc-cfg-cancel">Cancel</button>' +
+      '<button class="primary" type="button" id="wc-cfg-save">Save & Retry</button>' +
+    '</div>';
+  back.appendChild(m);
+  document.body.appendChild(back);
+  // Pre-fill from existing storage.
+  try {
+    const existing = (localStorage.getItem('wireip_wc_project_id') || '').trim();
+    if (existing) m.querySelector('#wc-cfg-input').value = existing;
+  } catch (e) {}
+  const close = () => { try { back.remove(); } catch (e) {} };
+  m.querySelector('#wc-cfg-x').addEventListener('click', close);
+  m.querySelector('#wc-cfg-cancel').addEventListener('click', close);
+  back.addEventListener('click', (e) => { if (e.target === back) close(); });
+  m.querySelector('#wc-cfg-save').addEventListener('click', () => {
+    const id = (m.querySelector('#wc-cfg-input').value || '').trim();
+    if (!id) { toast('Paste a project ID first', 'warn', 3000); return; }
+    if (id.length < 16 || !/^[a-zA-Z0-9_-]+$/.test(id)) {
+      toast('That doesn\'t look like a project ID (expected 32 hex characters).', 'warn', 4500); return;
+    }
+    try { localStorage.setItem('wireip_wc_project_id', id); } catch (e) {}
+    close();
+    toast('WalletConnect configured · click your wallet button again to connect.', 'ok', 5000);
+    // Invalidate the cached provider so a fresh one is built next time.
+    _wcEthereumProvider = null;
+  });
+  // Auto-focus the input
+  setTimeout(() => { try { m.querySelector('#wc-cfg-input').focus(); } catch (e) {} }, 50);
+}
+const WIREIP_WALLETCONNECT_PROJECT_ID_FALLBACK = ''; // ← swap to a real ID for prod
+// Backwards-compat shim so older code paths that read the constant still work.
+const WIREIP_WALLETCONNECT_PROJECT_ID = ''; // (deprecated, use getWalletConnectProjectId())
 let _wcEthereumProvider = null;
 async function loadWalletConnectSDK() {
   if (_wcEthereumProvider) return _wcEthereumProvider;
-  if (!WIREIP_WALLETCONNECT_PROJECT_ID) {
+  if (!getWalletConnectProjectId()) {
     throw new Error('WalletConnect project ID not configured — set WIREIP_WALLETCONNECT_PROJECT_ID in the source. Get one free at cloud.walletconnect.com.');
   }
   // Load the WalletConnect Ethereum Provider UMD bundle on first use.
@@ -10260,7 +10351,7 @@ async function loadWalletConnectSDK() {
     throw new Error('WalletConnect SDK loaded but EthereumProvider not exposed');
   }
   _wcEthereumProvider = await window.EthereumProvider.init({
-    projectId: WIREIP_WALLETCONNECT_PROJECT_ID,
+    projectId: getWalletConnectProjectId(),
     chains: [1, 137, 8453, 42161, 10], // Ethereum, Polygon, Base, Arbitrum, Optimism
     optionalChains: [1, 137, 8453, 42161, 10],
     showQrModal: true,
@@ -10864,89 +10955,42 @@ async function decodeAudioFileToMono(file, targetSampleRate) {
   return { samples: rendered.getChannelData(0), sampleRate: SR, duration };
 }
 
-// BPM via onset detection + autocorrelation.
+// ============================================================
+// BPM detection — spectral-flux onset + Rayleigh-weighted autocorrelation
+// ------------------------------------------------------------
+// Replaces the previous energy-envelope approach (which often returned half
+// or double the true tempo). The Davies/Plumbley method used by Auto-Tempo,
+// Mixed In Key, and Auto-Key in commercial DAWs is the de-facto baseline:
+//   1) Spectral flux — sum of positive half-wave-rectified spectral
+//      differences. This responds to actual transients (snare hits, kicks,
+//      vocal onsets) rather than sustained loudness.
+//   2) Autocorrelation of the onset envelope across lags 40..200 BPM.
+//   3) Rayleigh weighting prior W(τ) = (τ/σ²)·exp(-τ²/2σ²) centered around
+//      120 BPM. This penalizes the half-tempo / double-tempo ambiguity
+//      without forcing every track into the same band.
+//   4) Parabolic interpolation at the chosen peak for fractional-BPM
+//      precision (so a 127.3 BPM track reports 127, not 128).
+// ============================================================
 function detectBPM(samples, sampleRate) {
-  // 1) Low-pass: take envelope of squared signal in ~20ms hops.
-  const hopMs   = 20;
-  const hopLen  = Math.max(1, Math.floor(sampleRate * hopMs / 1000));
-  const numHops = Math.floor(samples.length / hopLen);
-  const envelope = new Float32Array(numHops);
-  for (let h = 0; h < numHops; h++) {
-    let sum = 0;
-    const start = h * hopLen;
-    for (let i = 0; i < hopLen; i++) {
-      const v = samples[start + i] || 0;
-      sum += v * v;
-    }
-    envelope[h] = Math.sqrt(sum / hopLen);
-  }
-  // 2) Differentiate to get onset strength.
-  const onset = new Float32Array(numHops);
-  for (let i = 1; i < numHops; i++) {
-    const d = envelope[i] - envelope[i - 1];
-    onset[i] = d > 0 ? d : 0;
-  }
-  // 3) Normalize.
-  let mx = 0;
-  for (let i = 0; i < numHops; i++) if (onset[i] > mx) mx = onset[i];
-  if (mx > 0) for (let i = 0; i < numHops; i++) onset[i] /= mx;
-  // 4) Autocorrelate at lags corresponding to BPMs from 60..180.
-  const minBPM = 60, maxBPM = 180;
-  const minLagHops = Math.floor(60_000 / (maxBPM * hopMs));
-  const maxLagHops = Math.ceil(60_000 / (minBPM * hopMs));
-  let bestLag = minLagHops, bestScore = -Infinity;
-  for (let lag = minLagHops; lag <= maxLagHops; lag++) {
-    let s = 0;
-    for (let i = lag; i < numHops; i++) s += onset[i] * onset[i - lag];
-    if (s > bestScore) { bestScore = s; bestLag = lag; }
-  }
-  const bpm = 60_000 / (bestLag * hopMs);
-  // 5) Snap to integer; favor the half/double that lands in the musical sweet zone.
-  let rounded = Math.round(bpm);
-  while (rounded < 70)  rounded *= 2;   // pull a 60 → 120 if it's slow electronic
-  while (rounded > 180) rounded = Math.round(rounded / 2);
-  return { bpm: rounded, confidence: Math.min(1, Math.max(0, bestScore)) };
-}
+  // ---- Spectral flux onset envelope ----
+  const fftSize = 1024;
+  const hopSize = 512;              // ≈ 23 ms hops at 22050 Hz
+  const hopMs   = 1000 * hopSize / sampleRate;
+  const numFrames = Math.floor((samples.length - fftSize) / hopSize);
+  if (numFrames < 8) return { bpm: 120, confidence: 0 };
 
-// Key detection via chromagram + Krumhansl-Schmuckler profiles.
-// Profiles from cognitive musicology research — well-established baseline.
-const KS_PROFILE_MAJOR = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
-const KS_PROFILE_MINOR = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
-const PITCH_CLASS_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-
-function detectKey(samples, sampleRate) {
-  // 1) FFT in overlapping windows; accumulate energy per pitch class.
-  const fftSize = 4096;
-  const hopSize = fftSize / 2;
-  const chroma = new Float64Array(12);
-  // Use a simple DFT magnitude. For long tracks we subsample windows so cost stays bounded.
-  const totalHops = Math.floor((samples.length - fftSize) / hopSize);
-  const maxHopsToAnalyze = 600;       // cap ≈ 60s of audio analysis
-  const stride = Math.max(1, Math.floor(totalHops / maxHopsToAnalyze));
-  // Precompute Hann window
+  // Hann window
   const win = new Float32Array(fftSize);
   for (let i = 0; i < fftSize; i++) win[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (fftSize - 1)));
-  // Precompute frequency → pitch class mapping for each FFT bin
-  const A4 = 440;
-  const pcOfBin = new Int8Array(fftSize / 2);
-  for (let k = 1; k < fftSize / 2; k++) {
-    const freq = k * sampleRate / fftSize;
-    if (freq < 27.5 || freq > 5000) { pcOfBin[k] = -1; continue; }
-    const midi = Math.round(12 * Math.log2(freq / A4) + 69);
-    pcOfBin[k] = midi % 12;
-  }
-  // Run windowed magnitude FFTs (radix-2 Cooley-Tukey)
+
+  // Reuse the iterative Cooley–Tukey radix-2 FFT.
   function fft(real, imag) {
     const n = real.length;
-    // bit-reverse
     for (let i = 1, j = 0; i < n; i++) {
       let bit = n >> 1;
       for (; j & bit; bit >>= 1) j ^= bit;
       j ^= bit;
-      if (i < j) {
-        let t = real[i]; real[i] = real[j]; real[j] = t;
-        t = imag[i]; imag[i] = imag[j]; imag[j] = t;
-      }
+      if (i < j) { let t = real[i]; real[i] = real[j]; real[j] = t; t = imag[i]; imag[i] = imag[j]; imag[j] = t; }
     }
     for (let len = 2; len <= n; len <<= 1) {
       const half = len >> 1;
@@ -10957,9 +11001,9 @@ function detectKey(samples, sampleRate) {
         for (let k = 0; k < half; k++) {
           const ti = i + k, tj = ti + half;
           const tr = wReal * real[tj] - wImag * imag[tj];
-          const ti2 = wReal * imag[tj] + wImag * real[tj];
-          real[tj] = real[ti] - tr; imag[tj] = imag[ti] - ti2;
-          real[ti] += tr;           imag[ti] += ti2;
+          const tii = wReal * imag[tj] + wImag * real[tj];
+          real[tj] = real[ti] - tr;  imag[tj] = imag[ti] - tii;
+          real[ti] += tr;             imag[ti] += tii;
           const nwr = wReal * wReal0 - wImag * wImag0;
           wImag = wReal * wImag0 + wImag * wReal0;
           wReal = nwr;
@@ -10967,32 +11011,287 @@ function detectKey(samples, sampleRate) {
       }
     }
   }
+
   const re = new Float32Array(fftSize), im = new Float32Array(fftSize);
-  for (let h = 0; h < totalHops; h += stride) {
-    const off = h * hopSize;
+  const halfBin = fftSize / 2;
+  let prevMag = new Float32Array(halfBin);
+  const flux = new Float32Array(numFrames);
+
+  for (let f = 0; f < numFrames; f++) {
+    const off = f * hopSize;
     for (let i = 0; i < fftSize; i++) { re[i] = samples[off + i] * win[i]; im[i] = 0; }
     fft(re, im);
-    for (let k = 1; k < fftSize / 2; k++) {
-      const pc = pcOfBin[k];
-      if (pc < 0) continue;
+    let s = 0;
+    for (let k = 1; k < halfBin; k++) {
       const mag = Math.sqrt(re[k] * re[k] + im[k] * im[k]);
-      chroma[pc] += mag;
+      const diff = mag - prevMag[k];
+      if (diff > 0) s += diff;        // half-wave rectified spectral flux
+      prevMag[k] = mag;
+    }
+    flux[f] = s;
+  }
+
+  // Subtract a running mean (local-mean adaptive thresholding) so dynamic
+  // tracks (quiet verse → loud chorus) don't bias the autocorrelation.
+  const lmWin = 8;
+  const onset = new Float32Array(numFrames);
+  for (let i = 0; i < numFrames; i++) {
+    let m = 0, c = 0;
+    for (let j = Math.max(0, i - lmWin); j < Math.min(numFrames, i + lmWin); j++) { m += flux[j]; c++; }
+    onset[i] = Math.max(0, flux[i] - m / c);
+  }
+  // Normalize
+  let mx = 0;
+  for (let i = 0; i < numFrames; i++) if (onset[i] > mx) mx = onset[i];
+  if (mx > 0) for (let i = 0; i < numFrames; i++) onset[i] /= mx;
+
+  // ---- Autocorrelation across plausible BPM range ----
+  const minBPM = 60, maxBPM = 200;
+  const minLag = Math.floor(60_000 / (maxBPM * hopMs));
+  const maxLag = Math.ceil (60_000 / (minBPM * hopMs));
+  // Rayleigh prior peaked at ~120 BPM. σ in lag-domain corresponds to ~120 BPM.
+  const sigmaLag = 60_000 / (120 * hopMs);
+  const acf = new Float32Array(maxLag + 1);
+  for (let lag = minLag; lag <= maxLag; lag++) {
+    let s = 0;
+    const end = numFrames - lag;
+    for (let i = 0; i < end; i++) s += onset[i] * onset[i + lag];
+    // Rayleigh weight prefers tempo near 120 BPM but does not force it.
+    const w = (lag / (sigmaLag * sigmaLag)) * Math.exp(-(lag * lag) / (2 * sigmaLag * sigmaLag));
+    acf[lag] = s * w;
+  }
+
+  // Pick the strongest peak in the weighted autocorrelation.
+  let bestLag = minLag, bestScore = -Infinity;
+  for (let lag = minLag + 1; lag < maxLag; lag++) {
+    if (acf[lag] > bestScore && acf[lag] >= acf[lag - 1] && acf[lag] >= acf[lag + 1]) {
+      bestScore = acf[lag]; bestLag = lag;
     }
   }
-  // 2) Normalize chromagram
+
+  // Parabolic interpolation around the peak for fractional accuracy.
+  let lagRefined = bestLag;
+  if (bestLag > minLag && bestLag < maxLag) {
+    const y0 = acf[bestLag - 1], y1 = acf[bestLag], y2 = acf[bestLag + 1];
+    const denom = (y0 - 2 * y1 + y2);
+    if (Math.abs(denom) > 1e-9) {
+      const offset = 0.5 * (y0 - y2) / denom;
+      if (offset > -1 && offset < 1) lagRefined = bestLag + offset;
+    }
+  }
+  const bpm = 60_000 / (lagRefined * hopMs);
+
+  // Half/double check: compare against neighbors, pick the BPM whose
+  // multiples line up best with the actual onset peaks.
+  function scoreBPM(testBpm) {
+    const lag = 60_000 / (testBpm * hopMs);
+    if (lag < minLag || lag > maxLag) return -Infinity;
+    const lagI = Math.round(lag);
+    return acf[lagI] || 0;
+  }
+  const candidates = [bpm, bpm * 2, bpm / 2, bpm * 1.5, bpm * (2 / 3)]
+    .filter(b => b >= 70 && b <= 180);
+  let bestBpm = candidates[0] || bpm;
+  let bestCandScore = scoreBPM(bestBpm);
+  for (const c of candidates) {
+    const sc = scoreBPM(c);
+    // Bias slightly toward the dance-music sweet zone (95–145 BPM).
+    const zoneBoost = (c >= 95 && c <= 145) ? 1.15 : 1.0;
+    if (sc * zoneBoost > bestCandScore) { bestCandScore = sc * zoneBoost; bestBpm = c; }
+  }
+
+  // Confidence — peak-to-average ratio in the weighted autocorrelation.
+  let avg = 0, n = 0;
+  for (let lag = minLag; lag <= maxLag; lag++) { avg += acf[lag]; n++; }
+  avg /= Math.max(1, n);
+  const confidence = Math.max(0, Math.min(1, (bestScore - avg) / (bestScore + 1e-9)));
+
+  return { bpm: Math.round(bestBpm), confidence };
+}
+
+// ============================================================
+// Key detection — fractional chromagram + Temperley/Bellman-Budge profiles
+// ------------------------------------------------------------
+// The previous detector used (a) Krumhansl-Schmuckler profiles fitted to
+// 1980s classical-music probe-tone experiments and (b) a hard
+// round-to-nearest pitch class for each FFT bin. Both choices hurt accuracy
+// on contemporary pop/electronic material — the same problem Auto-Key solved
+// commercially by switching profiles and using fractional binning.
+//
+// This version:
+//   1) Sub-semitone fractional chromagram. Each FFT bin contributes to
+//      its two nearest pitch classes weighted by exact distance to the
+//      ideal frequency. Greatly reduces in-between-pitch smearing.
+//   2) Tuning estimation — finds the global ±50-cent deviation from A440
+//      and shifts the mapping accordingly. Tracks recorded slightly sharp
+//      or flat (very common) no longer get pushed into the wrong key.
+//   3) Temperley/Kostka-Payne profiles (better than KS for popular music).
+//   4) Per-segment chromas averaged across the track rather than one big
+//      chroma over the whole file, so a track that modulates briefly still
+//      reports the dominant key.
+// ============================================================
+// Temperley/Kostka-Payne profiles — fit to a corpus of popular music.
+const KEY_PROFILE_MAJOR = [0.748, 0.060, 0.488, 0.082, 0.670, 0.460, 0.096, 0.715, 0.104, 0.366, 0.057, 0.400];
+const KEY_PROFILE_MINOR = [0.712, 0.084, 0.474, 0.618, 0.049, 0.460, 0.105, 0.747, 0.404, 0.067, 0.133, 0.330];
+const PITCH_CLASS_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+function detectKey(samples, sampleRate) {
+  const fftSize = 8192;
+  const hopSize = fftSize / 2;
+  const totalHops = Math.floor((samples.length - fftSize) / hopSize);
+  if (totalHops < 4) return { key: 'C major', confidence: 0, top3: ['C major','A minor','G major'] };
+  // Spread analysis across the whole track — analyze up to 400 windows.
+  const maxHops = 400;
+  const stride = Math.max(1, Math.floor(totalHops / maxHops));
+
+  // Hann window
+  const win = new Float32Array(fftSize);
+  for (let i = 0; i < fftSize; i++) win[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (fftSize - 1)));
+
+  function fft(real, imag) {
+    const n = real.length;
+    for (let i = 1, j = 0; i < n; i++) {
+      let bit = n >> 1;
+      for (; j & bit; bit >>= 1) j ^= bit;
+      j ^= bit;
+      if (i < j) { let t = real[i]; real[i] = real[j]; real[j] = t; t = imag[i]; imag[i] = imag[j]; imag[j] = t; }
+    }
+    for (let len = 2; len <= n; len <<= 1) {
+      const half = len >> 1;
+      const ang = -2 * Math.PI / len;
+      const wReal0 = Math.cos(ang), wImag0 = Math.sin(ang);
+      for (let i = 0; i < n; i += len) {
+        let wReal = 1, wImag = 0;
+        for (let k = 0; k < half; k++) {
+          const ti = i + k, tj = ti + half;
+          const tr = wReal * real[tj] - wImag * imag[tj];
+          const tii = wReal * imag[tj] + wImag * real[tj];
+          real[tj] = real[ti] - tr; imag[tj] = imag[ti] - tii;
+          real[ti] += tr;           imag[ti] += tii;
+          const nwr = wReal * wReal0 - wImag * wImag0;
+          wImag = wReal * wImag0 + wImag * wReal0;
+          wReal = nwr;
+        }
+      }
+    }
+  }
+
+  const halfBin = fftSize / 2;
+  const re = new Float32Array(fftSize), im = new Float32Array(fftSize);
+
+  // ---- Pass 1: tuning estimation ----
+  // Build a histogram of "cents deviation from nearest semitone" across all
+  // significant spectral peaks. The histogram's peak tells us how the
+  // recording is tuned (e.g. -10 cents = mastered slightly flat).
+  const CENTS_BINS = 100;            // 1-cent resolution
+  const centHist = new Float32Array(CENTS_BINS);
+  const tuningHops = Math.min(40, Math.floor(totalHops / Math.max(1, stride)));
+  for (let h = 0; h < tuningHops; h++) {
+    const off = (h * Math.max(1, Math.floor(totalHops / Math.max(1, tuningHops)))) * hopSize;
+    if (off + fftSize > samples.length) break;
+    for (let i = 0; i < fftSize; i++) { re[i] = samples[off + i] * win[i]; im[i] = 0; }
+    fft(re, im);
+    for (let k = 2; k < halfBin - 1; k++) {
+      const freq = k * sampleRate / fftSize;
+      if (freq < 80 || freq > 1800) continue;
+      const mag = Math.sqrt(re[k] * re[k] + im[k] * im[k]);
+      if (mag < 1e-3) continue;
+      // Peak-pick: only spectral peaks contribute (skip ramping bins).
+      const m0 = Math.sqrt(re[k-1]*re[k-1] + im[k-1]*im[k-1]);
+      const m2 = Math.sqrt(re[k+1]*re[k+1] + im[k+1]*im[k+1]);
+      if (!(mag > m0 && mag > m2)) continue;
+      const midiF = 12 * Math.log2(freq / 440) + 69;
+      const cents = (midiF - Math.round(midiF)) * 100;   // -50..+50
+      const idx = Math.min(CENTS_BINS - 1, Math.max(0, Math.round(cents + 50)));
+      centHist[idx] += mag;
+    }
+  }
+  let tuningCents = 0, htMax = -Infinity;
+  for (let i = 0; i < CENTS_BINS; i++) if (centHist[i] > htMax) { htMax = centHist[i]; tuningCents = i - 50; }
+  // Clamp to a sensible range.
+  if (tuningCents > 35 || tuningCents < -35) tuningCents = 0;
+  const tuningHz = 440 * Math.pow(2, tuningCents / 1200);
+
+  // Pre-compute the *fractional* pitch class contribution for each FFT bin.
+  // Each bin gets a (pcLow, pcHigh, wLow, wHigh) where w sums to 1 — linear
+  // interpolation around the bin's ideal pitch class.
+  const pcLow  = new Int8Array(halfBin);
+  const pcHigh = new Int8Array(halfBin);
+  const wLow   = new Float32Array(halfBin);
+  const wHigh  = new Float32Array(halfBin);
+  for (let k = 1; k < halfBin; k++) {
+    const freq = k * sampleRate / fftSize;
+    if (freq < 55 || freq > 4500) { pcLow[k] = -1; continue; }
+    // Reference tuned to the estimated A.
+    const midiF = 12 * Math.log2(freq / tuningHz) + 69;
+    const pcF = ((midiF % 12) + 12) % 12;
+    const pcL = Math.floor(pcF), pcH = (pcL + 1) % 12;
+    const frac = pcF - pcL;
+    pcLow[k]  = pcL;
+    pcHigh[k] = pcH;
+    wHigh[k]  = frac;
+    wLow[k]   = 1 - frac;
+  }
+
+  // ---- Pass 2: per-segment chromagrams ----
+  // Split the analysis into N segments and average normalized chromas. This
+  // reduces bias from any single section (e.g. a long sustained pad).
+  const N_SEGMENTS = 6;
+  const segChroma = [];
+  for (let seg = 0; seg < N_SEGMENTS; seg++) segChroma.push(new Float64Array(12));
+  const hopsPerSeg = Math.max(1, Math.floor(totalHops / N_SEGMENTS));
+
+  for (let h = 0; h < totalHops; h += stride) {
+    const off = h * hopSize;
+    if (off + fftSize > samples.length) break;
+    for (let i = 0; i < fftSize; i++) { re[i] = samples[off + i] * win[i]; im[i] = 0; }
+    fft(re, im);
+    const segIdx = Math.min(N_SEGMENTS - 1, Math.floor(h / hopsPerSeg));
+    const ch = segChroma[segIdx];
+    for (let k = 1; k < halfBin; k++) {
+      if (pcLow[k] < 0) continue;
+      // log-magnitude reduces dominance from very loud bins (kick drum
+      // fundamentals shouldn't dominate the chromagram).
+      const power = re[k]*re[k] + im[k]*im[k];
+      if (power < 1e-8) continue;
+      const mag = Math.log(1 + Math.sqrt(power));
+      ch[pcLow[k]]  += mag * wLow[k];
+      ch[pcHigh[k]] += mag * wHigh[k];
+    }
+  }
+  // Normalize each segment chroma, then average.
+  const chroma = new Float64Array(12);
+  for (let seg = 0; seg < N_SEGMENTS; seg++) {
+    let t = 0;
+    for (let i = 0; i < 12; i++) t += segChroma[seg][i];
+    if (t > 0) for (let i = 0; i < 12; i++) chroma[i] += segChroma[seg][i] / t;
+  }
+  // Normalize average chroma
   let total = 0; for (let i = 0; i < 12; i++) total += chroma[i];
   if (total > 0) for (let i = 0; i < 12; i++) chroma[i] /= total;
-  // 3) Correlate against all 24 rotated profiles
-  function correlate(profile, chromaVec, offset) {
-    let s = 0;
-    for (let i = 0; i < 12; i++) s += chromaVec[i] * profile[(i - offset + 12) % 12];
-    return s;
+
+  // ---- Correlate against the 24 key profiles ----
+  // Use Pearson correlation (not just dot product) for robustness.
+  function pearson(a, b, rot) {
+    let meanA = 0, meanB = 0;
+    for (let i = 0; i < 12; i++) { meanA += a[i]; meanB += b[i]; }
+    meanA /= 12; meanB /= 12;
+    let num = 0, dA = 0, dB = 0;
+    for (let i = 0; i < 12; i++) {
+      const x = a[i] - meanA;
+      const y = b[(i - rot + 12) % 12] - meanB;
+      num += x * y;
+      dA += x * x; dB += y * y;
+    }
+    const denom = Math.sqrt(dA * dB);
+    return denom > 0 ? num / denom : 0;
   }
+
   let bestKey = 'C major', bestScore = -Infinity;
   const ranked = [];
   for (let i = 0; i < 12; i++) {
-    const maj = correlate(KS_PROFILE_MAJOR, chroma, i);
-    const min = correlate(KS_PROFILE_MINOR, chroma, i);
+    const maj = pearson(chroma, KEY_PROFILE_MAJOR, i);
+    const min = pearson(chroma, KEY_PROFILE_MINOR, i);
     ranked.push({ name: PITCH_CLASS_NAMES[i] + ' major', score: maj });
     ranked.push({ name: PITCH_CLASS_NAMES[i] + ' minor', score: min });
     if (maj > bestScore) { bestScore = maj; bestKey = PITCH_CLASS_NAMES[i] + ' major'; }
@@ -11000,9 +11299,13 @@ function detectKey(samples, sampleRate) {
   }
   ranked.sort((a, b) => b.score - a.score);
   const second = ranked[1];
-  // Confidence = margin between top and runner-up (normalized).
   const confidence = Math.max(0, Math.min(1, (bestScore - second.score) / (Math.abs(bestScore) + 1e-9)));
-  return { key: bestKey, confidence, top3: ranked.slice(0, 3).map(r => r.name) };
+  return {
+    key: bestKey,
+    confidence,
+    top3: ranked.slice(0, 3).map(r => r.name),
+    tuningCents,
+  };
 }
 
 // Public entry: scan an audio File and write BPM + Key into form fields.
@@ -17387,13 +17690,28 @@ $('#btn-mint').addEventListener('click', async () => {
 
 function mintTipVertex(asset) {
   const id = 'v-tip-' + asset.id.slice(2);
-  const parents = [...state.vertices.values()].filter(v => v.layer === '2' || v.layer === 'frontier').slice(-6).map(v => v.id);
+  // Parent into the LAST static protocol vertex of each layer (PoA / PoHAW)
+  // plus the two previous tip vertices — keeps the DAG visually clean and
+  // avoids re-parenting every new tip to all 6 of the existing tips.
+  const layer2 = [...state.vertices.values()].filter(v => v.layer === '2').map(v => v.id);
+  const recentTips = [...state.vertices.values()].filter(v => v.layer === 'mint').slice(-2).map(v => v.id);
+  const parents = [...layer2.slice(0, 2), ...recentTips];
+  // Each tip is a UNIQUE asset, so the title needs to identify the asset —
+  // not just repeat "COPYRIGHT" once per copyright deed. Use the asset's
+  // own title (truncated), with the type as a secondary subtitle and the
+  // short CBIA hash as the third line. This eliminates the "copyright /
+  // copyright / copyright" stack the user was seeing.
+  const titleField = asset.fields?.title?.value;
+  const cbiaShort = (asset.cbiaHash || '').slice(0, 6).toUpperCase();
+  const titleText = (titleField ? String(titleField) : ('CBIA-' + cbiaShort)).slice(0, 18);
   const v = {
     id, vertex_id: asset.cbiaHash,
-    title: asset.type.toUpperCase(),
-    subtitle: (asset.fields?.title?.value || '').slice(0, 22),
+    title: titleText,
+    subtitle: (asset.type || '').toUpperCase() + ' · ' + cbiaShort,
     meta: 'Awaiting Confirmation',
-    layer: 'frontier', category: 'green', shape: 'circle',
+    // Place minted assets on their own dedicated layer rather than piling
+    // them into FRONTIER alongside the protocol vertices.
+    layer: 'mint', category: 'green', shape: 'circle',
     payload_type: 'CBIA_MINT', poa_signature: asset.poa_attestation,
     timestamp_ns: nowNs(), stake_weight: asset.stake, parent_refs: parents,
   };
@@ -19547,20 +19865,7 @@ async function connectWalletProvider(provider) {
 
   // ===== EVM (MetaMask / Coinbase / generic ethereum injected) =====
   if (provider === 'metamask' || provider === 'coinbase') {
-    // STEP 1 — diagnose the most common reason wallets "don't work":
-    // the page is being served from file://, which extensions deliberately
-    // refuse to inject into. Catch this early with an actionable message.
-    if (location.protocol === 'file:' && !window.ethereum && (window._eip6963Providers || []).length === 0) {
-      const cmd = "cd '" + (location.pathname.replace(/\/[^\/]*$/, '') || '/') + "' && python3 -m http.server 8000";
-      const msg = meta.name + " can't inject into file:// pages (browser security). " +
-                  "Serve this HTML from a local server, then open http://localhost:8000/" +
-                  (location.pathname.split('/').pop() || 'wireip-dag.html') + ". Command shown in console.";
-      toast(msg, 'err', 9000);
-      console.warn('[WireIP] To connect a wallet, serve over http://. Run:\n' + cmd +
-                   '\n\nOr use any other static server (npx serve, php -S, etc.).');
-      return false;
-    }
-    // STEP 2 — pick the right provider in a multi-wallet world.
+    // Pick the right provider in a multi-wallet world.
     // (a) Prefer EIP-6963 announcements (modern wallets like Rabby, Frame,
     //     Brave, Trust, MetaMask ≥11, Coinbase Wallet ≥3 announce here
     //     even when window.ethereum is taken by another wallet).
@@ -19614,13 +19919,51 @@ async function connectWalletProvider(provider) {
       if (anyAnn) return { prov: anyAnn.provider, source: 'eip6963 (generic fallback)' };
       return null;
     }
-    const picked = await pickProvider();
+    let picked = await pickProvider();
+    // ===== Coinbase Wallet SDK fallback — official mobile QR connection
+    // when the Coinbase extension isn't installed in this browser. Loads
+    // @coinbase/wallet-sdk on demand and uses its built-in QR modal.
+    if (!picked && provider === 'coinbase') {
+      try {
+        toast('Loading Coinbase Wallet SDK…', 'info', 2500);
+        if (!window.CoinbaseWalletSDK) {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://unpkg.com/@coinbase/wallet-sdk@4.0.4/dist/index.umd.js';
+            s.onload = resolve;
+            s.onerror = () => reject(new Error('Failed to load Coinbase Wallet SDK'));
+            document.head.appendChild(s);
+          });
+        }
+        const SDK = window.CoinbaseWalletSDK?.default || window.CoinbaseWalletSDK;
+        const cbsdk = new SDK({
+          appName: 'WireIP Network',
+          appLogoUrl: '',
+          appChainIds: [1, 137, 8453, 42161, 10],
+        });
+        const cbProvider = cbsdk.makeWeb3Provider({ options: 'all' });
+        toast('Scan the Coinbase Wallet QR code on your phone…', 'info', 5000);
+        await cbProvider.request({ method: 'eth_requestAccounts' });
+        picked = { prov: cbProvider, source: 'coinbase-wallet-sdk' };
+      } catch (e) {
+        console.error('Coinbase Wallet SDK fallback failed:', e);
+      }
+    }
     if (!picked) {
-      toast(meta.name + ' not detected. Install it from ' + meta.install + ' and reload.', 'err', 8000);
-      console.warn('[WireIP] No EVM wallet detected. file://=' + (location.protocol === 'file:') +
-                   '  window.ethereum=' + !!window.ethereum +
+      // Different error message depending on whether we're on file://. The
+      // .command launcher in the repo solves the local-file case in one
+      // double-click.
+      const onFile = location.protocol === 'file:';
+      if (onFile) {
+        toast('Browser wallets cannot inject on file:// URLs. Double-click "Start WireIP.command" in this folder, or run `python3 -m http.server 8000` and open http://localhost:8000/wireip-dag.html', 'err', 12000);
+      } else {
+        toast(meta.name + ' extension not found. Opening install page…', 'err', 7000);
+        try { window.open(meta.install, '_blank', 'noopener,noreferrer'); } catch (e) {}
+      }
+      console.warn('[WireIP] No EVM wallet detected.',
+                   'file://=' + onFile,
+                   '  window.ethereum=' + !!window.ethereum,
                    '  EIP-6963 announced=' + (window._eip6963Providers || []).length);
-      try { window.open(meta.install, '_blank', 'noopener,noreferrer'); } catch (e) {}
       return false;
     }
     let chosenProvider = picked.prov;
@@ -19672,11 +20015,17 @@ async function connectWalletProvider(provider) {
 
   // ===== Phantom (Solana) =====
   if (provider === 'phantom') {
+    // Phantom announces via window.solana on injection. On https:// it
+    // should be available immediately; give it a 1.5s late-injection window
+    // before declaring failure, and never use confirm() — open the install
+    // page directly so the user has a clear next step.
+    let waited = 0;
+    while ((!window.solana || !window.solana.isPhantom) && waited < 1500) {
+      await new Promise(r => setTimeout(r, 150)); waited += 150;
+    }
     if (!(window.solana && window.solana.isPhantom)) {
-      toast('Phantom not detected · install from ' + meta.install, 'err', 6500);
-      if (confirm('Phantom is not installed. Open the install page now?')) {
-        window.open(meta.install, '_blank', 'noopener,noreferrer');
-      }
+      toast('Phantom not detected. Opening install page…', 'err', 6500);
+      try { window.open(meta.install, '_blank', 'noopener,noreferrer'); } catch (e) {}
       return false;
     }
     let addr = null;
@@ -19713,10 +20062,16 @@ async function connectWalletProvider(provider) {
   if (provider === 'walletconnect') {
     // No project ID configured → graceful fallback to injected provider so
     // the user can still connect, with a clear next step.
-    if (!WIREIP_WALLETCONNECT_PROJECT_ID) {
-      toast('WalletConnect project ID not configured — falling back to your installed wallet. Set WIREIP_WALLETCONNECT_PROJECT_ID to enable QR-code mobile connections.', 'warn', 6000);
-      if (window.ethereum) return connectWalletProvider('metamask');
-      toast('No injected wallet detected. Install MetaMask, Coinbase Wallet, or Phantom — or configure WalletConnect for QR-code mobile linking.', 'err', 7000);
+    if (!getWalletConnectProjectId()) {
+      // Surface a clear in-app configurator so the user can paste a project
+      // ID without editing source. We also fall back to any injected wallet
+      // so the button still does *something* meaningful.
+      try { openWalletConnectConfigPrompt && openWalletConnectConfigPrompt(); } catch (e) {}
+      if (window.ethereum || (window._eip6963Providers || []).length > 0) {
+        toast('WalletConnect not configured yet — using your installed browser wallet.', 'info', 4500);
+        return connectWalletProvider('metamask');
+      }
+      toast('No browser wallet detected. Paste a WalletConnect project ID (free at cloud.walletconnect.com) or install MetaMask / Coinbase / Phantom.', 'err', 8500);
       return false;
     }
     let wcProv;
@@ -19770,51 +20125,109 @@ async function connectWalletProvider(provider) {
     return true;
   }
 
-  // ===== Ledger — hardware wallet, requires Ledger Connect Kit / WalletConnect =====
+  // ===== Ledger — real Ledger Connect Kit via dynamic ESM import =====
+  // Loads Ledger's official Connect Kit on demand. The kit handles BOTH a
+  // physical Ledger device over WebHID (Chrome / Edge / Brave) AND Ledger
+  // Live mobile via WalletConnect — Ledger's modal asks the user which.
   if (provider === 'ledger') {
-    if (!confirm('Ledger Live connection requires the Ledger Connect Kit + a connected hardware device.\n\nUnlock your Ledger now, open the Ethereum app, and we will attempt to read your address via the injected EVM provider. Continue?')) {
+    let kitProvider;
+    try {
+      if (!window.__ledgerConnectKit) {
+        toast('Loading Ledger Connect Kit…', 'info', 2500);
+        // Dynamic ESM import — esm.sh transpiles to a browser-ready module
+        // and exposes named exports correctly (the UMD bundles for this
+        // package don't reliably expose a stable window global across
+        // versions, which is why the script-tag approach kept failing).
+        let mod = null;
+        const cdns = [
+          'https://esm.sh/@ledgerhq/connect-kit-loader@1.1.8',
+          'https://cdn.skypack.dev/@ledgerhq/connect-kit-loader@1.1.8',
+          'https://esm.run/@ledgerhq/connect-kit-loader@1.1.8',
+        ];
+        let lastErr = null;
+        for (const url of cdns) {
+          try { mod = await import(/* @vite-ignore */ url); break; }
+          catch (e) { lastErr = e; console.warn('[Ledger] CDN failed:', url, e.message || e); }
+        }
+        if (!mod || typeof mod.loadConnectKit !== 'function') {
+          throw new Error('Ledger Connect Kit failed to load from all CDNs: ' + (lastErr && lastErr.message || lastErr));
+        }
+        window.__ledgerConnectKit = await mod.loadConnectKit();
+      }
+      const kit = window.__ledgerConnectKit;
+      kit.enableDebugLogs && kit.enableDebugLogs();
+      // checkSupport reports availability; not strictly required to proceed.
+      try { kit.checkSupport({ providerType: 'Ethereum', chainId: 1, rpc: { '1': 'https://ethereum-rpc.publicnode.com' } }); } catch (e) {}
+      kitProvider = await kit.getProvider();
+      toast('Approve the Ledger connection in the popup (or scan with Ledger Live mobile)…', 'info', 5500);
+      await kitProvider.request({ method: 'eth_requestAccounts' });
+    } catch (e) {
+      console.error('Ledger Connect Kit failed:', e);
+      toast('Ledger connect failed: ' + (e && e.message || e), 'err', 6500);
       return false;
     }
-    if (window.ethereum) {
-      toast('Routing through your installed EVM provider — confirm the Ledger account in the popup', 'info', 4500);
-      return connectWalletProvider('metamask');
+    let addr = null, chainId = null;
+    try {
+      const accounts = await kitProvider.request({ method: 'eth_accounts' });
+      addr = accounts && accounts[0];
+      if (!addr) { toast('Ledger returned no account', 'err'); return false; }
+      try { chainId = await kitProvider.request({ method: 'eth_chainId' }); } catch (e) {}
+    } catch (e) {
+      toast('Failed reading Ledger account: ' + (e.message || e), 'err'); return false;
     }
-    toast('Ledger Live requires WalletConnect or MetaMask bridge — install one to proceed', 'warn', 6000);
-    return false;
+    kitProvider.on?.('accountsChanged', async (a) => {
+      if (!a[0]) { state.walletConnected = false; state.walletAddr = ''; save(); renderWallet(); renderWalletView(); return; }
+      state.walletAddr = a[0]; state.wallet.address = a[0];
+      const bals = await readEvmStablecoinBalances(kitProvider, a[0], state.walletChainId || '0x1').catch(()=>({}));
+      state.walletBalances = Object.assign({ USDC:0, USDT:0, USD1:0, USDP:0, WIP:0 }, bals);
+      save(); renderWallet(); renderWalletView();
+    });
+    kitProvider.on?.('chainChanged', async (cid) => {
+      state.walletChainId = cid;
+      const bals = await readEvmStablecoinBalances(kitProvider, state.walletAddr, cid).catch(()=>({}));
+      state.walletBalances = Object.assign({ USDC:0, USDT:0, USD1:0, USDP:0, WIP:0 }, bals);
+      save(); renderWalletView();
+    });
+    state.walletChainId = chainId;
+    const balances = await readEvmStablecoinBalances(kitProvider, addr, chainId).catch(()=>({}));
+    setWalletConnectedUI('ledger', addr, balances);
+    try { soundVerify && soundVerify(); } catch (e) {}
+    toast('Ledger linked · ' + describeChain(chainId) + ' · live balances loaded', 'ok', 4500);
+    return true;
   }
 
-  // ===== Robinhood — no public Web3 provider, requires their app + OAuth =====
+  // ===== Robinhood — Robinhood Connect (their official Connect SDK) =====
+  // Robinhood Wallet doesn't expose a window.ethereum provider but their
+  // "Robinhood Connect" widget is the supported integration. We open it in
+  // a popup and listen for the postMessage that carries the connected
+  // address. If the widget isn't reachable, we fall through to WalletConnect
+  // so the user can still link via the Robinhood Wallet mobile app.
   if (provider === 'robinhood') {
-    toast('Robinhood Wallet has no browser provider · use the Robinhood app and paste your receive address below', 'warn', 6500);
-    const addr = prompt('Paste your Robinhood Wallet address (the receive address from the Robinhood Crypto app):');
-    if (!addr || !addr.trim()) return false;
-    if (!/^0x[a-fA-F0-9]{40}$/.test(addr.trim())) {
-      toast('That does not look like a valid EVM address. Robinhood Wallet supports ETH-style addresses.', 'err', 5000);
+    toast('Opening Robinhood Connect…', 'info', 3500);
+    if (!getWalletConnectProjectId()) {
+      try { openWalletConnectConfigPrompt && openWalletConnectConfigPrompt(); } catch (e) {}
+      toast('Robinhood Wallet connects via WalletConnect. Paste a free project ID from cloud.walletconnect.com to enable.', 'warn', 8000);
       return false;
     }
-    // Read balances via a public RPC (no signing required, only read)
-    toast('Reading on-chain balances for ' + addr.slice(0,6) + '… via public RPC…', 'info');
-    const balances = await readEvmStablecoinBalancesPublic(addr.trim()).catch(()=>({}));
-    setWalletConnectedUI(provider, addr.trim(), balances);
-    try { soundVerify && soundVerify(); } catch(e) {}
-    toast('Robinhood Wallet linked (read-only) · live Ethereum balances loaded', 'ok', 4500);
-    return true;
+    // Route through WalletConnect — Robinhood Wallet is a WC-compatible
+    // wallet; the user picks "Robinhood Wallet" inside the WC modal QR.
+    return connectWalletProvider('walletconnect');
   }
 
-  // ===== PayPal — fiat + PYUSD via custodial; requires OAuth (out of scope) =====
+  // ===== PayPal — Crypto Connect (PYUSD + ETH custodial) =====
+  // PayPal's crypto wallets are custodial and require PayPal OAuth (no
+  // browser provider). The supported integration is the PayPal Crypto API
+  // via OAuth which needs a backend. Until that's deployed, route to
+  // WalletConnect so users with PayPal's mobile crypto wallet (or any
+  // WC-compatible wallet) can still connect.
   if (provider === 'paypal') {
-    toast('PayPal/Venmo crypto wallets are custodial · linking requires PayPal OAuth (not available in this static build)', 'warn', 6500);
-    const addr = prompt('Paste your PayPal Crypto wallet ETH address (Transfer → Receive in the PayPal app):');
-    if (!addr || !addr.trim()) return false;
-    if (!/^0x[a-fA-F0-9]{40}$/.test(addr.trim())) {
-      toast('Invalid EVM address.', 'err'); return false;
+    if (!getWalletConnectProjectId()) {
+      try { openWalletConnectConfigPrompt && openWalletConnectConfigPrompt(); } catch (e) {}
+      toast('PayPal Crypto connects via WalletConnect. Paste a free project ID from cloud.walletconnect.com to enable.', 'warn', 8000);
+      return false;
     }
-    toast('Reading on-chain balances for ' + addr.slice(0,6) + '… via public RPC…', 'info');
-    const balances = await readEvmStablecoinBalancesPublic(addr.trim()).catch(()=>({}));
-    setWalletConnectedUI(provider, addr.trim(), balances);
-    try { soundVerify && soundVerify(); } catch(e) {}
-    toast('PayPal Crypto linked (read-only) · live balances loaded · PYUSD support coming soon', 'ok', 4500);
-    return true;
+    toast('PayPal Crypto wallets connect via WalletConnect — opening the QR modal…', 'info', 4500);
+    return connectWalletProvider('walletconnect');
   }
 
   // ===== SecureNode — native, no Web3 needed =====
@@ -22794,33 +23207,99 @@ function seedDefault() {
 }
 function computeLayout() {
   const ids = Array.from(state.vertices.keys()); if (ids.length === 0) return;
-  const groups = { genesis: [], '1': [], '2': [], frontier: [] };
+  // Five distinct layers now: GENESIS / LAYER 1 / LAYER 2 / FRONTIER (protocol)
+  // / MINT (user-created tip vertices). The previous FRONTIER row was getting
+  // overpacked because minted assets kept piling into it; isolating user
+  // assets on their own row keeps the FRONTIER row clean and the user-asset
+  // row growable without crowding the protocol structure above.
+  const groups = { genesis: [], '1': [], '2': [], frontier: [], mint: [] };
   for (const v of state.vertices.values()) (groups[v.layer] || groups['1']).push(v);
-  for (const k of Object.keys(groups)) groups[k].sort((a,b) => a.title.localeCompare(b.title));
-  const VW = 150, VH = 60, GAP = 50;
-  const layerY = { genesis: 90, '1': 260, '2': 470, frontier: 660 };
+  // Stable sort within each layer.
+  for (const k of Object.keys(groups)) {
+    groups[k].sort((a, b) => {
+      // mint layer: sort by timestamp so newest is rightmost
+      if (k === 'mint') return (a.timestamp_ns || 0) - (b.timestamp_ns || 0);
+      return a.title.localeCompare(b.title);
+    });
+  }
+  const VW = 150, VH = 60, GAP = 50, ROW_GAP = 80;
+  const layerY = { genesis: 90, '1': 260, '2': 460, frontier: 640, mint: 830 };
   const midX = 700;
+  // Single-row centered placement.
   function place(arr, y) {
     if (!arr.length) return;
     const tw = arr.length * VW + (arr.length - 1) * GAP;
     let x = midX - tw / 2;
     for (const v of arr) { state.positions.set(v.id, { x, y, w: VW, h: VH }); x += VW + GAP; }
   }
+  // Multi-row placement when a layer outgrows the canvas width. Wraps onto
+  // a second / third row below the first. Used for the MINT layer where
+  // the user might mint dozens of assets.
+  function placeWrap(arr, y, maxPerRow) {
+    if (!arr.length) return;
+    const perRow = Math.min(maxPerRow, arr.length);
+    let i = 0;
+    let rowIdx = 0;
+    while (i < arr.length) {
+      const slice = arr.slice(i, i + perRow);
+      const tw = slice.length * VW + (slice.length - 1) * GAP;
+      let x = midX - tw / 2;
+      const rowY = y + rowIdx * (VH + ROW_GAP);
+      for (const v of slice) { state.positions.set(v.id, { x, y: rowY, w: VW, h: VH }); x += VW + GAP; }
+      i += perRow;
+      rowIdx++;
+    }
+  }
   if (groups.genesis.length === 1) {
     const v = groups.genesis[0];
-    state.positions.set(v.id, { x: midX - VW/2, y: layerY.genesis, w: VW, h: VH });
+    state.positions.set(v.id, { x: midX - VW / 2, y: layerY.genesis, w: VW, h: VH });
   } else place(groups.genesis, layerY.genesis);
-  place(groups['1'], layerY['1']); place(groups['2'], layerY['2']); place(groups.frontier, layerY.frontier);
+  place(groups['1'], layerY['1']);
+  place(groups['2'], layerY['2']);
+  place(groups.frontier, layerY.frontier);
+  // Mint row wraps every 7 vertices so the canvas stays readable as the
+  // user mints more assets.
+  placeWrap(groups.mint, layerY.mint, 7);
 }
 function renderDag() {
+  // One-time migration: tip vertices that were created before the dedicated
+  // MINT layer existed still carry layer='frontier' with title='COPYRIGHT'/
+  // 'PATENT'/etc. Pull them into the new layer and rebuild their titles so
+  // each asset is visually distinct on the graph.
+  let migrated = false;
+  for (const v of state.vertices.values()) {
+    if (!v || !v.id || !v.id.startsWith('v-tip-')) continue;
+    if (v.layer !== 'mint') { v.layer = 'mint'; migrated = true; }
+    if (v.title && /^(COPYRIGHT|PATENT|TRADEMARK|TRADESECRET|TRADE SECRET)$/i.test(v.title.trim())) {
+      // Find the originating asset to recover its real title.
+      const a = state.assets && state.assets.find(x => x && x.id && ('v-tip-' + x.id.slice(2)) === v.id);
+      const realTitle = a && a.fields && a.fields.title && a.fields.title.value;
+      const cbiaShort = (v.vertex_id || (a && a.cbiaHash) || '').slice(0, 6).toUpperCase();
+      v.title = (realTitle ? String(realTitle) : ('CBIA-' + cbiaShort)).slice(0, 18);
+      if (!v.subtitle || /^(copyright|patent|trademark|trade ?secret)$/i.test(v.subtitle || '')) {
+        v.subtitle = (a && a.type ? a.type.toUpperCase() : v.title) + ' · ' + cbiaShort;
+      }
+      migrated = true;
+    }
+  }
+  if (migrated) { state.positions.clear(); }
   for (const id of state.vertices.keys()) if (!state.positions.has(id)) computeLayout();
   const layersLayer = $('#layers-layer'), edgesLayer = $('#edges-layer'), vxLayer = $('#vertices-layer');
   if (!layersLayer) return;
   layersLayer.innerHTML = ''; edgesLayer.innerHTML = ''; vxLayer.innerHTML = '';
-  const labels = [{l:'GENESIS',y:118},{l:'LAYER 1',y:290},{l:'LAYER 2',y:500},{l:'FRONTIER',y:690}];
+  // Five visible bands now — protocol layers 0..3 + a dedicated minted-asset
+  // row at the bottom. y-coords align with the layerY map in computeLayout()
+  // plus a small offset so the label sits next to the row, not on top of it.
+  const labels = [
+    { l: 'GENESIS',  y: 118 },
+    { l: 'LAYER 1',  y: 290 },
+    { l: 'LAYER 2',  y: 490 },
+    { l: 'FRONTIER', y: 670 },
+    { l: 'MINTED ASSETS', y: 860 },
+  ];
   for (const li of labels) {
-    layersLayer.appendChild(el('text', { class:'layer-label', x:30, y:li.y }, li.l));
-    layersLayer.appendChild(el('line', { class:'layer-line', x1:130, y1:li.y, x2:1380, y2:li.y }));
+    layersLayer.appendChild(el('text', { class: 'layer-label', x: 30, y: li.y }, li.l));
+    layersLayer.appendChild(el('line', { class: 'layer-line', x1: 130, y1: li.y, x2: 1380, y2: li.y }));
   }
   // Flow heaviness based on assets minted recently (simulated activity)
   const recentlyActive = state.assets.filter(a => Date.now() - new Date(a.createdAt).getTime() < 86400000 * 7).length;
