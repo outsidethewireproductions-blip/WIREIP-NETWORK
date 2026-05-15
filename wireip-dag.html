@@ -5828,6 +5828,11 @@
         <div class="nav-item" data-view="view-dag"><span class="icon">◇</span><span>DAG View</span></div>
         <div class="nav-item" data-view="view-securenode"><span class="icon">●</span><span>SecureNode</span></div>
       </div>
+      <div class="nav-group">
+        <h4 data-nav-group>Preferences<span class="chev">▾</span></h4>
+        <div class="nav-item" data-view="view-settings"><span class="icon">⚙</span><span>Settings</span></div>
+        <div class="nav-item" data-view="view-trash"><span class="icon">⌫</span><span>Deleted Assets</span><span class="badge" id="nav-trash-count">0</span></div>
+      </div>
       <div class="nav-group collapsed">
         <h4 data-nav-group>Reference<span class="chev">▾</span></h4>
         <div class="nav-item" data-view="view-about"><span class="icon">i</span><span>About / Specs</span></div>
@@ -7453,6 +7458,87 @@
         </div>
       </section>
 
+      <!-- ===== VIEW: SETTINGS ===== -->
+      <section class="view" id="view-settings">
+        <h1>Settings</h1>
+        <div class="lede">
+          Personalize WireIP. All preferences are stored locally in this browser. Wallet, vault, and SecureNode credentials are managed in their own views.
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="step-num">⚙</span><h3>Appearance</h3></div>
+          <div class="form-row">
+            <label class="field">
+              <span class="lbl"><span class="name">Theme</span></span>
+              <select id="set-theme">
+                <option value="dark">Dark (default)</option>
+                <option value="light">Light</option>
+                <option value="auto">Match system</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="lbl"><span class="name">UI Density</span></span>
+              <select id="set-density">
+                <option value="comfortable">Comfortable</option>
+                <option value="compact">Compact</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="step-num">♪</span><h3>Sound</h3></div>
+          <label class="field">
+            <span class="lbl"><span class="name">Interface Sounds</span></span>
+            <select id="set-sounds">
+              <option value="on">On — verify / deny / submit cues</option>
+              <option value="off">Off — silent</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="step-num">⌫</span><h3>Deleted Assets · Retention</h3></div>
+          <p class="help" style="margin-top:0;">
+            Deleted assets are moved to a recovery folder. They are permanently purged after the retention window below.
+            You can restore an asset any time before purge from the <strong>Deleted Assets</strong> view.
+          </p>
+          <label class="field">
+            <span class="lbl"><span class="name">Auto-Purge Window</span></span>
+            <select id="set-retention">
+              <option value="15">15 days</option>
+              <option value="20">20 days</option>
+              <option value="30" selected>30 days (default)</option>
+              <option value="0">Never auto-purge</option>
+            </select>
+          </label>
+          <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+            <button id="set-empty-trash" class="danger" type="button">Empty Deleted folder now</button>
+            <button id="set-go-trash" class="cyan" type="button">Open Deleted folder →</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="step-num">⚠</span><h3>Danger Zone</h3></div>
+          <p class="help" style="margin-top:0;">
+            Erase ALL local data — assets, wallet, SecureNode credentials, vault drafts, and preferences. Use this only when you intend to start fresh on this device. This cannot be undone.
+          </p>
+          <button id="set-reset-all" class="danger" type="button">Reset all local data</button>
+        </div>
+      </section>
+
+      <!-- ===== VIEW: DELETED ASSETS (recycle bin) ===== -->
+      <section class="view" id="view-trash">
+        <h1>Deleted Assets</h1>
+        <div class="lede">
+          Assets you have deleted from the vault. They remain here for the retention window set in Settings (default: 30 days), then auto-purge. You can restore any time before that.
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Recovery Folder</h3><span class="spacer"></span><span id="trash-meta" style="font-size:10px;color:var(--muted);"></span></div>
+          <div id="trash-list"></div>
+        </div>
+      </section>
+
       <!-- ===== VIEW: ABOUT ===== -->
       <section class="view" id="view-about">
         <h1>WireIP Network™ — Specifications</h1>
@@ -8417,6 +8503,13 @@ const state = {
     ownershipProofs: [],
   },
   assets: [],
+  // Soft-deleted assets — moved here by the Delete flow, restorable until
+  // auto-purged after `settings.retentionDays` (Settings → Deleted Assets).
+  trash: [],
+  // Per-user preferences (persisted across sessions via localStorage).
+  // theme: dark | light | auto · sounds: on | off · density: comfortable | compact
+  // retentionDays: how long deleted assets stay restorable (0 = never purge).
+  settings: { theme: 'dark', density: 'comfortable', sounds: 'on', retentionDays: 30 },
   drafts: [],
   registrations: [],
   matches: [],
@@ -8709,6 +8802,8 @@ const OFFICES = [
 function save() {
   const payload = {
     assets: state.assets,
+    trash: state.trash,
+    settings: state.settings,
     drafts: state.drafts,
     registrations: state.registrations,
     matches: state.matches,
@@ -8751,6 +8846,8 @@ function load() {
     if (!raw) return false;
     const p = JSON.parse(raw);
     state.assets = p.assets || [];
+    state.trash = Array.isArray(p.trash) ? p.trash : [];
+    if (p.settings && typeof p.settings === 'object') Object.assign(state.settings, p.settings);
     state.drafts = p.drafts || [];
     state.registrations = p.registrations || [];
     state.matches = p.matches || [];
@@ -8895,6 +8992,180 @@ function showView(id) {
   if (id === 'view-ipmarket')      safe('view-ipmarket',      () => renderIPMarket());
   if (id === 'view-securenode')    safe('view-securenode',    () => { renderSSDMatchResults(); renderOwnedHardware(); });
   if (id === 'view-tokenomics')    safe('view-tokenomics',    () => renderTokenomics());
+  if (id === 'view-settings')      safe('view-settings',      () => renderSettings());
+  if (id === 'view-trash')         safe('view-trash',         () => renderTrash());
+}
+
+// ============================================================
+// SETTINGS — personalization
+// ============================================================
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem('wireip_settings');
+    if (raw) Object.assign(state.settings, JSON.parse(raw));
+  } catch (e) {}
+  applyTheme(state.settings.theme);
+}
+function saveSettings() {
+  try { localStorage.setItem('wireip_settings', JSON.stringify(state.settings)); } catch (e) {}
+}
+function applyTheme(theme) {
+  const effective = (theme === 'auto')
+    ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+    : theme;
+  document.body.classList.toggle('light-theme', effective === 'light');
+}
+function renderSettings() {
+  const s = state.settings;
+  const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  setEl('set-theme', s.theme);
+  setEl('set-density', s.density);
+  setEl('set-sounds', s.sounds);
+  setEl('set-retention', String(s.retentionDays));
+  const bindChange = (id, key, transform) => {
+    const el = document.getElementById(id);
+    if (!el || el._settingsBound) return;
+    el._settingsBound = true;
+    el.addEventListener('change', () => {
+      s[key] = transform ? transform(el.value) : el.value;
+      saveSettings();
+      if (key === 'theme') applyTheme(s.theme);
+      if (key === 'sounds') { window.SOUND_ENABLED = (s.sounds === 'on'); }
+      toast('Setting saved', 'ok', 1800);
+    });
+  };
+  bindChange('set-theme',     'theme');
+  bindChange('set-density',   'density');
+  bindChange('set-sounds',    'sounds');
+  bindChange('set-retention', 'retentionDays', v => parseInt(v, 10) || 0);
+
+  const empty = document.getElementById('set-empty-trash');
+  if (empty && !empty._bound) {
+    empty._bound = true;
+    empty.addEventListener('click', () => {
+      if (!state.trash || state.trash.length === 0) { toast('Deleted folder already empty', 'info'); return; }
+      if (!confirm('Permanently delete all ' + state.trash.length + ' items in the Deleted folder? This cannot be undone.')) return;
+      state.trash = []; save(); updateTrashBadge();
+      toast('Deleted folder emptied', 'ok');
+    });
+  }
+  const go = document.getElementById('set-go-trash');
+  if (go && !go._bound) { go._bound = true; go.addEventListener('click', () => showView('view-trash')); }
+  const reset = document.getElementById('set-reset-all');
+  if (reset && !reset._bound) {
+    reset._bound = true;
+    reset.addEventListener('click', () => {
+      if (!confirm('Erase ALL local WireIP data on this device — assets, wallet, SecureNode, drafts, preferences? This cannot be undone.')) return;
+      try { localStorage.clear(); } catch (e) {}
+      location.reload();
+    });
+  }
+}
+
+// ============================================================
+// DELETED ASSETS (recycle bin) + retention auto-purge
+// ============================================================
+function softDeleteAsset(asset) {
+  if (!asset) return;
+  const record = {
+    asset: JSON.parse(JSON.stringify(asset)),
+    deletedAt: Date.now(),
+    registrations: (state.registrations || []).filter(r => r.asset_id === asset.id),
+  };
+  state.assets = state.assets.filter(x => x.id !== asset.id);
+  state.registrations = (state.registrations || []).filter(r => r.asset_id !== asset.id);
+  state.trash = state.trash || [];
+  state.trash.unshift(record);
+  // Pull the DAG tip vertex too so the canvas stays clean — restore re-adds it.
+  if (asset.vertex_id && state.vertices && typeof state.vertices.entries === 'function') {
+    for (const [id, v] of state.vertices.entries()) {
+      if (v && v.vertex_id === asset.vertex_id) {
+        record.vertexId = id;
+        record.vertex = JSON.parse(JSON.stringify(v));
+        record.edges = [];
+        for (const [eid, e] of state.edges.entries()) {
+          if (e.from === id || e.to === id) { record.edges.push({ id: eid, e: JSON.parse(JSON.stringify(e)) }); state.edges.delete(eid); }
+        }
+        state.vertices.delete(id);
+        state.positions.delete(id);
+      }
+    }
+  }
+  save(); updateTrashBadge();
+}
+function restoreAsset(deletedIdx) {
+  const rec = state.trash[deletedIdx];
+  if (!rec) return;
+  state.assets.push(rec.asset);
+  if (rec.registrations && rec.registrations.length) state.registrations.push(...rec.registrations);
+  if (rec.vertexId && rec.vertex && state.vertices) {
+    state.vertices.set(rec.vertexId, rec.vertex);
+    if (rec.edges) for (const re of rec.edges) state.edges.set(re.id, re.e);
+    state.positions.delete(rec.vertexId);
+  }
+  state.trash.splice(deletedIdx, 1);
+  save(); updateTrashBadge();
+  toast('Asset restored to vault', 'ok');
+  try { renderVault && renderVault(); } catch (e) {}
+}
+function purgeOldTrash() {
+  const days = state.settings && state.settings.retentionDays;
+  if (!days || days <= 0) return 0;
+  const cutoff = Date.now() - days * 86400000;
+  const before = (state.trash || []).length;
+  state.trash = (state.trash || []).filter(r => (r.deletedAt || 0) >= cutoff);
+  const purged = before - state.trash.length;
+  if (purged > 0) { save(); updateTrashBadge(); }
+  return purged;
+}
+function updateTrashBadge() {
+  const b = document.getElementById('nav-trash-count');
+  if (b) b.textContent = String((state.trash || []).length);
+}
+function renderTrash() {
+  purgeOldTrash();
+  updateTrashBadge();
+  const list = document.getElementById('trash-list');
+  const meta = document.getElementById('trash-meta');
+  if (!list) return;
+  list.innerHTML = '';
+  const days = state.settings.retentionDays;
+  if (meta) meta.textContent = (state.trash.length) + ' item' + (state.trash.length === 1 ? '' : 's') +
+                              ' · retention: ' + (days ? days + ' days' : 'never auto-purge');
+  if (!state.trash.length) {
+    list.appendChild(el('div', { class: 'empty-state', style: 'padding:30px 14px;text-align:center;color:var(--muted);' },
+      el('div', { class: 'es-icon', style: 'font-size:32px;margin-bottom:8px;' }, '⌫'),
+      el('h3', {}, 'Nothing deleted'),
+      el('p', {}, 'Assets you delete from the vault appear here for ' + (days || '∞') + ' days before auto-purge.')
+    ));
+    return;
+  }
+  for (let i = 0; i < state.trash.length; i++) {
+    const r = state.trash[i];
+    const a = r.asset || {};
+    const title = (a.fields && a.fields.title && a.fields.title.value) || a.deed_id || a.id;
+    const deletedAgoMs = Date.now() - (r.deletedAt || 0);
+    const ageDays = Math.floor(deletedAgoMs / 86400000);
+    const purgeIn = days ? Math.max(0, days - ageDays) : null;
+    const row = el('div', { style: 'display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;background:var(--panel-2);' });
+    const info = el('div', { style: 'flex:1;min-width:0;' });
+    info.appendChild(el('div', { style: 'font-weight:600;color:var(--text);font-size:12px;' }, title));
+    info.appendChild(el('div', { style: 'font-size:10px;color:var(--muted);margin-top:3px;letter-spacing:0.08em;text-transform:uppercase;' },
+      (a.type || 'asset') + ' · CBIA-' + (a.cbiaHash || '').slice(0, 6).toUpperCase() +
+      ' · deleted ' + (ageDays === 0 ? 'today' : ageDays + ' day' + (ageDays === 1 ? '' : 's') + ' ago') +
+      (purgeIn !== null ? ' · purges in ' + purgeIn + ' day' + (purgeIn === 1 ? '' : 's') : '')));
+    row.appendChild(info);
+    const restoreBtn = el('button', { class: 'cyan', type: 'button' }, 'Restore');
+    restoreBtn.addEventListener('click', () => { restoreAsset(i); renderTrash(); });
+    row.appendChild(restoreBtn);
+    const purgeBtn = el('button', { class: 'danger', type: 'button' }, 'Delete now');
+    purgeBtn.addEventListener('click', () => {
+      if (!confirm('Permanently delete "' + title + '"? This cannot be undone.')) return;
+      state.trash.splice(i, 1); save(); updateTrashBadge(); renderTrash();
+    });
+    row.appendChild(purgeBtn);
+    list.appendChild(row);
+  }
 }
 
 // ============================================================
@@ -18259,25 +18530,13 @@ function renderVault() {
         e.stopPropagation();
         try {
           const beforeLen = state.assets.length;
-          state.assets = state.assets.filter(x => x.id !== a.id);
-          state.registrations = (state.registrations || []).filter(r => r.asset_id !== a.id);
-          if (a.vertex_id && state.vertices && typeof state.vertices.entries === 'function') {
-            for (const [id, v] of state.vertices.entries()) {
-              if (v && v.vertex_id === a.vertex_id) {
-                for (const [eid, e2] of state.edges.entries()) {
-                  if (e2.from === id || e2.to === id) state.edges.delete(eid);
-                }
-                state.vertices.delete(id);
-                state.positions.delete(id);
-              }
-            }
-          }
-          save();
+          // Soft-delete to the recovery folder; restorable until auto-purge.
+          softDeleteAsset(a);
           try { renderVault(); } catch (er) { console.warn('renderVault after delete failed:', er); }
           if (beforeLen === state.assets.length) {
             toast('Delete completed but asset count unchanged · id=' + a.id, 'warn', 6000);
           } else {
-            toast('Asset deleted', 'info');
+            toast('Moved to Deleted folder · restore any time within ' + (state.settings.retentionDays || '∞') + ' days', 'info', 4500);
           }
         } catch (err) {
           console.error('Delete failed:', err);
@@ -18603,27 +18862,16 @@ function showAssetDetail(a) {
   function commitDelete() {
     try {
       const beforeLen = state.assets.length;
-      state.assets = state.assets.filter(x => x.id !== a.id);
-      state.registrations = (state.registrations || []).filter(r => r.asset_id !== a.id);
-      if (a.vertex_id && state.vertices && typeof state.vertices.entries === 'function') {
-        for (const [id, v] of state.vertices.entries()) {
-          if (v && v.vertex_id === a.vertex_id) {
-            for (const [eid, e] of state.edges.entries()) {
-              if (e.from === id || e.to === id) state.edges.delete(eid);
-            }
-            state.vertices.delete(id);
-            state.positions.delete(id);
-          }
-        }
-      }
-      save();
+      // Soft-delete: move to recovery folder (auto-purges after the retention
+      // window set in Settings). The user can restore from Deleted Assets.
+      softDeleteAsset(a);
       try { renderVault && renderVault(); } catch (e) { console.warn('renderVault after delete failed:', e); }
       try { updateNavBadges && updateNavBadges(); } catch (e) {}
       closeModal('modal-asset');
       if (beforeLen === state.assets.length) {
-        toast('Delete completed but asset count unchanged — please report this asset id: ' + a.id, 'warn', 6000);
+        toast('Delete completed but asset count unchanged — id: ' + a.id, 'warn', 6000);
       } else {
-        toast('Asset deleted', 'info');
+        toast('Moved to Deleted folder · auto-purges in ' + (state.settings.retentionDays || '∞') + ' days', 'info', 4000);
       }
     } catch (err) {
       console.error('Delete failed:', err);
@@ -24277,6 +24525,13 @@ async function downscaleImageForLogo(file, maxEdge = 512, quality = 0.92) {
 })();
 
 function init() {
+  // Load + apply user preferences (theme, sounds, density, retention) BEFORE
+  // the first paint so the page never flashes the wrong theme. Also purge
+  // any trash items past the retention window from the previous session.
+  try { loadSettings && loadSettings(); } catch (e) {}
+  try { purgeOldTrash && purgeOldTrash(); } catch (e) {}
+  try { updateTrashBadge && updateTrashBadge(); } catch (e) {}
+  try { if (state.settings && state.settings.sounds === 'off') window.SOUND_ENABLED = false; } catch (e) {}
   // CRITICAL DEFENSIVE GUARANTEE: force the visible-on-load tokenize content
   // to be present even if any downstream init step throws. Without this, a
   // single render failure left the user staring at an empty middle area
