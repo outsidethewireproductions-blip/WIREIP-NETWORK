@@ -1883,12 +1883,13 @@
     color: #050606 !important;
     box-shadow: 0 0 14px rgba(240,196,25,0.85);
   }
-  .step-next-glow::after {
+  /* The NEXT STEP indicator is now a real interactive <button> injected by
+     updateStepProgression() — clicking it smooth-scrolls to the next
+     incomplete step and focuses its first input. The fallback CSS ::after
+     here only renders if the button hasn't been injected yet (e.g. before
+     the JS runs), and is replaced by the real button as soon as it exists. */
+  .step-next-glow:not(:has(.step-next-btn))::after {
     content: '⮕  NEXT STEP';
-    /* Positioned INSIDE the card top-right (top:10px instead of -10px) so
-       .card's overflow-x:hidden (which silently makes overflow-y:auto)
-       cannot clip the badge. The previous -10px setup was getting cropped
-       on every step card. */
     position: absolute; top: 10px; right: 14px;
     background: var(--gold); color: #050606;
     font-size: 9.5px; letter-spacing: 0.12em;
@@ -1898,6 +1899,51 @@
     font-family: "IBM Plex Mono", ui-monospace, monospace;
     box-shadow: 0 0 14px rgba(240,196,25,0.55), 0 2px 6px rgba(0,0,0,0.35);
   }
+  /* Real clickable NEXT STEP button. */
+  .step-next-btn {
+    position: absolute; top: 10px; right: 14px;
+    background: var(--gold); color: #050606;
+    border: none; border-radius: 10px;
+    font-size: 9.5px; letter-spacing: 0.12em;
+    padding: 5px 12px;
+    font-weight: 700;
+    z-index: 4;
+    cursor: pointer;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    box-shadow: 0 0 14px rgba(240,196,25,0.55), 0 2px 6px rgba(0,0,0,0.35);
+    transition: transform 0.12s, box-shadow 0.12s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .step-next-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 18px rgba(240,196,25,0.75), 0 4px 10px rgba(0,0,0,0.45);
+  }
+  .step-next-btn:active { transform: translateY(0); }
+
+  /* Asset-type tile labels must never truncate. The label is short
+     (COPYRIGHT / PATENT / TRADEMARK / TRADE SECRET) and was being cropped
+     on mobile because the parent .card had overflow-x:hidden. Force wrap +
+     visible overflow so the whole word is always readable. */
+  .asset-type .label, .asset-type .desc {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    line-height: 1.25;
+  }
+  /* Originality verdict banner ("CLEAR — original, human-authored …")
+     must wrap, not truncate, on narrow widths. */
+  .orig-verdict {
+    flex-wrap: wrap;
+    white-space: normal;
+    word-break: break-word;
+    overflow: visible;
+    line-height: 1.45;
+  }
+  .orig-verdict > * { min-width: 0; flex-shrink: 1; }
+  .orig-verdict .ov-icon { flex: 0 0 auto; }
   /* Push the card header right slightly so the badge never overlaps the
      step number / title at small widths. */
   .step-next-glow .card-header { padding-right: 96px; }
@@ -3451,6 +3497,15 @@
      selecting an asset type and the visualizer card revealed. */
   .viz-layout-grid > * { min-width: 0; max-width: 100%; overflow: hidden; }
   .viz-layout-grid > * > * { max-width: 100%; }
+  /* Override the inline `overflow: hidden` on .viz-layout-grid so position:
+     sticky inside the preview column actually pins instead of being clipped
+     to the grid's box. Both desktop and mobile: horizontal containment is
+     preserved by the min-width:0 + max-width:100% rules on children. */
+  .viz-layout-grid { overflow: visible !important; }
+  /* The sticky preview column itself must let its contents overflow
+     vertically. The inline style sets overflow:hidden on every direct child
+     of the grid via the rule above; un-set that for the sticky column. */
+  .viz-layout-grid > [style*="sticky"] { overflow: visible !important; }
   #visualizer-card { overflow: hidden; }
   #visualizer-card .viz-layout-grid img,
   #visualizer-card .viz-layout-grid canvas,
@@ -3886,31 +3941,50 @@
   @media (max-width: 720px) {
     /* Visualizer layout — collapse preview / controls to a single column.
        On mobile, kill sticky so the preview doesn't cover the controls. */
-    .viz-layout-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
-    /* Sticky preview on mobile too — the asset preview should stay pinned at
-       the top of the viewport while the user scrolls the settings below it,
-       matching the desktop behavior. The previous rule killed `position:
-       sticky` on mobile because the sticky-positioned container also held
-       audio/asset playback that could push past the viewport; constraining
-       the wrap's max-height + tucking it under the conn-banner solves both. */
+    .viz-layout-grid {
+      grid-template-columns: 1fr !important;
+      gap: 12px !important;
+      /* CRITICAL — kill the inline `overflow: hidden` on the grid. Any
+         overflow:hidden ancestor of a `position: sticky` element clips it
+         to a 0-height sticky range, which is why the asset preview was
+         scrolling away on mobile instead of pinning. We need visible
+         overflow vertically; horizontal containment is preserved by the
+         single-column layout + the existing min-width:0 / max-width:100%
+         rules on grid children. */
+      overflow: visible !important;
+    }
     #viz-preview-wrap {
       max-width: 92vw !important; margin: 0 auto !important;
-      max-height: 46vh !important;
+      max-height: 38vh !important;
     }
     /* The sticky column (.viz-layout-grid > [style*="sticky"]) keeps its
-       sticky behavior on mobile; position it just below the topbar +
-       conn-banner stack, with a sensible max-height so the preview can
-       never eat the entire screen on small phones. */
+       sticky behavior on mobile; position it just below the topbar with a
+       sensible max-height so the preview can never eat the entire screen
+       on small phones. The inline `position:sticky;top:80px` survives —
+       the rules below just adjust it for the mobile viewport. */
     .viz-layout-grid > div[style*="sticky"] {
       position: sticky !important;
-      top: 64px !important;
-      max-height: 56vh;
+      top: 56px !important;
+      max-height: 50vh;
       overflow: visible;
       z-index: 6;
       background: var(--bg);
-      padding: 8px 0;
-      box-shadow: 0 8px 12px -8px rgba(0,0,0,0.5);
+      padding: 8px 0 10px;
+      box-shadow: 0 8px 14px -10px rgba(0,0,0,0.6);
+      /* Force this column above its siblings even when the grid auto-rows
+         the second column underneath it on mobile. */
+      align-self: start;
     }
+    /* The asset playback panel inside the sticky column shrinks on phones
+       so the preview + player together don't take more than ~50vh. */
+    #viz-asset-playback { max-height: 22vh; overflow: hidden; }
+    #viz-asset-playback-body audio,
+    #viz-asset-playback-body video,
+    #viz-asset-playback-body img { max-height: 14vh !important; max-width: 100% !important; }
+    /* Visualizer card itself must not clip vertically on mobile — anything
+       at viz-layout-grid level relied on overflow:hidden, but #visualizer-card
+       has overflow:hidden too. Allow vertical sticky bleed there as well. */
+    #visualizer-card { overflow: visible !important; }
     .viz-controls-row { gap: 10px; }
     .viz-toggle-pattern { padding: 8px 12px; font-size: 10.5px; min-height: 36px; }
     .viz-aspect-row { gap: 5px; row-gap: 6px; }
@@ -5564,7 +5638,22 @@
       display: flex; flex-direction: column;
     }
     .modal header { flex-shrink: 0; padding: 12px 14px !important; }
-    .modal .body  { padding: 14px !important; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .modal .body  {
+      padding: 14px !important;
+      overflow-y: auto; -webkit-overflow-scrolling: touch;
+      /* CRITICAL — let vertical pan gestures stay inside the modal body
+         and never bubble to the backdrop. Without this, iOS Safari can
+         deliver the touchend to the backdrop after a scroll and the
+         backdrop-click handler used to close the modal mid-scroll
+         (most visible in Smart Contracts, which has a tall form). */
+      touch-action: pan-y;
+      overscroll-behavior: contain;
+    }
+    /* The modal itself must not steal vertical pan from its body. */
+    .modal { touch-action: pan-y; }
+    /* Backdrop swallows touch outside the modal so a long scroll on the
+       backdrop is treated as a pan, not a click. */
+    .modal-backdrop { touch-action: pan-y; overscroll-behavior: contain; }
     .modal .footer {
       flex-shrink: 0; flex-wrap: wrap; gap: 6px !important; padding: 12px 14px !important;
     }
@@ -5734,7 +5823,7 @@
     </div>
     <div class="top-search">
       <span class="icon">⌕</span>
-      <input type="search" id="top-search" placeholder="Search by creator name, title, IP registration #, deed ID, CBIA hash…" autocomplete="off">
+      <input type="search" id="top-search" placeholder="Search by creator / business name, title, IP registration #, deed ID, CBIA hash…" autocomplete="off">
       <div class="search-results" id="search-results"></div>
     </div>
     <div class="top-tools">
@@ -7510,6 +7599,105 @@
           Personalize WireIP. Preferences save instantly to this browser. Wallet, vault, and SecureNode credentials are managed in their own views.
         </div>
 
+        <!-- USER & BUSINESS PROFILE -->
+        <div class="card">
+          <div class="card-header"><span class="step-num">⚜</span><h3>User &amp; Business Profile</h3></div>
+          <p class="help" style="margin-top:0;">
+            The display name and business name below populate the Creator field on every new asset and let other users find your portfolio by name in the global search. The legal name, tax ID, email, and phone are stored locally and never indexed in search results.
+          </p>
+          <div class="form-row">
+            <label class="field">
+              <span class="lbl"><span class="name">Display / Creator Name</span></span>
+              <input type="text" id="set-profile-displayName" placeholder="e.g. Torrance Saunders" autocomplete="name">
+            </label>
+            <label class="field">
+              <span class="lbl"><span class="name">Legal Name (private)</span></span>
+              <input type="text" id="set-profile-legalName" placeholder="As shown on government ID" autocomplete="off">
+            </label>
+          </div>
+          <div class="form-row">
+            <label class="field">
+              <span class="lbl"><span class="name">Business / Studio Name</span></span>
+              <input type="text" id="set-profile-businessName" placeholder="e.g. Outside The Wire Productions" autocomplete="organization">
+            </label>
+            <label class="field">
+              <span class="lbl"><span class="name">Business Type</span></span>
+              <select id="set-profile-businessType">
+                <option value="">— Select —</option>
+                <option>Sole Proprietor / Individual Creator</option>
+                <option>LLC</option>
+                <option>S-Corp</option>
+                <option>C-Corp</option>
+                <option>Partnership</option>
+                <option>Nonprofit / 501(c)(3)</option>
+                <option>Estate / Trust</option>
+                <option>Foreign Entity</option>
+              </select>
+            </label>
+          </div>
+          <div class="form-row three">
+            <label class="field">
+              <span class="lbl"><span class="name">Country</span></span>
+              <select id="set-profile-country">
+                <option value="">— Select —</option>
+                <option>United States</option>
+                <option>Canada</option>
+                <option>Mexico</option>
+                <option>United Kingdom</option>
+                <option>European Union</option>
+                <option>Australia</option>
+                <option>New Zealand</option>
+                <option>Japan</option>
+                <option>South Korea</option>
+                <option>Singapore</option>
+                <option>Switzerland</option>
+                <option>UAE</option>
+                <option>Brazil</option>
+                <option>South Africa</option>
+                <option>India</option>
+                <option>Other</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="lbl"><span class="name">State / Region</span></span>
+              <input type="text" id="set-profile-region" placeholder="e.g. Georgia">
+            </label>
+            <label class="field">
+              <span class="lbl"><span class="name">City</span></span>
+              <input type="text" id="set-profile-city" placeholder="e.g. Atlanta">
+            </label>
+          </div>
+          <div class="form-row">
+            <label class="field">
+              <span class="lbl"><span class="name">Contact Email (private)</span></span>
+              <input type="email" id="set-profile-email" placeholder="you@example.com" autocomplete="email">
+            </label>
+            <label class="field">
+              <span class="lbl"><span class="name">Phone (private)</span></span>
+              <input type="tel" id="set-profile-phone" placeholder="+1 555 555 5555" autocomplete="tel">
+            </label>
+          </div>
+          <label class="field">
+            <span class="lbl"><span class="name">Website / Portfolio URL</span></span>
+            <input type="url" id="set-profile-website" placeholder="https://" autocomplete="url">
+          </label>
+          <label class="field">
+            <span class="lbl"><span class="name">Bio / Public Description</span></span>
+            <textarea id="set-profile-bio" rows="3" placeholder="One paragraph that summarizes what you create or represent. Surfaces alongside your name in search."></textarea>
+          </label>
+          <label class="field">
+            <span class="lbl"><span class="name">Tax ID / EIN / VAT (private, encrypted)</span></span>
+            <input type="text" id="set-profile-taxId" placeholder="Used for royalty reporting · never indexed" autocomplete="off">
+          </label>
+          <label class="field">
+            <span class="lbl"><span class="name">Discoverable in Search</span></span>
+            <select id="set-profile-publicProfile">
+              <option value="true">Yes — let other users find me by display / business name (default)</option>
+              <option value="false">No — keep my profile private (only my own searches show my assets)</option>
+            </select>
+          </label>
+        </div>
+
         <!-- APPEARANCE -->
         <div class="card">
           <div class="card-header"><span class="step-num">◐</span><h3>Appearance</h3></div>
@@ -7534,11 +7722,11 @@
             <label class="field">
               <span class="lbl"><span class="name">Accent Color</span></span>
               <select id="set-accent">
-                <option value="gold">Gold (default)</option>
-                <option value="cyan">Cyan</option>
-                <option value="green">Green</option>
-                <option value="purple">Purple</option>
-                <option value="orange">Orange</option>
+                <option value="gold">Wire Gold (default)</option>
+                <option value="cyan">Wire Cyan</option>
+                <option value="green">Wire Green</option>
+                <option value="purple">Wire Purple</option>
+                <option value="orange">Wire Orange</option>
               </select>
             </label>
             <label class="field">
@@ -8949,6 +9137,18 @@ const state = {
   // Every field has a sensible default; missing keys after a load() merge
   // back from these baselines so an older save doesn't wipe new settings.
   settings: {
+    // User & business profile — exposed in the global Top Search so assets
+    // can be found by creator name / business name. publicProfile = true
+    // means the displayName + businessName are indexed in search results
+    // (the legal name, tax id, email, phone are NEVER surfaced in search).
+    profile: {
+      displayName: '', legalName: '', businessName: '', businessType: '',
+      country: '', region: '', city: '',
+      email: '', phone: '', website: '',
+      bio: '',
+      taxId: '',                       // EIN / VAT — kept local, never indexed
+      publicProfile: true,
+    },
     // Appearance
     theme: 'dark',                    // dark | light | auto
     density: 'comfortable',            // comfortable | compact
@@ -9534,8 +9734,53 @@ function applyAllSettings() {
 
 function renderSettings() {
   const s = state.settings;
+  // Defensive — older saves predate the profile sub-object.
+  if (!s.profile) s.profile = {};
+  const p = s.profile;
   // Set every input value from state.settings.
-  const set = (id, val) => { const el = document.getElementById(id); if (el != null) { el.value = String(val); } };
+  const set = (id, val) => { const el = document.getElementById(id); if (el != null) { el.value = String(val == null ? '' : val); } };
+  // ===== Profile fields =====
+  set('set-profile-displayName',   p.displayName);
+  set('set-profile-legalName',     p.legalName);
+  set('set-profile-businessName',  p.businessName);
+  set('set-profile-businessType',  p.businessType);
+  set('set-profile-country',       p.country);
+  set('set-profile-region',        p.region);
+  set('set-profile-city',          p.city);
+  set('set-profile-email',         p.email);
+  set('set-profile-phone',         p.phone);
+  set('set-profile-website',       p.website);
+  set('set-profile-bio',           p.bio);
+  set('set-profile-taxId',         p.taxId);
+  set('set-profile-publicProfile', p.publicProfile == null ? 'true' : String(!!p.publicProfile));
+  // ===== Profile field binders — saves on every keystroke / change =====
+  function bindProfile(id, key, opts) {
+    const el = document.getElementById(id);
+    if (!el || el._profileBound) return;
+    el._profileBound = true;
+    const ev = (el.tagName === 'INPUT' && el.type === 'range') ? 'input' :
+               (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') ? 'input' : 'change';
+    el.addEventListener(ev, () => {
+      let v = el.value;
+      if (opts && opts.bool) v = (v === 'true' || v === true);
+      if (!s.profile) s.profile = {};
+      s.profile[key] = v;
+      saveSettings();
+    });
+  }
+  bindProfile('set-profile-displayName',   'displayName');
+  bindProfile('set-profile-legalName',     'legalName');
+  bindProfile('set-profile-businessName',  'businessName');
+  bindProfile('set-profile-businessType',  'businessType');
+  bindProfile('set-profile-country',       'country');
+  bindProfile('set-profile-region',        'region');
+  bindProfile('set-profile-city',          'city');
+  bindProfile('set-profile-email',         'email');
+  bindProfile('set-profile-phone',         'phone');
+  bindProfile('set-profile-website',       'website');
+  bindProfile('set-profile-bio',           'bio');
+  bindProfile('set-profile-taxId',         'taxId');
+  bindProfile('set-profile-publicProfile', 'publicProfile', { bool: true });
   set('set-theme',                     s.theme);
   set('set-density',                   s.density);
   set('set-accent',                    s.accent);
@@ -11314,7 +11559,36 @@ async function loadWalletConnectSDK() {
   return _wcEthereumProvider;
 }
 $$('[data-close]').forEach(b => b.addEventListener('click', () => closeModal(b.dataset.close)));
-$$('.modal-backdrop').forEach(bd => bd.addEventListener('click', e => { if (e.target===bd) closeModal(bd.id); }));
+// Backdrop close — only on a true tap on the backdrop itself.
+//   * Ignored entirely when the touch/pointer started inside the modal
+//     content (mouse-drag-out, finger started on a button then released
+//     on the backdrop).
+//   * Ignored on touch devices when the user has scrolled at all between
+//     touchstart and touchend. The Smart Contracts modal kept closing
+//     itself whenever the user tried to scroll its body on mobile —
+//     iOS Safari fires a click() at touchend on whatever element is
+//     under the finger, even if a scroll happened in between, and if
+//     that element is the modal-backdrop the previous handler closed
+//     the dialog. This guard makes scroll-then-release a no-op.
+$$('.modal-backdrop').forEach(bd => {
+  let startTarget = null;
+  let startY = 0, startX = 0, startTime = 0, scrolled = false;
+  bd.addEventListener('pointerdown', (e) => {
+    startTarget = e.target;
+    startY = e.clientY; startX = e.clientX; startTime = Date.now(); scrolled = false;
+  }, { passive: true });
+  bd.addEventListener('pointermove', (e) => {
+    if (Math.abs(e.clientY - startY) > 8 || Math.abs(e.clientX - startX) > 8) scrolled = true;
+  }, { passive: true });
+  bd.addEventListener('touchmove', () => { scrolled = true; }, { passive: true });
+  bd.addEventListener('click', (e) => {
+    if (e.target !== bd) return;          // click landed on inner modal content
+    if (startTarget && startTarget !== bd) return;  // press started inside the modal
+    if (scrolled) return;                 // user was scrolling, not tapping
+    if (Date.now() - startTime > 600) return;       // long-press, treat as deliberate selection
+    closeModal(bd.id);
+  });
+});
 document.addEventListener('keydown', e => { if (e.key==='Escape') $$('.modal-backdrop').forEach(bd => bd.classList.add('hidden')); });
 
 // ============================================================
@@ -11338,9 +11612,59 @@ function getFieldVal(asset, fieldId) {
 function doSearch(q) {
   if (!q) { searchResults.classList.remove('open'); return; }
   const ql = q.toLowerCase();
+  searchResults.innerHTML = '';
+
+  // ===== 1. Profile match — does the query hit the current user's
+  // discoverable profile? If so, prepend a "Creator Profile" header and
+  // group the user's own assets under it. Only fires when publicProfile is
+  // true OR when the user is searching their own profile from this device. =====
+  const prof = (state.settings && state.settings.profile) || {};
+  const isPublic = prof.publicProfile === true || prof.publicProfile === 'true';
+  const profileFields = [prof.displayName, prof.businessName, prof.legalName, prof.city, prof.region, prof.country, prof.bio]
+    .filter(Boolean).join(' ').toLowerCase();
+  const profileMatches = !!profileFields && profileFields.includes(ql);
+  let profileShownHits = 0;
+  if (profileMatches && (isPublic || profileFields)) {
+    const header = el('div', {
+      class: 'search-result',
+      style: 'background:rgba(240,196,25,0.06);border-left:3px solid var(--gold);cursor:pointer;'
+    });
+    header.appendChild(el('div', { class: 'sr-icon' }, '⚜'));
+    const info = el('div', { class: 'sr-info' });
+    info.appendChild(el('div', { class: 'sr-title' }, (prof.displayName || prof.businessName || 'Your Profile')));
+    const sub = [prof.businessName, [prof.city, prof.region, prof.country].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
+    info.appendChild(el('div', { class: 'sr-meta' }, sub || (state.assets.length + ' assets in vault')));
+    header.appendChild(info);
+    header.appendChild(el('div', { class: 'sr-tag' }, 'profile'));
+    header.addEventListener('click', () => {
+      searchResults.classList.remove('open');
+      topSearch.value = '';
+      showView('view-settings');
+    });
+    searchResults.appendChild(header);
+    // List the user's own assets under the profile header — capped at 6.
+    for (const a of state.assets.slice(0, 6)) {
+      const r = el('div', { class: 'search-result', style: 'padding-left: 30px;' });
+      r.appendChild(el('div', { class: 'sr-icon' }, assetIcon(a.type)));
+      const info2 = el('div', { class: 'sr-info' });
+      info2.appendChild(el('div', { class: 'sr-title' }, getFieldVal(a, 'title') || '(redacted)'));
+      const reg = getFieldVal(a, 'reg_number') || a.deed_id;
+      info2.appendChild(el('div', { class: 'sr-meta' }, 'by ' + (prof.displayName || 'you') + ' · ' + reg));
+      r.appendChild(info2);
+      r.appendChild(el('div', { class: 'sr-tag' }, a.type));
+      r.addEventListener('click', () => {
+        searchResults.classList.remove('open');
+        topSearch.value = '';
+        showAssetDetail(a);
+      });
+      searchResults.appendChild(r);
+      profileShownHits++;
+    }
+  }
+
+  // ===== 2. Per-asset match across creator + title + ids =====
   const hits = [];
   for (const a of state.assets) {
-    const fields = a.fields || {};
     const haystack = [
       getFieldVal(a, 'title'),
       getFieldVal(a, 'creator'),
@@ -11350,23 +11674,34 @@ function doSearch(q) {
       getFieldVal(a, 'app_number'),
       getFieldVal(a, 'tags'),
       a.deed_id, a.cbiaHash, a.vertex_id, a.type,
+      a.walletName,                         // creator wallet display name
+      // Include the user's own profile names so searching for "Outside The
+      // Wire" returns the user's own assets even when the asset's creator
+      // field is set to "Producer" or "(redacted)".
+      prof.displayName, prof.businessName,
     ].filter(Boolean).join(' ').toLowerCase();
     if (haystack.includes(ql)) hits.push(a);
   }
-  searchResults.innerHTML = '';
-  if (hits.length === 0) {
-    searchResults.appendChild(el('div', { class:'search-empty' }, 'No matching assets.'));
-  } else {
+
+  if (hits.length === 0 && profileShownHits === 0) {
+    searchResults.appendChild(el('div', { class: 'search-empty' }, 'No matching assets or creators.'));
+  } else if (hits.length > 0) {
+    // Optional section header when both profile + asset results exist.
+    if (profileShownHits > 0) {
+      searchResults.appendChild(el('div', {
+        style: 'padding:8px 14px 4px;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);border-top:1px solid var(--border);'
+      }, 'All matching assets'));
+    }
     for (const a of hits.slice(0, 12)) {
-      const r = el('div', { class:'search-result' });
-      r.appendChild(el('div', { class:'sr-icon' }, assetIcon(a.type)));
-      const info = el('div', { class:'sr-info' });
-      info.appendChild(el('div', { class:'sr-title' }, getFieldVal(a, 'title') || '(redacted)'));
-      const creator = getFieldVal(a, 'creator') || '(creator redacted)';
+      const r = el('div', { class: 'search-result' });
+      r.appendChild(el('div', { class: 'sr-icon' }, assetIcon(a.type)));
+      const info = el('div', { class: 'sr-info' });
+      info.appendChild(el('div', { class: 'sr-title' }, getFieldVal(a, 'title') || '(redacted)'));
+      const creator = getFieldVal(a, 'creator') || prof.displayName || '(creator redacted)';
       const reg = getFieldVal(a, 'reg_number') || a.deed_id;
-      info.appendChild(el('div', { class:'sr-meta' }, creator + ' · ' + reg));
+      info.appendChild(el('div', { class: 'sr-meta' }, creator + ' · ' + reg));
       r.appendChild(info);
-      r.appendChild(el('div', { class:'sr-tag' }, a.type));
+      r.appendChild(el('div', { class: 'sr-tag' }, a.type));
       r.addEventListener('click', () => {
         searchResults.classList.remove('open');
         topSearch.value = '';
@@ -14438,6 +14773,9 @@ if (vizRand) vizRand.addEventListener('click', () => {
 
 // ===== Step progression — highlight the next incomplete step + flag missing required fields =====
 // Runs on every state-mutating event; cheap because it only manipulates classes.
+// Track the previously-highlighted step so we only auto-scroll when the
+// next step actually CHANGES (instead of every focus / keystroke).
+let _lastNextStepIdx = -1;
 function updateStepProgression() {
   try {
     const flow = document.getElementById('tokenization-flow');
@@ -14498,9 +14836,76 @@ function updateStepProgression() {
         }
       }
       if (s.missing) s.card.classList.add('step-missing-field');
-      if (i === nextIndex && s.card.style.display !== 'none') s.card.classList.add('step-next-glow');
+      if (i === nextIndex && s.card.style.display !== 'none') {
+        s.card.classList.add('step-next-glow');
+        // Inject a REAL clickable button overlay (in addition to the CSS
+        // ::after badge), and bind a click that smooth-scrolls the card
+        // into view and focuses its first interactive control. Idempotent —
+        // we re-use any existing button on subsequent renders.
+        let btn = s.card.querySelector('.step-next-btn');
+        if (!btn) {
+          btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'step-next-btn';
+          btn.textContent = '⮕  NEXT STEP';
+          btn.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            jumpToNextStep(s.card);
+          });
+          s.card.appendChild(btn);
+        }
+      } else {
+        // Remove any stale next-step button on cards that are no longer "next".
+        const btn = s.card.querySelector('.step-next-btn');
+        if (btn) btn.remove();
+      }
     });
+    // Auto-scroll to the newly-highlighted next step only when the index
+    // changes (so it doesn't keep snapping back while the user is typing).
+    if (nextIndex !== -1 && nextIndex !== _lastNextStepIdx) {
+      _lastNextStepIdx = nextIndex;
+      const nextCard = completions[nextIndex] && completions[nextIndex].card;
+      if (nextCard) jumpToNextStep(nextCard, /*skipFocus=*/true);
+    } else if (nextIndex === -1) {
+      _lastNextStepIdx = -1;
+    }
   } catch (e) { console.warn('updateStepProgression failed:', e); }
+}
+// Smooth-scroll a step card into view (respecting the topbar + conn-banner
+// stack), then focus its first interactive input. Reusable from the NEXT
+// STEP button AND from the auto-scroll path inside updateStepProgression.
+function jumpToNextStep(card, skipFocus) {
+  if (!card) return;
+  try {
+    // Manual offset so the card top lands below the fixed topbar.
+    const topbarH = 64;
+    const banner  = document.getElementById('conn-banner');
+    const bannerH = (banner && banner.style.display !== 'none') ? (banner.offsetHeight || 0) : 0;
+    const offset  = topbarH + bannerH + 12;
+    // Find the scrolling ancestor (.content-area on desktop, the document on mobile
+    // when content-area's overflow has been overridden).
+    let scroller = card.closest('.content-area') || document.scrollingElement || document.documentElement;
+    const target = card.getBoundingClientRect().top
+                 - (scroller.getBoundingClientRect ? scroller.getBoundingClientRect().top : 0)
+                 + scroller.scrollTop
+                 - offset;
+    scroller.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+    if (!skipFocus) {
+      // Focus the first visible input / select / textarea / .asset-type / button.primary.
+      const focusable = card.querySelector(
+        'input:not([type="hidden"]):not([disabled]):not([readonly]),' +
+        'select:not([disabled]),' +
+        'textarea:not([disabled]),' +
+        '.asset-type, button.primary:not([disabled])'
+      );
+      if (focusable) {
+        // Small delay so the smooth-scroll has time to start before the
+        // focus pulls the viewport again.
+        setTimeout(() => { try { focusable.focus({ preventScroll: true }); } catch (e) {} }, 320);
+      }
+    }
+  } catch (e) { console.warn('jumpToNextStep failed:', e); }
 }
 window.updateStepProgression = updateStepProgression;
 // Run on field changes, type clicks, mode changes — debounced via rAF
@@ -18869,26 +19274,70 @@ $('#btn-cancel-offices').addEventListener('click', () => {
 function renderOffices(assetType) {
   const grid = $('#office-grid');
   grid.innerHTML = '';
-  for (const o of OFFICES) {
-    const supports = o.supports.includes(assetType);
-    const card = el('div', { class: 'office-card' + (supports ? '' : ' disabled') });
-    card.appendChild(el('span', { class:'of-flag' }, o.flag));
-    card.appendChild(el('div', { class:'of-name' }, o.name));
-    card.appendChild(el('div', { class:'of-region' }, o.region));
-    card.appendChild(el('div', { class:'of-fee' }, supports ? 'Filing fee: ' + o.fee : 'Not applicable'));
-    if (supports) {
+  // Show offices grouped by what they support so the user can simultaneously
+  // file as copyright AND patent AND trademark (many works qualify for
+  // multiple protections — a logo can be a trademark + a copyrighted work +
+  // a design patent). Previously the renderer disabled every office that
+  // didn't match the SINGLE primary asset type; now every office is
+  // selectable and each card displays which protections it provides.
+  const sections = [
+    { key: 'copyright',  label: 'Copyright Offices'  },
+    { key: 'trademark',  label: 'Trademark Offices'  },
+    { key: 'patent',     label: 'Patent Offices'     },
+    { key: 'tradesecret', label: 'Trade-Secret Custodians' },
+  ];
+  // Move the asset's primary type to the top so the most relevant offices
+  // are surfaced first.
+  if (assetType) {
+    const idx = sections.findIndex(s => s.key === assetType);
+    if (idx > 0) sections.unshift(sections.splice(idx, 1)[0]);
+  }
+  for (const sec of sections) {
+    const matches = OFFICES.filter(o => o.supports.includes(sec.key));
+    if (!matches.length) continue;
+    const header = el('div', {
+      class: 'office-group-head',
+      style: 'grid-column: 1 / -1; padding: 14px 4px 6px; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold-soft); border-bottom: 1px solid var(--border);'
+    }, sec.label + (sec.key === assetType ? '  · primary' : ''));
+    grid.appendChild(header);
+    for (const o of matches) {
+      const isPrimary = (sec.key === assetType);
+      const card = el('div', { class: 'office-card', 'data-office': o.id, 'data-filing-type': sec.key });
+      card.appendChild(el('span', { class: 'of-flag' }, o.flag));
+      card.appendChild(el('div', { class: 'of-name' }, o.name));
+      card.appendChild(el('div', { class: 'of-region' }, o.region));
+      // Type chips on the card so the user can see what protection it gives.
+      const chipsWrap = el('div', { style: 'margin-top:6px;display:flex;gap:4px;flex-wrap:wrap;justify-content:center;' });
+      for (const sup of o.supports) {
+        const isCurrent = sup === sec.key;
+        chipsWrap.appendChild(el('span', {
+          style: 'font-size:8.5px;letter-spacing:0.08em;text-transform:uppercase;padding:2px 6px;border-radius:8px;border:1px solid ' +
+                 (isCurrent ? 'var(--gold)' : 'var(--border)') + ';color:' + (isCurrent ? 'var(--gold)' : 'var(--muted)') +
+                 ';background:' + (isCurrent ? 'rgba(240,196,25,0.08)' : 'transparent') + ';'
+        }, sup));
+      }
+      card.appendChild(chipsWrap);
+      card.appendChild(el('div', { class: 'of-fee' }, 'Filing fee: ' + o.fee));
+      // Pre-select the primary offices when the user opens Step 6.
+      if (isPrimary && state.current.selectedOffices && !state.current.selectedOffices.includes(o.id)) {
+        // do nothing — don't auto-select, let the user choose
+      }
+      // Selection key tracks BOTH the office and the filing type so the same
+      // office (e.g. USPTO) can be selected once for patent and once for
+      // trademark in a single sentinel-dispatch.
+      const selKey = o.id + '::' + sec.key;
       card.addEventListener('click', () => {
-        if (state.current.selectedOffices.includes(o.id)) {
-          state.current.selectedOffices = state.current.selectedOffices.filter(x => x !== o.id);
+        if (state.current.selectedOffices.includes(selKey)) {
+          state.current.selectedOffices = state.current.selectedOffices.filter(x => x !== selKey);
           card.classList.remove('selected');
         } else {
-          state.current.selectedOffices.push(o.id);
+          state.current.selectedOffices.push(selKey);
           card.classList.add('selected');
         }
         $('#btn-dispatch-agents').disabled = state.current.selectedOffices.length === 0;
       });
+      grid.appendChild(card);
     }
-    grid.appendChild(card);
   }
 }
 
@@ -18902,13 +19351,21 @@ $('#btn-dispatch-agents').addEventListener('click', async () => {
   const rowsWrap = $('#agent-rows');
   rowsWrap.innerHTML = '';
   const dispatched = [];
-  for (const officeId of state.current.selectedOffices) {
+  for (const sel of state.current.selectedOffices) {
+    // Selection key is "<officeId>" (legacy) or "<officeId>::<filingType>"
+    // (new, per Step 6 office-grid). Parse both shapes.
+    let officeId = sel, filingType = asset.type;
+    if (typeof sel === 'string' && sel.includes('::')) {
+      const parts = sel.split('::');
+      officeId = parts[0]; filingType = parts[1] || asset.type;
+    }
     const office = OFFICES.find(o => o.id === officeId);
     if (!office) continue;
     const agentId = 'AGNT-' + Math.random().toString(36).slice(2, 8).toUpperCase();
     const reg = {
       id: uid('reg'), asset_id: asset.id, asset_title: asset.fields?.title?.value || asset.deed_id,
-      asset_type: asset.type, office_id: officeId, office_name: office.name, agent_id: agentId,
+      asset_type: asset.type, filing_type: filingType,
+      office_id: officeId, office_name: office.name + ' · ' + filingType, agent_id: agentId,
       status: 'queued', dispatched_at: nowISO(), updates: [],
     };
     state.registrations.unshift(reg);
@@ -25179,6 +25636,89 @@ function init() {
   try { purgeOldTrash && purgeOldTrash(); } catch (e) {}
   try { updateTrashBadge && updateTrashBadge(); } catch (e) {}
   try { if (state.settings && state.settings.sounds === 'off') window.SOUND_ENABLED = false; } catch (e) {}
+
+  // ============================================================
+  // VISUALIZER SECTION REORDER — Logo block right after Pattern Size
+  // ============================================================
+  // The asset visualizer's right-column settings ship in a specific HTML
+  // order, but the user prefers Logo Size / Position / Layer Order to sit
+  // directly below the Pattern Size slider rather than after the audio
+  // waveform + effects + animation blocks. We splice the DOM here once
+  // on load instead of rewriting the giant HTML chunk.
+  try {
+    const patternScale = document.getElementById('viz-pattern-scale');
+    const uploader     = document.querySelector('.viz-logo-uploader');
+    if (patternScale && uploader && uploader.parentNode === patternScale.parentNode && !uploader._reordered) {
+      const parent  = uploader.parentNode;
+      const refNode = patternScale.nextSibling;  // insert right after Pattern Size input
+      // Collect every following sibling starting from .viz-logo-uploader (the
+      // upload widget, Logo Size label + slider, Logo Position label + X / Y
+      // inputs, Layer Order label + chips + help text — all the way to the
+      // end of the right column).
+      const block = [];
+      let n = uploader;
+      while (n) { block.push(n); n = n.nextElementSibling; }
+      for (const node of block) parent.insertBefore(node, refNode);
+      uploader._reordered = true;
+    }
+  } catch (e) { console.warn('Logo-section reorder failed:', e); }
+
+  // ============================================================
+  // NFC URL CAPTURE — receive PoA from a tag that contains a URL
+  // ============================================================
+  // iPhone NFC-tag taps open the tag's URL in Safari. If our deployed page
+  // is configured to receive `?nfc=<signature>` (or `?poa=<signature>` /
+  // `?card=<serial>&sig=<signature>`), we read those params on load and
+  // treat them as a valid Proof-of-Agency tap.
+  try {
+    const params = new URLSearchParams(location.search);
+    const nfcSig    = (params.get('nfc') || params.get('poa') || '').trim();
+    const cardSer   = (params.get('card') || params.get('serial') || '').trim();
+    const challenge = (params.get('chal') || params.get('challenge') || '').trim();
+    if (nfcSig || cardSer) {
+      // Defer to next tick so the rest of init has time to wire handlers.
+      setTimeout(() => {
+        try {
+          // Persist the card serial for future verification.
+          if (cardSer) {
+            if (!state.poaCardSerials) state.poaCardSerials = [];
+            if (!state.poaCardSerials.includes(cardSer)) state.poaCardSerials.push(cardSer);
+            state.lastPoaSerial = cardSer;
+            save && save();
+          }
+          // Build the canonical signature shape the rest of the app expects.
+          const sig = nfcSig || (typeof ed25519Like === 'function' ? ed25519Like(cardSer + ':' + challenge) : (cardSer + ':' + challenge));
+          // If the NFC modal is open, complete it directly.
+          const modal = document.getElementById('modal-nfc');
+          if (modal && !modal.classList.contains('hidden') && typeof completeNFC === 'function') {
+            completeNFC(true, sig);
+          } else if (state.current && state.current.type) {
+            // No modal open yet — stash the PoA on the current draft so the
+            // user sees the green check next time they open Step 5.
+            state.current.poaSigned = true;
+            state.current.poaSignature = sig;
+            save && save();
+            const status = document.getElementById('poa-status');
+            if (status) {
+              status.className = 'pill ok';
+              const lbl = status.querySelector('span:last-child');
+              if (lbl) lbl.textContent = 'PoA verified · NFC URL';
+            }
+            try { soundVerify && soundVerify(); } catch (er) {}
+            try { toast && toast('NFC SecureCard™ tap received · Proof of Agency captured', 'ok', 5500); } catch (er) {}
+            try { updateMintReady && updateMintReady(); } catch (er) {}
+          } else {
+            try { toast && toast('NFC tap captured — open a new asset to use this PoA signature', 'info', 5000); } catch (er) {}
+          }
+          // Strip the params from the URL so a reload doesn't re-trigger.
+          try {
+            const clean = location.protocol + '//' + location.host + location.pathname + location.hash;
+            window.history.replaceState({}, document.title, clean);
+          } catch (er) {}
+        } catch (er) { console.warn('NFC URL capture failed:', er); }
+      }, 250);
+    }
+  } catch (e) { console.warn('NFC URL parser failed:', e); }
   // CRITICAL DEFENSIVE GUARANTEE: force the visible-on-load tokenize content
   // to be present even if any downstream init step throws. Without this, a
   // single render failure left the user staring at an empty middle area
