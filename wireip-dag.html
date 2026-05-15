@@ -3545,6 +3545,11 @@
     .wallet-display { padding: 4px 8px; }
     .wallet-display .addr { display: none; }
     .wallet-display button { padding: 1px 6px; font-size: 8.5px; }
+    /* Compact topbar metric on mobile — show value only, no label or sub */
+    .topbar-metric { min-width: 0 !important; padding: 2px 6px !important; }
+    .topbar-metric #topbar-metric-label,
+    .topbar-metric #topbar-metric-sub { display: none !important; }
+    .topbar-metric #topbar-metric-value { font-size: 11px !important; }
     /* Conn banner: stack the message + action buttons vertically on mobile so nothing
        gets clipped. Wrap text and let it grow vertically. */
     .conn-banner {
@@ -5772,8 +5777,44 @@
 <body>
 <!-- ===== Boot Splash — Clean & Quick ===== -->
 <div id="boot-splash">
-  <!-- OTW logo removed at user request — splash now shows just the wordmark. -->
-  <div class="splash-logo splash-logo-big" style="display:flex;align-items:center;justify-content:center;color:#f0c419;font-family:'IBM Plex Mono',ui-monospace,monospace;letter-spacing:0.20em;text-transform:uppercase;text-align:center;">
+  <!-- WireIP Network™ official logo — spray-paint rock-on hand inside an
+       open circle. Inline SVG so it renders before any external asset
+       loads. Yellow on transparent so it adapts to dark + light themes. -->
+  <div class="splash-logo splash-logo-big" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:#f0c419;font-family:'IBM Plex Mono',ui-monospace,monospace;letter-spacing:0.20em;text-transform:uppercase;text-align:center;">
+    <svg id="wireip-mark" viewBox="0 0 200 200" width="180" height="180" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 0 18px rgba(240,196,25,0.55));" aria-label="WireIP Network logo">
+      <defs>
+        <filter id="wireip-spray" x="-15%" y="-15%" width="130%" height="130%">
+          <feTurbulence type="fractalNoise" baseFrequency="1.8" numOctaves="2" seed="7" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="2.4"/>
+          <feGaussianBlur stdDeviation="0.55"/>
+        </filter>
+        <filter id="wireip-grain" x="0%" y="0%" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency="3.2" numOctaves="3" seed="11"/>
+          <feColorMatrix values="0 0 0 0 0.94  0 0 0 0 0.77  0 0 0 0 0.10  0 0 0 0.45 0"/>
+          <feComposite in2="SourceGraphic" operator="in"/>
+        </filter>
+      </defs>
+      <g stroke="#f0c419" fill="none" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" filter="url(#wireip-spray)">
+        <!-- Open access circle (broken at the top — the spray-paint "start" mark) -->
+        <path d="M 92 16 Q 36 22 22 96 Q 20 174 96 184 Q 174 184 180 102 Q 182 32 112 16"/>
+        <!-- Left outer finger (pinky raised) -->
+        <line x1="60" y1="50" x2="78" y2="132"/>
+        <line x1="60" y1="50" x2="92" y2="132"/>
+        <!-- Right outer finger (index raised) -->
+        <line x1="140" y1="50" x2="122" y2="132"/>
+        <line x1="140" y1="50" x2="108" y2="132"/>
+        <!-- Central three folded-finger bars (knuckles) -->
+        <line x1="86" y1="82" x2="86" y2="132"/>
+        <line x1="100" y1="82" x2="100" y2="132"/>
+        <line x1="114" y1="82" x2="114" y2="132"/>
+        <!-- Palm base -->
+        <line x1="78" y1="132" x2="122" y2="132"/>
+      </g>
+      <!-- Spray-paint grain dots overlaid on the strokes for texture -->
+      <g filter="url(#wireip-grain)" pointer-events="none">
+        <rect x="0" y="0" width="200" height="200" fill="#f0c419" opacity="0.35"/>
+      </g>
+    </svg>
     <div style="font-size:22px;font-weight:700;">WIREIP&nbsp;NETWORK™</div>
   </div>
   <div class="splash-status" id="splash-status">⌬ <span class="blink">CLEARING SETTLEMENT</span></div>
@@ -5885,6 +5926,14 @@
         </span>
         <span class="theme-slider"></span>
       </button>
+      <!-- Real-time portfolio / $WIP metric. Click to toggle between modes;
+           preference is also editable in Settings → Appearance. -->
+      <div class="topbar-metric" id="topbar-metric" title="Toggle portfolio value ↔ $WIP price" role="button" tabindex="0"
+           style="display:flex;flex-direction:column;align-items:flex-end;gap:1px;padding:4px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--panel-2);cursor:pointer;user-select:none;min-width:96px;">
+        <span id="topbar-metric-label" style="font-size:8px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);">Portfolio</span>
+        <span id="topbar-metric-value" style="font-size:12.5px;color:var(--gold);font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:700;line-height:1;">$0</span>
+        <span id="topbar-metric-sub" style="font-size:8.5px;color:var(--muted);font-family:'IBM Plex Mono',ui-monospace,monospace;line-height:1;">0 assets</span>
+      </div>
       <div class="wallet-display" id="wallet-display">
         <span id="wallet-status-dot" style="width:6px;height:6px;border-radius:50%;background:var(--muted)"></span>
         <span class="addr" id="wallet-addr">Wallet not set</span>
@@ -7790,6 +7839,15 @@
               </select>
             </label>
           </div>
+          <label class="field" style="margin-top:6px;">
+            <span class="lbl"><span class="name">Topbar Live Metric (always visible on every page)</span></span>
+            <select id="set-topbarMetric">
+              <option value="portfolio">Real-Time Portfolio Value (default)</option>
+              <option value="wip-price">$WIP Live Price</option>
+              <option value="wip-circulating">$WIP Circulating Supply</option>
+              <option value="mcap">$WIP Market Cap</option>
+            </select>
+          </label>
           <div class="form-row">
             <label class="field">
               <span class="lbl"><span class="name">Currency</span></span>
@@ -9242,6 +9300,10 @@ const state = {
     // Deleted assets / retention
     retentionDays: 30,                 // 0 = never auto-purge
     emptyTrashOnExit: false,
+    // Topbar real-time metric — what the always-visible number in the top
+    // bar represents. Click the metric in the topbar to toggle, or change
+    // it here.
+    topbarMetric: 'portfolio',         // portfolio | wip-price | wip-circulating | mcap
     // Notifications
     toastPosition: 'bottom-right',     // bottom-right | bottom-left | top-right | top-left
     toastDuration: 'medium',           // short | medium | long
@@ -9782,6 +9844,8 @@ function applyAllSettings() {
   // "Last Saved" indicator.
   const ls = document.getElementById('last-saved');
   if (ls) ls.style.display = (s.showLastSaved === false || s.showLastSaved === 'false') ? 'none' : '';
+  // Topbar live metric — repaint if the user just changed the mode.
+  try { refreshTopbarMetric && refreshTopbarMetric(); } catch (e) {}
 }
 
 function renderSettings() {
@@ -9866,6 +9930,7 @@ function renderSettings() {
   set('set-secureNodeVaultSlot',       s.secureNodeVaultSlot);
   set('set-retentionDays',             s.retentionDays);
   set('set-emptyTrashOnExit',          s.emptyTrashOnExit);
+  set('set-topbarMetric',              s.topbarMetric);
   set('set-toastPosition',             s.toastPosition);
   set('set-toastDuration',             s.toastDuration);
   set('set-nnMatchAlerts',             s.nnMatchAlerts);
@@ -9939,6 +10004,7 @@ function renderSettings() {
   bind('set-secureNodeVaultSlot',      'secureNodeVaultSlot');
   bind('set-retentionDays',            'retentionDays',        'int');
   bind('set-emptyTrashOnExit',         'emptyTrashOnExit',     'bool');
+  bind('set-topbarMetric',             'topbarMetric');
   bind('set-toastPosition',            'toastPosition');
   bind('set-toastDuration',            'toastDuration');
   bind('set-nnMatchAlerts',            'nnMatchAlerts');
@@ -10062,6 +10128,82 @@ function purgeOldTrash() {
   if (purged > 0) { save(); updateTrashBadge(); }
   return purged;
 }
+// ============================================================
+// TOPBAR LIVE METRIC — always-visible portfolio / $WIP indicator
+// ============================================================
+// Updates every 4 seconds, on every save(), and immediately on click. The
+// shown metric is whichever mode is set in state.settings.topbarMetric and
+// also editable in Settings → Appearance.
+function refreshTopbarMetric() {
+  const wrap  = document.getElementById('topbar-metric');
+  const lab   = document.getElementById('topbar-metric-label');
+  const val   = document.getElementById('topbar-metric-value');
+  const sub   = document.getElementById('topbar-metric-sub');
+  if (!wrap || !val) return;
+  const mode = (state.settings && state.settings.topbarMetric) || 'portfolio';
+  let label, value, subText;
+  if (mode === 'wip-price') {
+    const p = state.wipPrice || 0;
+    label = '$WIP Price';
+    value = '$' + p.toFixed(4);
+    const m = (state.wipCirculating || 0) * p;
+    subText = 'mcap ' + fmtUSD(m);
+  } else if (mode === 'wip-circulating') {
+    label = '$WIP Supply';
+    value = fmtNum(state.wipCirculating || 0);
+    subText = (((state.wipCirculating || 0) / 100_000_000) * 100).toFixed(2) + '% of 100M';
+  } else if (mode === 'mcap') {
+    const m = (state.wipCirculating || 0) * (state.wipPrice || 0);
+    label = '$WIP Mcap';
+    value = fmtUSD(m);
+    subText = '$' + (state.wipPrice || 0).toFixed(4) + ' / token';
+  } else {
+    // portfolio
+    let totalValue = 0, totalRev = 0;
+    for (const a of state.assets) {
+      try { const v = computeAssetValue(a); totalValue += v.total || 0; totalRev += v.monthly_revenue || 0; } catch (e) {}
+    }
+    label = 'Portfolio';
+    value = fmtUSD(totalValue);
+    const n = state.assets.length;
+    subText = n + ' asset' + (n === 1 ? '' : 's') + (totalRev > 0 ? ' · ' + fmtUSD(totalRev) + '/mo' : '');
+  }
+  if (lab) lab.textContent = label;
+  if (val) val.textContent = value;
+  if (sub) sub.textContent = subText;
+}
+function cycleTopbarMetric() {
+  const order = ['portfolio', 'wip-price', 'mcap', 'wip-circulating'];
+  const cur = (state.settings && state.settings.topbarMetric) || 'portfolio';
+  const next = order[(order.indexOf(cur) + 1) % order.length];
+  if (!state.settings) state.settings = {};
+  state.settings.topbarMetric = next;
+  try { saveSettings(); } catch (e) {}
+  refreshTopbarMetric();
+  // Also reflect in the Settings select if it's currently rendered.
+  const sel = document.getElementById('set-topbarMetric');
+  if (sel) sel.value = next;
+}
+(function wireTopbarMetric() {
+  const wrap = document.getElementById('topbar-metric');
+  if (!wrap || wrap._bound) return;
+  wrap._bound = true;
+  wrap.addEventListener('click', cycleTopbarMetric);
+  wrap.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cycleTopbarMetric(); } });
+  // Refresh on every save (assets, wipPrice, etc.) — wrap existing save().
+  if (typeof save === 'function' && !save._topbarPatched) {
+    const _origSave = save;
+    save = function() { _origSave.apply(this, arguments); try { refreshTopbarMetric(); } catch (e) {} };
+    save._topbarPatched = true;
+    try { window.save = save; } catch (e) {}
+  }
+  // Tick every 4 seconds — picks up tokenomics live drift while the
+  // tokenomics view is open and keeps portfolio value fresh.
+  setInterval(() => { try { refreshTopbarMetric(); } catch (e) {} }, 4000);
+  // First paint
+  setTimeout(refreshTopbarMetric, 50);
+})();
+
 function updateTrashBadge() {
   const b = document.getElementById('nav-trash-count');
   if (b) b.textContent = String((state.trash || []).length);
@@ -11622,26 +11764,74 @@ $$('[data-close]').forEach(b => b.addEventListener('click', () => closeModal(b.d
 //     under the finger, even if a scroll happened in between, and if
 //     that element is the modal-backdrop the previous handler closed
 //     the dialog. This guard makes scroll-then-release a no-op.
+// Backdrop close — only on a deliberate tap on the backdrop itself.
+// Form-modals (Add Collaborator, Create Network, etc.) kept closing on
+// mobile when the user tapped into an input — iOS Safari fires a synthetic
+// click at touchend on whatever's under the finger, and the keyboard-open
+// scroll could land that click on the backdrop. Hardened guards below.
+let _lastInputInteract = 0;
+document.addEventListener('focusin', (e) => {
+  if (e.target && e.target.closest && e.target.closest('.modal')) _lastInputInteract = Date.now();
+}, true);
+document.addEventListener('focusout', (e) => {
+  if (e.target && e.target.closest && e.target.closest('.modal')) _lastInputInteract = Date.now();
+}, true);
 $$('.modal-backdrop').forEach(bd => {
-  let startTarget = null;
+  let startTarget = null, gotStart = false;
   let startY = 0, startX = 0, startTime = 0, scrolled = false;
-  bd.addEventListener('pointerdown', (e) => {
+  function recordStart(e) {
+    gotStart = true;
     startTarget = e.target;
-    startY = e.clientY; startX = e.clientX; startTime = Date.now(); scrolled = false;
-  }, { passive: true });
+    startY = (e.clientY != null) ? e.clientY : (e.touches && e.touches[0] && e.touches[0].clientY) || 0;
+    startX = (e.clientX != null) ? e.clientX : (e.touches && e.touches[0] && e.touches[0].clientX) || 0;
+    startTime = Date.now();
+    scrolled = false;
+  }
+  bd.addEventListener('pointerdown', recordStart, { passive: true });
+  bd.addEventListener('touchstart',  recordStart, { passive: true });
+  bd.addEventListener('mousedown',   recordStart, { passive: true });
   bd.addEventListener('pointermove', (e) => {
     if (Math.abs(e.clientY - startY) > 8 || Math.abs(e.clientX - startX) > 8) scrolled = true;
   }, { passive: true });
-  bd.addEventListener('touchmove', () => { scrolled = true; }, { passive: true });
+  bd.addEventListener('touchmove', (e) => {
+    const t = e.touches && e.touches[0];
+    if (t && (Math.abs(t.clientY - startY) > 8 || Math.abs(t.clientX - startX) > 8)) scrolled = true;
+  }, { passive: true });
   bd.addEventListener('click', (e) => {
-    if (e.target !== bd) return;          // click landed on inner modal content
-    if (startTarget && startTarget !== bd) return;  // press started inside the modal
-    if (scrolled) return;                 // user was scrolling, not tapping
-    if (Date.now() - startTime > 600) return;       // long-press, treat as deliberate selection
+    // 1. The click target must BE the backdrop itself. Any click on inner
+    //    modal content is ignored.
+    if (e.target !== bd) return;
+    // 2. We must have seen a pointerdown / touchstart / mousedown on the
+    //    backdrop. iOS sometimes synthesizes click events without a
+    //    preceding press (e.g. virtual-keyboard dismissal, VoiceOver) —
+    //    those should never close the modal.
+    if (!gotStart) return;
+    // 3. The press must have started on the backdrop, not inside content.
+    if (startTarget && startTarget !== bd) { gotStart = false; return; }
+    // 4. No scrolling between press and release.
+    if (scrolled) { gotStart = false; return; }
+    // 5. Tap duration must be a deliberate quick tap.
+    if (Date.now() - startTime > 600) { gotStart = false; return; }
+    // 6. If the user just interacted with a form input inside the modal
+    //    (focus / blur / typing) within the last 400 ms, ignore. This is
+    //    the iOS keyboard-dismiss click that was killing the Add
+    //    Collaborator / Create Network / asset detail forms mid-typing.
+    if (Date.now() - _lastInputInteract < 400) { gotStart = false; return; }
+    gotStart = false;
     closeModal(bd.id);
   });
 });
-document.addEventListener('keydown', e => { if (e.key==='Escape') $$('.modal-backdrop').forEach(bd => bd.classList.add('hidden')); });
+// Escape closes — but never while the user is actively typing in a modal
+// input (otherwise the Escape they meant for autocomplete suggestions or
+// IME-composition cancel would dismiss the whole dialog).
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const ae = document.activeElement;
+  if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) {
+    if (ae.closest && ae.closest('.modal')) return;   // typing in a modal input — let Escape clear focus, not the modal
+  }
+  $$('.modal-backdrop').forEach(bd => bd.classList.add('hidden'));
+});
 
 // ============================================================
 // TOP SEARCH
