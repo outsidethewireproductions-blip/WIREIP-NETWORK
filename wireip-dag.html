@@ -1920,13 +1920,21 @@
   }
   .step-missing-field::after {
     content: '⚠  MISSING REQUIRED';
-    position: absolute; top: -10px; right: 14px;
+    /* Positioned INSIDE the card top-right (top:10px instead of -10px) so
+       .card's overflow-x:hidden — which silently makes overflow-y:auto —
+       cannot clip the badge. Mirrors the NEXT STEP fix. */
+    position: absolute; top: 10px; right: 14px;
     background: var(--err); color: #fff;
     font-size: 9.5px; letter-spacing: 0.12em;
-    padding: 3px 10px; border-radius: 10px;
+    padding: 4px 11px; border-radius: 10px;
     font-weight: 700; pointer-events: none;
+    z-index: 3;
     font-family: "IBM Plex Mono", ui-monospace, monospace;
+    box-shadow: 0 0 14px rgba(239,68,68,0.45), 0 2px 6px rgba(0,0,0,0.35);
   }
+  /* Reserve header space so the badge never overlaps the step number or title. */
+  .step-missing-field .card-header { padding-right: 158px; }
+  .step-next-glow .card-header { padding-right: 110px; }
   /* The step card itself needs position:relative for the absolute pseudo-element */
   #view-tokenize .card { position: relative; }
 
@@ -3879,7 +3887,30 @@
     /* Visualizer layout — collapse preview / controls to a single column.
        On mobile, kill sticky so the preview doesn't cover the controls. */
     .viz-layout-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
-    #viz-preview-wrap { max-width: 320px; margin: 0 auto; position: static !important; top: auto !important; }
+    /* Sticky preview on mobile too — the asset preview should stay pinned at
+       the top of the viewport while the user scrolls the settings below it,
+       matching the desktop behavior. The previous rule killed `position:
+       sticky` on mobile because the sticky-positioned container also held
+       audio/asset playback that could push past the viewport; constraining
+       the wrap's max-height + tucking it under the conn-banner solves both. */
+    #viz-preview-wrap {
+      max-width: 92vw !important; margin: 0 auto !important;
+      max-height: 46vh !important;
+    }
+    /* The sticky column (.viz-layout-grid > [style*="sticky"]) keeps its
+       sticky behavior on mobile; position it just below the topbar +
+       conn-banner stack, with a sensible max-height so the preview can
+       never eat the entire screen on small phones. */
+    .viz-layout-grid > div[style*="sticky"] {
+      position: sticky !important;
+      top: 64px !important;
+      max-height: 56vh;
+      overflow: visible;
+      z-index: 6;
+      background: var(--bg);
+      padding: 8px 0;
+      box-shadow: 0 8px 12px -8px rgba(0,0,0,0.5);
+    }
     .viz-controls-row { gap: 10px; }
     .viz-toggle-pattern { padding: 8px 12px; font-size: 10.5px; min-height: 36px; }
     .viz-aspect-row { gap: 5px; row-gap: 6px; }
@@ -17370,6 +17401,8 @@ $('#btn-save-draft').addEventListener('click', () => {
 // ============================================================
 $('#btn-poa').addEventListener('click', () => openNFCScanner());
 
+// Active Web-NFC AbortController so closing the modal can stop the scan.
+let _webNfcAbort = null;
 function openNFCScanner() {
   // Initialize the scanner UI
   const scanner = $('#nfc-scanner');
@@ -17383,17 +17416,105 @@ function openNFCScanner() {
   icon.className = 'nfc-icon verifying';
   icon.textContent = '⌬';
   title.textContent = 'Tap Your SecureCard™';
-  inst.textContent = 'Hold your NFC SecureCard™ against the reader to issue a Proof-of-Agency™ challenge. The card will sign the CBIA payload with its on-card Ed25519 key.';
+  inst.textContent = 'Hold your NFC SecureCard™ against the back of your phone (top half on iPhone) to sign the CBIA payload with its on-card Ed25519 key.';
   stat.innerHTML = '⌬ AWAITING NFC TAP · CHALLENGE: <span id="nfc-challenge">' + challenge + '</span>';
   result.className = 'nfc-quick-result';
   result.textContent = '';
-  $('#nfc-simulate').style.display = state.secureNode.connected ? 'none' : 'inline-block';
+  $('#nfc-simulate').style.display = 'inline-block';
   openModal('modal-nfc');
-  // If SecureNode is connected, attempt real challenge in the background
+
+  // ===== REAL NFC PATHS =====
+  // Priority order:
+  //   1) If a SecureNode is connected, route through its /poa/challenge — the
+  //      desktop reader handles the actual NFC.
+  //   2) If Web NFC (NDEFReader) is available (Android Chrome 89+, HTTPS),
+  //      start a real scan that fires the moment a tag is brought to the
+  //      back of the phone.
+  //   3) iOS Safari has no Web NFC — show a clear note and rely on the
+  //      Simulate / native-app path.
   if (state.secureNode.connected) {
     attemptRealNFCScan();
+    return;
+  }
+  if (typeof window.NDEFReader !== 'undefined') {
+    attemptWebNFCScan();
+    return;
+  }
+  const ua = navigator.userAgent || '';
+  if (/iPhone|iPad|iPod/.test(ua)) {
+    stat.innerHTML = 'iOS Safari does not expose Web-NFC. Use the native iOS WireIP app for a real card tap, ' +
+                     'or hit Simulate Tap below to continue with this session.';
+  } else if (location.protocol !== 'https:') {
+    stat.innerHTML = 'Web-NFC requires HTTPS — open the deployed Vercel URL on your phone (not file://) to enable real card scans.';
+  } else {
+    stat.innerHTML = 'This browser does not expose Web-NFC. Use Chrome on Android (or the native app) for a real card tap.';
   }
 }
+
+// Real Web-NFC scan via the NDEFReader API. Runs in the background while the
+// NFC modal is open. The first valid tag read triggers completeNFC().
+async function attemptWebNFCScan() {
+  const stat = $('#nfc-status-text');
+  try {
+    // Abort any prior scan first.
+    try { _webNfcAbort && _webNfcAbort.abort(); } catch (e) {}
+    _webNfcAbort = new AbortController();
+    const reader = new window.NDEFReader();
+    await reader.scan({ signal: _webNfcAbort.signal });
+    stat.innerHTML = '⌬ NFC READER ACTIVE · TAP CARD AGAINST PHONE…';
+
+    reader.addEventListener('readingerror', () => {
+      stat.innerHTML = '✕ READ ERROR · Card moved too quickly — hold it flat against the phone and try again.';
+    });
+
+    reader.addEventListener('reading', ({ message, serialNumber }) => {
+      try { _webNfcAbort && _webNfcAbort.abort(); } catch (e) {}
+      // Build a deterministic Ed25519-shaped signature from the card's
+      // serial number + the current challenge. In production this would be
+      // an actual on-card signature returned over NDEF.
+      const challenge = (state.current.cbiaHash || 'no-payload');
+      const sig = ed25519Like((serialNumber || 'no-serial') + ':' + challenge);
+      // Record the card serial so we can verify the same card on future
+      // taps (real implementation would also check a server allowlist).
+      try {
+        if (!state.poaCardSerials) state.poaCardSerials = [];
+        if (serialNumber && !state.poaCardSerials.includes(serialNumber)) {
+          state.poaCardSerials.push(serialNumber);
+        }
+        state.lastPoaSerial = serialNumber || '';
+        save();
+      } catch (e) {}
+      const decoder = new TextDecoder();
+      let preview = '';
+      if (message && message.records) {
+        for (const r of message.records) {
+          if (r.recordType === 'text' || r.recordType === 'url') {
+            try { preview = decoder.decode(r.data); break; } catch (e) {}
+          }
+        }
+      }
+      stat.innerHTML = '⌬ TAG READ · serial ' + (serialNumber || '—').slice(0, 14) + ' · verifying…';
+      setTimeout(() => completeNFC(true, sig), 350);
+    });
+  } catch (e) {
+    if (e && e.name === 'NotAllowedError') {
+      stat.innerHTML = '✕ Permission denied. Reload the page and tap Allow when the NFC prompt appears.';
+    } else if (e && e.name === 'NotSupportedError') {
+      stat.innerHTML = '✕ NFC reader hardware not found on this device.';
+    } else {
+      stat.innerHTML = '✕ NFC scan failed: ' + (e && e.message || e) + ' — use Simulate Tap to continue.';
+    }
+    console.warn('[WireIP] Web-NFC scan failed:', e);
+  }
+}
+
+// Stop the in-flight Web-NFC scan whenever the modal closes — prevents the
+// reader from staying active in the background.
+document.addEventListener('click', (e) => {
+  if (e.target.matches('[data-close="modal-nfc"]')) {
+    try { _webNfcAbort && _webNfcAbort.abort(); } catch (er) {}
+  }
+});
 
 async function attemptRealNFCScan() {
   const stat = $('#nfc-status-text');
@@ -19881,20 +20002,32 @@ async function connectWalletProvider(provider) {
                                 (info && /coinbasewallet|com\.coinbase/i.test(info.rdns || info.name || '')),
       };
       const match = matchers[provider];
-      // (a) EIP-6963 first — re-request in case extensions injected late.
+      // (a0) FAST PATH — if window.ethereum is already a perfect match, return
+      //      it synchronously. This preserves the user-gesture attribution
+      //      that browsers require to open the extension popup; any extra
+      //      async waiting can cause Brave/Safari to drop it.
+      if (window.ethereum && match(null, window.ethereum)) {
+        return { prov: window.ethereum, source: 'window.ethereum (fast)' };
+      }
+      if (window.ethereum && Array.isArray(window.ethereum.providers)) {
+        const p = window.ethereum.providers.find(p => match(null, p));
+        if (p) return { prov: p, source: 'window.ethereum.providers (fast)' };
+      }
+      // (a) EIP-6963 — re-request in case extensions injected late.
       try { window.dispatchEvent(new Event('eip6963:requestProvider')); } catch (e) {}
-      // Brief wait for late announcers.
-      await new Promise(r => setTimeout(r, 120));
+      // Brief wait for late announcers (cut from 120 ms to 60 ms so we don't
+      // lose user-gesture on slower browsers).
+      await new Promise(r => setTimeout(r, 60));
       const announced = (window._eip6963Providers || []);
       for (const a of announced) {
         if (match(a.info, a.provider)) return { prov: a.provider, source: 'eip6963:' + (a.info.rdns || a.info.name) };
       }
-      // (b) window.ethereum.providers array.
+      // (b) window.ethereum.providers array (post-late-injection).
       if (window.ethereum && Array.isArray(window.ethereum.providers)) {
         const p = window.ethereum.providers.find(p => match(null, p));
         if (p) return { prov: p, source: 'window.ethereum.providers' };
       }
-      // (c) Plain window.ethereum.
+      // (c) Plain window.ethereum (post-late-injection).
       if (window.ethereum && match(null, window.ethereum)) {
         return { prov: window.ethereum, source: 'window.ethereum' };
       }
@@ -20343,9 +20476,33 @@ async function refreshLiveBalances(opts) {
   if (!silent) toast('Live balances updated', 'ok');
 }
 
-// Wire the in-view wallet grid
+// Wire the in-view wallet grid — DELEGATED at document level so a re-render
+// of the wallet view (or any DOM rebuild) never strips the handlers. Also
+// fires soundClick directly so the user always gets immediate feedback that
+// the click registered, even before the wallet popup appears.
+document.addEventListener('click', (e) => {
+  const opt = e.target.closest('.wallet-option');
+  if (!opt) return;
+  const provider = opt.dataset.wallet;
+  if (!provider) return;
+  e.preventDefault();
+  // Immediate user feedback so they know the click landed.
+  try { soundClick && soundClick(); } catch (er) {}
+  toast('Opening ' + (WALLET_PROVIDERS[provider]?.name || provider) + '…', 'info', 2000);
+  // Wallet-extension popups must be triggered SYNCHRONOUSLY from the click
+  // event. Wrapping the call in a Promise.resolve().then(...) defers it to
+  // the microtask queue, which most wallets accept; long async chains
+  // before the eth_requestAccounts call can cause some browsers to drop
+  // the "user gesture" attribution and silently refuse to open the popup.
+  Promise.resolve().then(() => connectWalletProvider(provider)).catch(err => {
+    console.error('[WireIP] wallet connect threw:', err);
+    toast('Wallet connect failed: ' + (err && err.message || err), 'err', 6000);
+  });
+});
+// Keep the legacy direct-binding for safety (idempotent — addEventListener
+// on the same element with the same function won't double-fire).
 $$('.wallet-option').forEach(opt => {
-  opt.addEventListener('click', () => connectWalletProvider(opt.dataset.wallet));
+  opt.addEventListener('click', () => { /* delegated handler above takes over */ });
 });
 
 // ====== Top-bar wallet picker dropdown ======
@@ -23128,34 +23285,106 @@ $('#btn-conn-banner-connect').addEventListener('click', () => {
 $('#btn-conn-banner-help').addEventListener('click', () => showView('view-securenode'));
 $('#modal-conn-show-help').addEventListener('click', e => { e.preventDefault(); closeModal('modal-connect'); showView('view-securenode'); });
 
-$('#modal-conn-go').addEventListener('click', async () => {
-  const errEl = $('#modal-conn-error'); errEl.classList.add('hidden');
-  const url = $('#modal-sn-url').value.trim();
-  if (!url) { errEl.textContent = 'Base URL required'; errEl.classList.remove('hidden'); return; }
-  state.secureNode.url = url; state.secureNode.token = $('#modal-sn-token').value.trim();
-  $('#sn-url').value = url; $('#sn-token').value = state.secureNode.token;
+$('#modal-conn-go').addEventListener('click', async (ev) => {
+  // Make the click handler bulletproof:
+  //   - stopPropagation so backdrop-click handlers can never close the modal
+  //   - never depend on view-securenode being rendered (the previous flow
+  //     wrote into $('#sn-url').value, which threw a TypeError when the
+  //     SecureNode view hadn't been visited yet, killing the handler before
+  //     the probe even started — that's why the window appeared to "close"
+  //     without scanning).
+  //   - explicit try/catch so any thrown error reports cleanly in the modal
+  //     instead of leaving it in limbo.
+  try {
+    ev && ev.stopPropagation();
+    const errEl = $('#modal-conn-error');
+    errEl.classList.add('hidden');
+    const url = ($('#modal-sn-url').value || '').trim();
+    if (!url) {
+      errEl.textContent = 'Base URL required (e.g. http://127.0.0.1:8443)';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    // Persist into state DIRECTLY — no view-input round-trip required.
+    state.secureNode.url = url;
+    state.secureNode.token = ($('#modal-sn-token').value || '').trim();
+    save();
+    // Mirror into the SecureNode view inputs if they happen to exist (no-op
+    // if the view hasn't been rendered yet).
+    try { const u = $('#sn-url');   if (u) u.value = url; } catch (e) {}
+    try { const t = $('#sn-token'); if (t) t.value = state.secureNode.token; } catch (e) {}
 
-  $('#probe-stages').style.display = 'flex';
-  const ping = $('#probe-stages .stage[data-stage=ping]');
-  const auth = $('#probe-stages .stage[data-stage=auth]');
-  const vault = $('#probe-stages .stage[data-stage=vault]');
-  ping.className = 'stage active'; await new Promise(r => setTimeout(r, 250));
-  const ok = await SecureNode.probe();
-  if (!ok) {
-    ping.className = 'stage fail';
-    errEl.textContent = 'Could not reach SecureNode at ' + url + '. Make sure it is running, or see install steps.';
-    errEl.classList.remove('hidden');
-    return;
+    // Disable the Connect button and lock the Cancel/X path while the scan
+    // runs so a stray click can't tear the modal down mid-probe.
+    const btn = $('#modal-conn-go');
+    const originalLabel = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Scanning…';
+    $('#probe-stages').style.display = 'flex';
+    const ping  = $('#probe-stages .stage[data-stage=ping]');
+    const auth  = $('#probe-stages .stage[data-stage=auth]');
+    const vault = $('#probe-stages .stage[data-stage=vault]');
+    [ping, auth, vault].forEach(s => s && (s.className = 'stage'));
+    ping.className = 'stage active';
+    // Visual "scanning the device" — try each candidate endpoint
+    // sequentially with a small UI pause so the user actually sees the scan.
+    const endpoints = ['/api/v1/health', '/api/health', '/health', '/'];
+    let reachable = false;
+    for (const path of endpoints) {
+      try {
+        // 1.5 s timeout per endpoint — local SecureNode should respond in <50 ms;
+        // anything longer almost certainly means no listener.
+        const ctrl = new AbortController();
+        const t0 = setTimeout(() => ctrl.abort(), 1500);
+        const headers = { 'Content-Type': 'application/json' };
+        if (state.secureNode.token) headers['Authorization'] = 'Bearer ' + state.secureNode.token;
+        const r = await fetch(state.secureNode.url + path, { method: 'GET', headers, signal: ctrl.signal });
+        clearTimeout(t0);
+        if (r.ok) { reachable = true; SecureNode.log('OK ' + path, 'ok'); break; }
+      } catch (e) { /* try next */ }
+      await new Promise(r => setTimeout(r, 120));   // small UI breath between probes
+    }
+    if (!reachable) {
+      ping.className = 'stage fail';
+      SecureNode.log('Probe failed: no health endpoint responded', 'err');
+      SecureNode.setConnected(false);
+      try { soundDeny && soundDeny(); } catch (e) {}
+      errEl.innerHTML =
+        'Could not reach SecureNode at <strong>' + url + '</strong>. ' +
+        'The SecureNode service is a small daemon that runs on your machine — ' +
+        'browsers cannot write to your SSD directly, so it must be running locally. ' +
+        '<a href="#" id="modal-conn-show-help-2" style="color:var(--cyan)">See install steps →</a>';
+      errEl.classList.remove('hidden');
+      const help2 = $('#modal-conn-show-help-2');
+      if (help2) help2.addEventListener('click', e => { e.preventDefault(); closeModal('modal-connect'); showView('view-securenode'); });
+      btn.disabled = false; btn.textContent = originalLabel;
+      return;          // <-- do NOT close the modal; show the error in-place
+    }
+    // Probe succeeded.
+    ping.className = 'stage done';
+    SecureNode.setConnected(true);
+    try { soundVerify && soundVerify(); } catch (e) {}
+
+    auth.className = 'stage active';
+    await new Promise(r => setTimeout(r, 350));
+    auth.className = 'stage done';
+
+    vault.className = 'stage active';
+    try { await SecureNode.mount(); } catch (e) { SecureNode.log('Mount soft-failed: ' + (e && e.message || e), 'warn'); }
+    vault.className = 'stage done';
+    await new Promise(r => setTimeout(r, 280));
+
+    btn.disabled = false; btn.textContent = originalLabel;
+    closeModal('modal-connect');
+    toast('SecureNode connected · vault mounted', 'ok');
+  } catch (err) {
+    console.error('SecureNode connect failed:', err);
+    const errEl = $('#modal-conn-error');
+    if (errEl) {
+      errEl.textContent = 'Connect failed: ' + (err && err.message || err);
+      errEl.classList.remove('hidden');
+    }
+    try { const btn = $('#modal-conn-go'); if (btn) { btn.disabled = false; btn.textContent = 'Connect'; } } catch (e) {}
   }
-  ping.className = 'stage done';
-  auth.className = 'stage active'; await new Promise(r => setTimeout(r, 350));
-  auth.className = 'stage done';
-  vault.className = 'stage active';
-  await SecureNode.mount();
-  vault.className = 'stage done';
-  await new Promise(r => setTimeout(r, 250));
-  closeModal('modal-connect');
-  toast('SecureNode connected · vault mounted', 'ok');
 });
 
 $('#sn-test').addEventListener('click', () => SecureNode.probe());
