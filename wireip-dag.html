@@ -5781,38 +5781,34 @@
        open circle. Inline SVG so it renders before any external asset
        loads. Yellow on transparent so it adapts to dark + light themes. -->
   <div class="splash-logo splash-logo-big" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:#f0c419;font-family:'IBM Plex Mono',ui-monospace,monospace;letter-spacing:0.20em;text-transform:uppercase;text-align:center;">
-    <svg id="wireip-mark" viewBox="0 0 200 200" width="180" height="180" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 0 18px rgba(240,196,25,0.55));" aria-label="WireIP Network logo">
+    <!-- WireIP Network™ official logo — the user's exact attached artwork.
+         <img> loads the real asset from the project folder. The inline SVG
+         fallback below renders ONLY when the image fails to load (image is
+         not yet copied to the project folder, network error, etc.) so the
+         splash is never empty. Drop the original PNG/SVG into the same
+         folder as wireip-dag.html with the name `wireip-logo.png` and it
+         takes over automatically. -->
+    <img id="wireip-mark-img" src="wireip-logo.png" alt="WireIP Network logo"
+         style="width:180px;height:180px;display:block;object-fit:contain;filter:drop-shadow(0 0 18px rgba(240,196,25,0.55));"
+         onerror="this.style.display='none';var f=document.getElementById('wireip-mark-fallback');if(f)f.style.display='block';">
+    <svg id="wireip-mark-fallback" viewBox="0 0 200 200" width="180" height="180" xmlns="http://www.w3.org/2000/svg" style="display:none;filter: drop-shadow(0 0 18px rgba(240,196,25,0.55));" aria-label="WireIP Network logo (fallback)">
       <defs>
         <filter id="wireip-spray" x="-15%" y="-15%" width="130%" height="130%">
           <feTurbulence type="fractalNoise" baseFrequency="1.8" numOctaves="2" seed="7" result="n"/>
           <feDisplacementMap in="SourceGraphic" in2="n" scale="2.4"/>
           <feGaussianBlur stdDeviation="0.55"/>
         </filter>
-        <filter id="wireip-grain" x="0%" y="0%" width="100%" height="100%">
-          <feTurbulence type="fractalNoise" baseFrequency="3.2" numOctaves="3" seed="11"/>
-          <feColorMatrix values="0 0 0 0 0.94  0 0 0 0 0.77  0 0 0 0 0.10  0 0 0 0.45 0"/>
-          <feComposite in2="SourceGraphic" operator="in"/>
-        </filter>
       </defs>
       <g stroke="#f0c419" fill="none" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" filter="url(#wireip-spray)">
-        <!-- Open access circle (broken at the top — the spray-paint "start" mark) -->
         <path d="M 92 16 Q 36 22 22 96 Q 20 174 96 184 Q 174 184 180 102 Q 182 32 112 16"/>
-        <!-- Left outer finger (pinky raised) -->
         <line x1="60" y1="50" x2="78" y2="132"/>
         <line x1="60" y1="50" x2="92" y2="132"/>
-        <!-- Right outer finger (index raised) -->
         <line x1="140" y1="50" x2="122" y2="132"/>
         <line x1="140" y1="50" x2="108" y2="132"/>
-        <!-- Central three folded-finger bars (knuckles) -->
         <line x1="86" y1="82" x2="86" y2="132"/>
         <line x1="100" y1="82" x2="100" y2="132"/>
         <line x1="114" y1="82" x2="114" y2="132"/>
-        <!-- Palm base -->
         <line x1="78" y1="132" x2="122" y2="132"/>
-      </g>
-      <!-- Spray-paint grain dots overlaid on the strokes for texture -->
-      <g filter="url(#wireip-grain)" pointer-events="none">
-        <rect x="0" y="0" width="200" height="200" fill="#f0c419" opacity="0.35"/>
       </g>
     </svg>
     <div style="font-size:22px;font-weight:700;">WIREIP&nbsp;NETWORK™</div>
@@ -9654,7 +9650,12 @@ function load() {
     const p = JSON.parse(raw);
     state.assets = p.assets || [];
     state.trash = Array.isArray(p.trash) ? p.trash : [];
-    if (p.settings && typeof p.settings === 'object') Object.assign(state.settings, p.settings);
+    // NOTE: state.settings is OWNED by loadSettings() / saveSettings() and the
+    // dedicated `wireip_settings` localStorage key. Loading it here too would
+    // overwrite the in-memory settings on every page reload with whatever was
+    // stale in the main state blob — that's the bug where the light/dark
+    // theme + every other preference kept resetting to the default. The
+    // settings sub-object is intentionally NOT read back from p here.
     state.drafts = p.drafts || [];
     state.registrations = p.registrations || [];
     state.matches = p.matches || [];
@@ -13489,15 +13490,90 @@ VIZ_NAME_NOUN = [
   'Plaza','Pocket','Point','Pond','Portrait','Prairie','Press','Prism','Project','Protocol',
 ];
 
-function randomAssetName(seedStr) {
-  let h = 0x811C9DC5 >>> 0;
-  const s = String(seedStr || Date.now());
-  for (let i = 0; i < s.length; i++) {
-    h = ((h ^ s.charCodeAt(i)) * 0x01000193) >>> 0;
+// Inspiration name lists — designed to spark a creative direction the
+// moment a user reads them. Cities + emotions + cultural references that
+// can seed a beat, lyric, photograph, painting, screenplay, codebase.
+// "Atlanta Dreams" sits in here alongside hundreds of other evocative
+// pairings; every call rolls fresh randomness so the same user almost
+// never sees the same name twice.
+const NAME_PLACES = [
+  'Atlanta','Brooklyn','Compton','Detroit','Harlem','Houston','Memphis','Nashville','Oakland','Queens',
+  'Bronx','Phoenix','Austin','Seattle','Portland','Boston','Chicago','Denver','Dallas','Miami',
+  'Vegas','Tokyo','Kyoto','London','Berlin','Paris','Lisbon','Madrid','Rome','Venice',
+  'Havana','Lagos','Accra','Cairo','Marrakech','Bombay','Jakarta','Bangkok','Manila','Seoul',
+  'Reykjavik','Oslo','Helsinki','Cape Town','Johannesburg','Nairobi','Buenos Aires','Lima','Bogota','Sao Paulo',
+  'Brixton','Soho','Chelsea','Tribeca','Bowery','Camden','Westside','Eastside','Downtown','Uptown',
+  'Inglewood','Riverside','Sunset','Sahara','Pacific','Atlantic','Mojave','Adriatic','Aegean','Saharan',
+  'Brooklyn','Bayou','Delta','Coastal','Highland','Lowland','Midwest','Northwest','Southside','Westwood',
+];
+const NAME_VIBES = [
+  'Dreams','Lights','Hours','Nights','Echoes','Memories','Whispers','Sessions','Letters','Diaries',
+  'Anthems','Ballads','Hymns','Sonnets','Prayers','Confessions','Chronicles','Stories','Visions','Reveries',
+  'Currents','Tides','Waves','Skies','Sunsets','Sunrises','Eclipses','Horizons','Stars','Moons',
+  'Shadows','Mirrors','Reflections','Silhouettes','Reveries','Reveille','Movements','Frequencies','Rhythms','Rituals',
+  'Renaissance','Revival','Reunion','Reverie','Revolution','Resurrection','Rebirth','Romance','Reckoning','Reverb',
+  'Heat','Bloom','Glow','Haze','Mist','Smoke','Embers','Flame','Spark','Aura',
+  'Garden','Pavement','Boulevard','Avenue','Skyline','Rooftop','Window','Doorway','Threshold','Passage',
+  'Souls','Heart','Mind','Soul','Body','Spirit','Pulse','Breath','Voice','Hands',
+  'Forever','Never','Always','Tomorrow','Yesterday','Tonight','Midnight','Daybreak','Twilight','Dusk',
+  'Gold','Silver','Velvet','Linen','Marble','Glass','Iron','Concrete','Neon','Vinyl',
+];
+const NAME_ONE_WORD = [
+  'Gravity','Reverie','Wildflower','Sapphire','Indigo','Velvet','Solstice','Solace','Lullaby','Catharsis',
+  'Renaissance','Vesper','Halcyon','Mirage','Equinox','Eden','Avalanche','Stardust','Wanderlust','Aurora',
+  'Genesis','Exodus','Atlas','Anthem','Cipher','Verse','Pulse','Halo','Spire','Crown',
+  'Echo','Ember','Crescent','Lighthouse','Bonfire','Riptide','Mosaic','Origami','Polaroid','Vinyl',
+  'Renegade','Maverick','Outlaw','Drifter','Pilgrim','Wanderer','Saint','Sinner','Prodigal','Phoenix',
+  'Heartbreak','Heartache','Heartbeat','Heartstrong','Heartline','Goldrush','Wildfire','Wildchild','Wildwest','Wildone',
+  'Brooklyn','Memphis','Nashville','Harlem','Atlanta','Detroit','Manhattan','California','Carolina','Savannah',
+  'Loyalty','Mercy','Faith','Glory','Justice','Empathy','Honesty','Karma','Destiny','Eternity',
+];
+// Project-type-flavored bigrams — sample pools per asset type so a copyright
+// roll feels songwriter-coded, a patent roll feels lab-coded, etc.
+const NAME_PROJECT_FLAVORS = {
+  copyright:  [['Late','Last','Soft','Sweet','Bitter','Slow','Long','Lonely','Loud','Quiet'],
+               ['Goodbye','Sundays','Mornings','Rooms','Letters','Lovers','Lessons','Lights','Demos','Sessions']],
+  patent:     [['Prototype','Schematic','Vector','Quantum','Composite','Modular','Hybrid','Adaptive','Recursive','Distributed'],
+               ['Engine','Lattice','Array','Module','Process','Framework','Apparatus','Method','Synthesis','Algorithm']],
+  trademark:  [['Bold','Iconic','Sovereign','Heritage','Signature','Premier','Apex','Vanguard','Royal','Cardinal'],
+               ['House','Studio','Collective','Society','Atelier','Foundry','Workshop','Bureau','Guild','Imprint']],
+  tradesecret:[['Cipher','Vault','Shadow','Quiet','Stealth','Veiled','Hidden','Coded','Sealed','Locked'],
+               ['Protocol','Formula','Recipe','Method','Doctrine','Codex','Manifest','Ledger','Memo','Pact']],
+};
+
+function randomAssetName(_seedStrIgnored, opts) {
+  // FRESH RANDOMNESS every call — the user wants truly new names, not the
+  // same deterministic roll keyed off the CBIA hash. We pull from
+  // crypto.getRandomValues when available; fall back to Math.random.
+  let r;
+  try {
+    const a = new Uint32Array(4);
+    (crypto || window.crypto).getRandomValues(a);
+    r = function(i) { return a[i & 3]; };
+  } catch (e) {
+    r = function() { return (Math.random() * 0xFFFFFFFF) >>> 0; };
   }
-  const adj = VIZ_NAME_ADJ[h % VIZ_NAME_ADJ.length];
-  const noun = VIZ_NAME_NOUN[(h >> 8) % VIZ_NAME_NOUN.length];
-  return adj + ' ' + noun;
+  const pick = (list, i) => list[r(i) % list.length];
+
+  // 35% chance of a one-word name (e.g. "Reverie", "Gravity").
+  // 65% chance of a two-word name across the curated pools.
+  const oneWord = (r(0) % 100) < 35;
+  if (oneWord) return pick(NAME_ONE_WORD, 0);
+
+  // 65% two-word — pick a pool style at random for variety:
+  //   • place + vibe          (e.g. "Atlanta Dreams")
+  //   • adjective + noun      (the original pool, kept for institutional feel)
+  //   • project-type flavored (only when the current asset type matches)
+  const style = r(1) % 10;
+  const ctype = opts && opts.type;
+  if (ctype && NAME_PROJECT_FLAVORS[ctype] && style < 3) {
+    const [a, b] = NAME_PROJECT_FLAVORS[ctype];
+    return pick(a, 2) + ' ' + pick(b, 3);
+  }
+  if (style < 7) {
+    return pick(NAME_PLACES, 2) + ' ' + pick(NAME_VIBES, 3);
+  }
+  return pick(VIZ_NAME_ADJ, 2) + ' ' + pick(VIZ_NAME_NOUN, 3);
 }
 
 // Position the asset name + hex code labels at one of 5 spots on the canvas.
@@ -14756,7 +14832,7 @@ function buildVisualizerSVG(viz, creatorName, options = {}) {
   const cleanCreator = creatorName && !/^(MetaMask|Coinbase Wallet|WalletConnect|Ledger|Phantom|Robinhood Wallet|PayPal · PYUSD|SecureNode™)$/i.test(creatorName) ? creatorName : '';
   const displayName = (viz.assetName && viz.assetName.trim())
     || cleanCreator
-    || randomAssetName((state.current && state.current.cbiaHash) || (viz.seed || '') + '|' + (viz.color || ''));
+    || randomAssetName(null, { type: state.current && state.current.type });
   if (viz.logoDataURL && size !== 'tiny') {
     const img = document.createElement('img');
     img.className = 'viz-logo';
@@ -15499,8 +15575,10 @@ if (vizAssetNameInput) vizAssetNameInput.addEventListener('input', (e) => {
 const _vizNameGen = document.getElementById('viz-name-generate');
 const _vizNamePreview = document.getElementById('viz-name-preview');
 function pickFreshName() {
-  // Use a fresh Date.now()-based seed so each click produces a different name
-  return randomAssetName(Date.now() + ':' + Math.random());
+  // Fresh randomness comes from inside randomAssetName itself now — every
+  // call rolls crypto.getRandomValues / Math.random, so consecutive presses
+  // produce wildly different names instead of recycling the same pair.
+  return randomAssetName(null, { type: state.current && state.current.type });
 }
 if (_vizNameGen) _vizNameGen.addEventListener('click', () => {
   if (!state.current.visualizer) state.current.visualizer = defaultViz();
