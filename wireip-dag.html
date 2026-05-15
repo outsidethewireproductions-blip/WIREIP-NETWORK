@@ -4281,8 +4281,11 @@
       #000;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     overflow: hidden;
-    transition: opacity 0.55s ease, visibility 0.55s;
-    animation: bootSplashAutoHide 0.4s ease 2.6s forwards;
+    transition: opacity 0.8s ease, visibility 0.8s;
+    /* Hold the splash visible for 5.5s, then fade over 0.8s. Long enough
+       that the logo is read clearly before the app boots, but not so long
+       it feels like a load wait. */
+    animation: bootSplashAutoHide 0.8s ease 5.5s forwards;
   }
   #boot-splash.fade { opacity: 0; visibility: hidden; pointer-events: none; }
   /* Subtle scanline texture */
@@ -26216,15 +26219,21 @@ async function downscaleImageForLogo(file, maxEdge = 512, quality = 0.92) {
   const splash = document.getElementById('boot-splash');
   if (!splash) return;
   const status = document.getElementById('splash-status');
-  // Quick verify chime + auto-fade
+  // Extended dwell time so the WireIP logo + wordmark are visible long
+  // enough to read on the access window. Sequence:
+  //   0.0s  splash paint with logo
+  //   1.6s  status flips to ACCESS GRANTED + verify chime
+  //   5.0s  fade begins
+  //   5.8s  splash removed from DOM (CSS animation will have already
+  //         hidden it; this just cleans up the node)
   setTimeout(() => {
     if (status) status.innerHTML = '✓ <span style="color:var(--green);">ACCESS GRANTED</span>';
     try { soundVerify(); } catch(e) {}
-  }, 700);
+  }, 1600);
   setTimeout(() => {
     splash.classList.add('fade');
-    setTimeout(() => splash.remove(), 450);
-  }, 1300);
+    setTimeout(() => { try { splash.remove(); } catch (e) {} }, 800);
+  }, 5000);
 })();
 
 // (Legacy vault-mechanism sequence retained but never triggered — kept for code reference.)
