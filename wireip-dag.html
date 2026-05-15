@@ -5343,6 +5343,51 @@
   }
 
   /* ============================================================
+     SETTINGS — live attribute-driven theming
+     Each Settings preference writes a body[data-*] attribute via
+     applyAllSettings(); these CSS rules pick those attributes up
+     so the change is reflected immediately, with no reload.
+     ============================================================ */
+  /* Accent color swap (also affects gold-soft for borders). */
+  body[data-accent="cyan"]   { --gold: #4fd6ff; --gold-soft: #2bb5d9; }
+  body[data-accent="green"]  { --gold: #4ade80; --gold-soft: #22a85b; }
+  body[data-accent="purple"] { --gold: #c084fc; --gold-soft: #9b5de5; }
+  body[data-accent="orange"] { --gold: #f59e0b; --gold-soft: #d4830a; }
+  /* Compact density — tighter padding everywhere. */
+  body[data-density="compact"] .view             { padding: 16px 20px; }
+  body[data-density="compact"] .card             { padding: 14px; margin-bottom: 12px; }
+  body[data-density="compact"] .form-row         { gap: 8px; }
+  body[data-density="compact"] label.field       { margin-bottom: 10px; }
+  body[data-density="compact"] nav.side .nav-item{ padding: 6px 14px; font-size: 11px; }
+  body[data-density="compact"] .vault-card       { padding: 10px; }
+  body[data-density="compact"] .modal .body      { padding: 14px; }
+  /* Font size scaling. */
+  body[data-font-size="small"]  { font-size: 11px; }
+  body[data-font-size="large"]  { font-size: 13px; }
+  body[data-font-size="small"]  .view h1 { font-size: 14px; }
+  body[data-font-size="large"]  .view h1 { font-size: 18px; }
+  /* Reduce motion — kills non-essential animations + transitions. */
+  body[data-reduce-motion="on"] * {
+    animation-duration: 0.001s !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.001s !important;
+  }
+  body[data-reduce-motion="on"] .step-next-glow,
+  body[data-reduce-motion="on"] .step-missing-field,
+  body[data-reduce-motion="on"] .conn-banner .conn-dot,
+  body[data-reduce-motion="on"] .anim-counter.bump {
+    animation: none !important;
+  }
+  /* Toast reposition. */
+  body[data-toast-pos="bottom-left"]  #toast { right: auto !important; left: 20px !important; }
+  body[data-toast-pos="top-right"]    #toast { bottom: auto !important; top: 76px !important; }
+  body[data-toast-pos="top-left"]     #toast { bottom: auto; top: 76px; right: auto; left: 20px; }
+  /* Hide wallet address while keeping the LINKED indicator. */
+  body[data-hide-wallet="on"] .wallet-display .addr { display: none !important; }
+  /* Audio analysis: when both BPM + Key are off, hide the scan button entirely. */
+  body[data-audio-bpm="off"][data-audio-key="off"] #btn-scan-audio { display: none !important; }
+
+  /* ============================================================
      INSTITUTIONAL POLISH — Bloomberg/Goldman tone, RWA-grade
      ------------------------------------------------------------
      The original surface skewed video-game: spinning gold coin,
@@ -7462,11 +7507,12 @@
       <section class="view" id="view-settings">
         <h1>Settings</h1>
         <div class="lede">
-          Personalize WireIP. All preferences are stored locally in this browser. Wallet, vault, and SecureNode credentials are managed in their own views.
+          Personalize WireIP. Preferences save instantly to this browser. Wallet, vault, and SecureNode credentials are managed in their own views.
         </div>
 
+        <!-- APPEARANCE -->
         <div class="card">
-          <div class="card-header"><span class="step-num">⚙</span><h3>Appearance</h3></div>
+          <div class="card-header"><span class="step-num">◐</span><h3>Appearance</h3></div>
           <div class="form-row">
             <label class="field">
               <span class="lbl"><span class="name">Theme</span></span>
@@ -7484,44 +7530,437 @@
               </select>
             </label>
           </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header"><span class="step-num">♪</span><h3>Sound</h3></div>
-          <label class="field">
-            <span class="lbl"><span class="name">Interface Sounds</span></span>
-            <select id="set-sounds">
-              <option value="on">On — verify / deny / submit cues</option>
-              <option value="off">Off — silent</option>
+          <div class="form-row">
+            <label class="field">
+              <span class="lbl"><span class="name">Accent Color</span></span>
+              <select id="set-accent">
+                <option value="gold">Gold (default)</option>
+                <option value="cyan">Cyan</option>
+                <option value="green">Green</option>
+                <option value="purple">Purple</option>
+                <option value="orange">Orange</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="lbl"><span class="name">Font Size</span></span>
+              <select id="set-fontSize">
+                <option value="small">Small</option>
+                <option value="medium">Medium (default)</option>
+                <option value="large">Large</option>
+              </select>
+            </label>
+          </div>
+          <div class="form-row">
+            <label class="field">
+              <span class="lbl"><span class="name">Currency</span></span>
+              <select id="set-currency">
+                <option value="USD">USD · $</option>
+                <option value="EUR">EUR · €</option>
+                <option value="GBP">GBP · £</option>
+                <option value="JPY">JPY · ¥</option>
+                <option value="CAD">CAD · CA$</option>
+                <option value="AUD">AUD · A$</option>
+                <option value="CNY">CNY · ¥</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="lbl"><span class="name">Number Format</span></span>
+              <select id="set-numberFormat">
+                <option value="en-US">1,234.56 (US)</option>
+                <option value="en-GB">1,234.56 (UK)</option>
+                <option value="de-DE">1.234,56 (DE)</option>
+                <option value="fr-FR">1 234,56 (FR)</option>
+                <option value="ja-JP">1,234 (JP)</option>
+              </select>
+            </label>
+          </div>
+          <label class="field" style="margin-top:6px;">
+            <span class="lbl"><span class="name">Reduce Motion (disable non-essential animations)</span></span>
+            <select id="set-reduceMotion">
+              <option value="false">Off — full animations</option>
+              <option value="true">On — minimize animation</option>
             </select>
           </label>
         </div>
 
+        <!-- SOUND -->
+        <div class="card">
+          <div class="card-header"><span class="step-num">♪</span><h3>Sound</h3></div>
+          <div class="form-row">
+            <label class="field">
+              <span class="lbl"><span class="name">Interface Sounds</span></span>
+              <select id="set-sounds">
+                <option value="on">On — verify / deny / submit cues</option>
+                <option value="off">Off — silent</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="lbl"><span class="name">Master Volume</span><span id="set-volume-val" style="font-family:'IBM Plex Mono',ui-monospace,monospace;color:var(--gold);">70%</span></span>
+              <input type="range" id="set-volume" min="0" max="100" step="5" value="70">
+            </label>
+          </div>
+        </div>
+
+        <!-- PRIVACY & SECURITY -->
+        <div class="card">
+          <div class="card-header"><span class="step-num">⛨</span><h3>Privacy &amp; Security</h3></div>
+          <div class="form-row">
+            <label class="field">
+              <span class="lbl"><span class="name">Default Asset Privacy</span></span>
+              <select id="set-defaultPrivacyMode">
+                <option value="public">Public — all fields visible</option>
+                <option value="selective">Selective (default) — per-field toggle</option>
+                <option value="private">Private — encrypted by default</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="lbl"><span class="name">Auto-Lock Vault</span></span>
+              <select id="set-autoLockMinutes">
+                <option value="0">Off</option>
+                <option value="5">After 5 minutes idle</option>
+                <option value="15">After 15 minutes idle</option>
+                <option value="30">After 30 minutes idle</option>
+                <option value="60">After 1 hour idle</option>
+              </select>
+            </label>
+          </div>
+          <div class="form-row">
+            <label class="field">
+              <span class="lbl"><span class="name">Hash Display</span></span>
+              <select id="set-showFullHashes">
+                <option value="false">Truncated (e.g. 050d…fb8c)</option>
+                <option value="true">Full 64-char hashes</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="lbl"><span class="name">Wallet Address in Top Bar</span></span>
+              <select id="set-hideWalletInTopbar">
+                <option value="false">Visible (default)</option>
+                <option value="true">Hidden — show LINKED indicator only</option>
+              </select>
+            </label>
+          </div>
+          <label class="field" style="margin-top:6px;">
+            <span class="lbl"><span class="name">NFC Proof-of-Agency on Every Mint</span></span>
+            <select id="set-requireNfcPerMint">
+              <option value="true">Required (default · institutional)</option>
+              <option value="false">Optional — Simulate Tap allowed</option>
+            </select>
+          </label>
+        </div>
+
+        <!-- TOKENIZATION DEFAULTS -->
+        <div class="card">
+          <div class="card-header"><span class="step-num">⚜</span><h3>Tokenization Defaults</h3></div>
+          <p class="help" style="margin-top:0;">Pre-fill these on every new asset. You can still override per-asset on the form.</p>
+          <div class="form-row">
+            <label class="field">
+              <span class="lbl"><span class="name">Default Jurisdiction</span></span>
+              <select id="set-defaultJurisdiction">
+                <option>United States</option>
+                <option>European Union</option>
+                <option>United Kingdom</option>
+                <option>Canada</option>
+                <option>Australia</option>
+                <option>Japan</option>
+                <option>Switzerland</option>
+                <option>Singapore</option>
+                <option>WIPO (International)</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="lbl"><span class="name">Default License</span></span>
+              <select id="set-defaultLicense">
+                <option>All Rights Reserved</option>
+                <option>CC-BY 4.0</option>
+                <option>CC-BY-SA 4.0</option>
+                <option>CC-BY-NC 4.0</option>
+                <option>CC-BY-ND 4.0</option>
+                <option>CC-BY-NC-SA 4.0</option>
+                <option>CC0 (Public Domain)</option>
+                <option>Custom</option>
+              </select>
+            </label>
+          </div>
+          <div class="form-row">
+            <label class="field">
+              <span class="lbl"><span class="name">Default Royalty %</span><span id="set-defaultRoyaltyPct-val" style="font-family:'IBM Plex Mono',ui-monospace,monospace;color:var(--gold);">10%</span></span>
+              <input type="range" id="set-defaultRoyaltyPct" min="0" max="50" step="1" value="10">
+            </label>
+            <label class="field">
+              <span class="lbl"><span class="name">Default Stake Ratio %</span><span id="set-defaultStakeRatio-val" style="font-family:'IBM Plex Mono',ui-monospace,monospace;color:var(--gold);">100%</span></span>
+              <input type="range" id="set-defaultStakeRatio" min="1" max="100" step="1" value="100">
+            </label>
+          </div>
+          <div class="form-row">
+            <label class="field">
+              <span class="lbl"><span class="name">Default Fractionalization</span></span>
+              <select id="set-defaultFractionalize">
+                <option value="no">No — single deed</option>
+                <option value="100">100 royalty tokens</option>
+                <option value="1000">1,000 royalty tokens</option>
+                <option value="10000">10,000 royalty tokens</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="lbl"><span class="name">Default Kill-Switch</span></span>
+              <select id="set-defaultKillSwitch">
+                <option value="24h">24 hours</option>
+                <option value="7d">7 days (default)</option>
+                <option value="30d">30 days</option>
+                <option value="never">Never auto-trigger</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <!-- AUDIO ANALYSIS -->
+        <div class="card">
+          <div class="card-header"><span class="step-num">♫</span><h3>Audio Analysis</h3></div>
+          <div class="form-row">
+            <label class="field">
+              <span class="lbl"><span class="name">Auto-Detect BPM on Audio Upload</span></span>
+              <select id="set-autoDetectBpm">
+                <option value="true">On</option>
+                <option value="false">Off</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="lbl"><span class="name">Auto-Detect Musical Key on Audio Upload</span></span>
+              <select id="set-autoDetectKey">
+                <option value="true">On</option>
+                <option value="false">Off</option>
+              </select>
+            </label>
+          </div>
+          <div class="form-row">
+            <label class="field">
+              <span class="lbl"><span class="name">Tempo Bias</span></span>
+              <select id="set-tempoRange">
+                <option value="all">All — 60-200 BPM (default)</option>
+                <option value="dance">Dance / Hip-Hop — 95-145 BPM</option>
+                <option value="classical">Classical / Ballad — 60-100 BPM</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="lbl"><span class="name">Key Detection Profile</span></span>
+              <select id="set-keyProfile">
+                <option value="temperley">Temperley/Kostka-Payne (popular · default)</option>
+                <option value="krumhansl">Krumhansl-Schmuckler (classical)</option>
+              </select>
+            </label>
+          </div>
+          <label class="field" style="margin-top:6px;">
+            <span class="lbl"><span class="name">Tuning Standard</span></span>
+            <select id="set-tuningStandard">
+              <option value="auto">Auto-Detect (default)</option>
+              <option value="a440">A = 440 Hz (modern standard)</option>
+              <option value="a432">A = 432 Hz</option>
+            </select>
+          </label>
+        </div>
+
+        <!-- WALLET / BLOCKCHAIN -->
+        <div class="card">
+          <div class="card-header"><span class="step-num">$</span><h3>Wallet &amp; Blockchain</h3></div>
+          <div class="form-row">
+            <label class="field">
+              <span class="lbl"><span class="name">Default Chain</span></span>
+              <select id="set-defaultChain">
+                <option value="0x1">Ethereum (mainnet)</option>
+                <option value="0x89">Polygon</option>
+                <option value="0x2105">Base</option>
+                <option value="0xa4b1">Arbitrum One</option>
+                <option value="0xa">Optimism</option>
+                <option value="0x38">BNB Chain</option>
+                <option value="0xa86a">Avalanche C-Chain</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="lbl"><span class="name">Gas Price Preference</span></span>
+              <select id="set-gasPreference">
+                <option value="slow">Slow — minimum fee</option>
+                <option value="normal">Normal (default)</option>
+                <option value="fast">Fast — priority</option>
+              </select>
+            </label>
+          </div>
+          <label class="field" style="margin-top:6px;">
+            <span class="lbl"><span class="name">Auto-Refresh Balances</span></span>
+            <select id="set-autoRefreshBalancesSec">
+              <option value="0">Off</option>
+              <option value="15">Every 15 seconds</option>
+              <option value="30">Every 30 seconds</option>
+              <option value="60">Every 60 seconds</option>
+              <option value="300">Every 5 minutes</option>
+            </select>
+          </label>
+          <div style="margin-top:10px;">
+            <button id="set-configure-wc" class="cyan" type="button">Configure WalletConnect Project ID →</button>
+          </div>
+        </div>
+
+        <!-- SECURENODE -->
+        <div class="card">
+          <div class="card-header"><span class="step-num">●</span><h3>SecureNode™</h3></div>
+          <div class="form-row">
+            <label class="field">
+              <span class="lbl"><span class="name">Auto-Reconnect on Startup</span></span>
+              <select id="set-secureNodeAutoReconnect">
+                <option value="true">On — probe at app launch</option>
+                <option value="false">Off — manual only</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="lbl"><span class="name">Health-Check Interval</span></span>
+              <select id="set-secureNodeHealthCheckSec">
+                <option value="0">Off</option>
+                <option value="15">Every 15 seconds</option>
+                <option value="30">Every 30 seconds (default)</option>
+                <option value="60">Every 60 seconds</option>
+              </select>
+            </label>
+          </div>
+          <label class="field" style="margin-top:6px;">
+            <span class="lbl"><span class="name">Vault Slot</span></span>
+            <select id="set-secureNodeVaultSlot">
+              <option value="encrypted-1">encrypted-1 (default)</option>
+              <option value="encrypted-2">encrypted-2</option>
+              <option value="cold">cold (read-only archive)</option>
+            </select>
+          </label>
+          <div style="margin-top:10px;">
+            <button id="set-go-securenode" class="cyan" type="button">Open SecureNode view →</button>
+          </div>
+        </div>
+
+        <!-- DELETED ASSETS / RETENTION -->
         <div class="card">
           <div class="card-header"><span class="step-num">⌫</span><h3>Deleted Assets · Retention</h3></div>
           <p class="help" style="margin-top:0;">
-            Deleted assets are moved to a recovery folder. They are permanently purged after the retention window below.
-            You can restore an asset any time before purge from the <strong>Deleted Assets</strong> view.
+            Deleted assets move to a recovery folder. They permanently purge after the retention window. Restore any time before purge from the <strong>Deleted Assets</strong> view.
           </p>
-          <label class="field">
-            <span class="lbl"><span class="name">Auto-Purge Window</span></span>
-            <select id="set-retention">
-              <option value="15">15 days</option>
-              <option value="20">20 days</option>
-              <option value="30" selected>30 days (default)</option>
-              <option value="0">Never auto-purge</option>
-            </select>
-          </label>
+          <div class="form-row">
+            <label class="field">
+              <span class="lbl"><span class="name">Auto-Purge Window</span></span>
+              <select id="set-retentionDays">
+                <option value="15">15 days</option>
+                <option value="20">20 days</option>
+                <option value="30">30 days (default)</option>
+                <option value="0">Never auto-purge</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="lbl"><span class="name">Empty Deleted Folder on App Close</span></span>
+              <select id="set-emptyTrashOnExit">
+                <option value="false">No (default)</option>
+                <option value="true">Yes — purge all on exit</option>
+              </select>
+            </label>
+          </div>
           <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
             <button id="set-empty-trash" class="danger" type="button">Empty Deleted folder now</button>
             <button id="set-go-trash" class="cyan" type="button">Open Deleted folder →</button>
           </div>
         </div>
 
+        <!-- NOTIFICATIONS -->
+        <div class="card">
+          <div class="card-header"><span class="step-num">⚐</span><h3>Notifications</h3></div>
+          <div class="form-row">
+            <label class="field">
+              <span class="lbl"><span class="name">Toast Position</span></span>
+              <select id="set-toastPosition">
+                <option value="bottom-right">Bottom-right (default)</option>
+                <option value="bottom-left">Bottom-left</option>
+                <option value="top-right">Top-right</option>
+                <option value="top-left">Top-left</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="lbl"><span class="name">Toast Duration</span></span>
+              <select id="set-toastDuration">
+                <option value="short">Short — 1.5 seconds</option>
+                <option value="medium">Medium — 2.5 seconds (default)</option>
+                <option value="long">Long — 5 seconds</option>
+              </select>
+            </label>
+          </div>
+          <label class="field" style="margin-top:6px;">
+            <span class="lbl"><span class="name">Neural-Net Match Alerts</span></span>
+            <select id="set-nnMatchAlerts">
+              <option value="immediate">Immediate — toast on every hit (default)</option>
+              <option value="batched">Batched — one daily summary</option>
+              <option value="off">Off — silent (visible in Neural Net view)</option>
+            </select>
+          </label>
+        </div>
+
+        <!-- DATA & BACKUP -->
+        <div class="card">
+          <div class="card-header"><span class="step-num">⎙</span><h3>Data &amp; Backup</h3></div>
+          <div class="form-row">
+            <label class="field">
+              <span class="lbl"><span class="name">Auto-Save</span></span>
+              <select id="set-autoSaveMode">
+                <option value="every-change">Every change (default)</option>
+                <option value="30s">Every 30 seconds</option>
+                <option value="60s">Every 60 seconds</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="lbl"><span class="name">Show "Last Saved" Indicator</span></span>
+              <select id="set-showLastSaved">
+                <option value="true">On (default)</option>
+                <option value="false">Off</option>
+              </select>
+            </label>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+            <button id="set-export-data" class="cyan" type="button">Export all data (JSON)</button>
+            <button id="set-import-data" type="button">Import data from JSON…</button>
+            <input type="file" id="set-import-file" accept="application/json,.json" style="display:none;">
+          </div>
+        </div>
+
+        <!-- MOBILE -->
+        <div class="card">
+          <div class="card-header"><span class="step-num">▭</span><h3>Mobile</h3></div>
+          <div class="form-row">
+            <label class="field">
+              <span class="lbl"><span class="name">Haptic Feedback</span></span>
+              <select id="set-hapticFeedback">
+                <option value="true">On — short vibration on key actions</option>
+                <option value="false">Off</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="lbl"><span class="name">Sticky Floating Submit Bar</span></span>
+              <select id="set-stickyFloatingSubmit">
+                <option value="true">On (default) — always above home indicator</option>
+                <option value="false">Off — fade with scroll</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <!-- DEVELOPER -->
+        <div class="card">
+          <div class="card-header"><span class="step-num">⌬</span><h3>Developer</h3></div>
+          <label class="field">
+            <span class="lbl"><span class="name">Show Diagnostic Console Logs</span></span>
+            <select id="set-showDeveloperDiagnostics">
+              <option value="false">Off (default)</option>
+              <option value="true">On — verbose console output</option>
+            </select>
+          </label>
+        </div>
+
+        <!-- DANGER ZONE -->
         <div class="card">
           <div class="card-header"><span class="step-num">⚠</span><h3>Danger Zone</h3></div>
           <p class="help" style="margin-top:0;">
-            Erase ALL local data — assets, wallet, SecureNode credentials, vault drafts, and preferences. Use this only when you intend to start fresh on this device. This cannot be undone.
+            Erase ALL local data — assets, wallet, SecureNode credentials, vault drafts, preferences. Use only when starting fresh on this device. This cannot be undone.
           </p>
           <button id="set-reset-all" class="danger" type="button">Reset all local data</button>
         </div>
@@ -8507,9 +8946,63 @@ const state = {
   // auto-purged after `settings.retentionDays` (Settings → Deleted Assets).
   trash: [],
   // Per-user preferences (persisted across sessions via localStorage).
-  // theme: dark | light | auto · sounds: on | off · density: comfortable | compact
-  // retentionDays: how long deleted assets stay restorable (0 = never purge).
-  settings: { theme: 'dark', density: 'comfortable', sounds: 'on', retentionDays: 30 },
+  // Every field has a sensible default; missing keys after a load() merge
+  // back from these baselines so an older save doesn't wipe new settings.
+  settings: {
+    // Appearance
+    theme: 'dark',                    // dark | light | auto
+    density: 'comfortable',            // comfortable | compact
+    accent: 'gold',                    // gold | cyan | green | purple | orange
+    reduceMotion: false,
+    fontSize: 'medium',                // small | medium | large
+    currency: 'USD',                   // USD | EUR | GBP | JPY | CAD | AUD | CNY
+    numberFormat: 'en-US',             // en-US | en-GB | de-DE | fr-FR | ja-JP
+    // Sound
+    sounds: 'on',                      // on | off
+    volume: 0.7,                       // 0..1
+    // Privacy & security
+    defaultPrivacyMode: 'selective',   // selective | public | private
+    autoLockMinutes: 0,                // 0 = off
+    showFullHashes: false,
+    hideWalletInTopbar: false,
+    requireNfcPerMint: true,
+    // Tokenization defaults
+    defaultJurisdiction: 'United States',
+    defaultLicense: 'All Rights Reserved',
+    defaultRoyaltyPct: 10,
+    defaultFractionalize: 'no',
+    defaultKillSwitch: '7d',
+    defaultStakeRatio: 100,
+    // Audio analysis
+    autoDetectBpm: true,
+    autoDetectKey: true,
+    tempoRange: 'all',                 // dance (95-145) | classical (60-100) | all (60-200)
+    keyProfile: 'temperley',           // krumhansl (classical) | temperley (pop)
+    tuningStandard: 'auto',            // a440 | a432 | auto
+    // Wallet / blockchain
+    defaultChain: '0x1',               // 0x1 Ethereum, 0x89 Polygon, 0x2105 Base, 0xa4b1 Arbitrum, 0xa Optimism
+    autoRefreshBalancesSec: 0,         // 0 = off, otherwise N seconds
+    gasPreference: 'normal',           // slow | normal | fast
+    // SecureNode
+    secureNodeAutoReconnect: true,
+    secureNodeHealthCheckSec: 30,
+    secureNodeVaultSlot: 'encrypted-1',
+    // Deleted assets / retention
+    retentionDays: 30,                 // 0 = never auto-purge
+    emptyTrashOnExit: false,
+    // Notifications
+    toastPosition: 'bottom-right',     // bottom-right | bottom-left | top-right | top-left
+    toastDuration: 'medium',           // short | medium | long
+    nnMatchAlerts: 'immediate',        // immediate | batched | off
+    // Data & backup
+    autoSaveMode: 'every-change',      // every-change | 30s | 60s
+    showLastSaved: true,
+    // Mobile
+    hapticFeedback: true,
+    stickyFloatingSubmit: true,
+    // Developer / advanced
+    showDeveloperDiagnostics: false,
+  },
   drafts: [],
   registrations: [],
   matches: [],
@@ -9004,7 +9497,7 @@ function loadSettings() {
     const raw = localStorage.getItem('wireip_settings');
     if (raw) Object.assign(state.settings, JSON.parse(raw));
   } catch (e) {}
-  applyTheme(state.settings.theme);
+  applyAllSettings();
 }
 function saveSettings() {
   try { localStorage.setItem('wireip_settings', JSON.stringify(state.settings)); } catch (e) {}
@@ -9015,51 +9508,205 @@ function applyTheme(theme) {
     : theme;
   document.body.classList.toggle('light-theme', effective === 'light');
 }
+// Apply EVERY visual / behavioral setting to the DOM. Called on load AND on
+// every per-setting change so the page reflects the user's preferences live.
+function applyAllSettings() {
+  const s = state.settings || {};
+  applyTheme(s.theme);
+  // CSS attribute hooks (selectors in styles can target [data-density],
+  // [data-accent], [data-font-size], [data-reduce-motion]).
+  const b = document.body;
+  if (b) {
+    b.dataset.density       = s.density || 'comfortable';
+    b.dataset.accent        = s.accent || 'gold';
+    b.dataset.fontSize      = s.fontSize || 'medium';
+    b.dataset.reduceMotion  = (s.reduceMotion === true || s.reduceMotion === 'true') ? 'on' : 'off';
+    b.dataset.toastPos      = s.toastPosition || 'bottom-right';
+    b.dataset.hideWallet    = (s.hideWalletInTopbar === true || s.hideWalletInTopbar === 'true') ? 'on' : 'off';
+  }
+  // Sound master switch + volume.
+  window.SOUND_ENABLED = (s.sounds !== 'off');
+  window.SOUND_VOLUME  = typeof s.volume === 'number' ? s.volume : 0.7;
+  // "Last Saved" indicator.
+  const ls = document.getElementById('last-saved');
+  if (ls) ls.style.display = (s.showLastSaved === false || s.showLastSaved === 'false') ? 'none' : '';
+}
+
 function renderSettings() {
   const s = state.settings;
-  const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
-  setEl('set-theme', s.theme);
-  setEl('set-density', s.density);
-  setEl('set-sounds', s.sounds);
-  setEl('set-retention', String(s.retentionDays));
-  const bindChange = (id, key, transform) => {
+  // Set every input value from state.settings.
+  const set = (id, val) => { const el = document.getElementById(id); if (el != null) { el.value = String(val); } };
+  set('set-theme',                     s.theme);
+  set('set-density',                   s.density);
+  set('set-accent',                    s.accent);
+  set('set-fontSize',                  s.fontSize);
+  set('set-currency',                  s.currency);
+  set('set-numberFormat',              s.numberFormat);
+  set('set-reduceMotion',              s.reduceMotion);
+  set('set-sounds',                    s.sounds);
+  set('set-volume',                    Math.round((s.volume || 0) * 100));
+  set('set-defaultPrivacyMode',        s.defaultPrivacyMode);
+  set('set-autoLockMinutes',           s.autoLockMinutes);
+  set('set-showFullHashes',            s.showFullHashes);
+  set('set-hideWalletInTopbar',        s.hideWalletInTopbar);
+  set('set-requireNfcPerMint',         s.requireNfcPerMint);
+  set('set-defaultJurisdiction',       s.defaultJurisdiction);
+  set('set-defaultLicense',            s.defaultLicense);
+  set('set-defaultRoyaltyPct',         s.defaultRoyaltyPct);
+  set('set-defaultStakeRatio',         s.defaultStakeRatio);
+  set('set-defaultFractionalize',      s.defaultFractionalize);
+  set('set-defaultKillSwitch',         s.defaultKillSwitch);
+  set('set-autoDetectBpm',             s.autoDetectBpm);
+  set('set-autoDetectKey',             s.autoDetectKey);
+  set('set-tempoRange',                s.tempoRange);
+  set('set-keyProfile',                s.keyProfile);
+  set('set-tuningStandard',            s.tuningStandard);
+  set('set-defaultChain',              s.defaultChain);
+  set('set-gasPreference',             s.gasPreference);
+  set('set-autoRefreshBalancesSec',    s.autoRefreshBalancesSec);
+  set('set-secureNodeAutoReconnect',   s.secureNodeAutoReconnect);
+  set('set-secureNodeHealthCheckSec',  s.secureNodeHealthCheckSec);
+  set('set-secureNodeVaultSlot',       s.secureNodeVaultSlot);
+  set('set-retentionDays',             s.retentionDays);
+  set('set-emptyTrashOnExit',          s.emptyTrashOnExit);
+  set('set-toastPosition',             s.toastPosition);
+  set('set-toastDuration',             s.toastDuration);
+  set('set-nnMatchAlerts',             s.nnMatchAlerts);
+  set('set-autoSaveMode',              s.autoSaveMode);
+  set('set-showLastSaved',             s.showLastSaved);
+  set('set-hapticFeedback',            s.hapticFeedback);
+  set('set-stickyFloatingSubmit',      s.stickyFloatingSubmit);
+  set('set-showDeveloperDiagnostics',  s.showDeveloperDiagnostics);
+
+  // Live label updates for the range sliders.
+  const updRange = (id, suffix) => {
+    const el = document.getElementById(id);
+    const lab = document.getElementById(id + '-val');
+    if (lab && el) lab.textContent = el.value + (suffix || '');
+  };
+  updRange('set-volume', '%');
+  updRange('set-defaultRoyaltyPct', '%');
+  updRange('set-defaultStakeRatio', '%');
+
+  // Smart change binder: maps select-string to typed value, then saves and
+  // re-applies all settings live (so theme / accent / density flip instantly).
+  function bind(id, key, type) {
     const el = document.getElementById(id);
     if (!el || el._settingsBound) return;
     el._settingsBound = true;
-    el.addEventListener('change', () => {
-      s[key] = transform ? transform(el.value) : el.value;
-      saveSettings();
-      if (key === 'theme') applyTheme(s.theme);
-      if (key === 'sounds') { window.SOUND_ENABLED = (s.sounds === 'on'); }
-      toast('Setting saved', 'ok', 1800);
+    const ev = (el.tagName === 'INPUT' && el.type === 'range') ? 'input' : 'change';
+    el.addEventListener(ev, () => {
+      let v = el.value;
+      if (type === 'int')     v = parseInt(v, 10) || 0;
+      else if (type === 'bool') v = (v === 'true' || v === true);
+      else if (type === 'percent') { v = (parseInt(v, 10) || 0) / 100; }
+      s[key] = v;
+      // Live label update for ranges.
+      if (id === 'set-volume')             document.getElementById('set-volume-val').textContent             = Math.round(v * 100) + '%';
+      if (id === 'set-defaultRoyaltyPct')  document.getElementById('set-defaultRoyaltyPct-val').textContent  = v + '%';
+      if (id === 'set-defaultStakeRatio')  document.getElementById('set-defaultStakeRatio-val').textContent  = v + '%';
+      saveSettings(); applyAllSettings();
+      if (ev === 'change') toast('Setting saved', 'ok', 1400);
     });
-  };
-  bindChange('set-theme',     'theme');
-  bindChange('set-density',   'density');
-  bindChange('set-sounds',    'sounds');
-  bindChange('set-retention', 'retentionDays', v => parseInt(v, 10) || 0);
+  }
+  bind('set-theme',                    'theme');
+  bind('set-density',                  'density');
+  bind('set-accent',                   'accent');
+  bind('set-fontSize',                 'fontSize');
+  bind('set-currency',                 'currency');
+  bind('set-numberFormat',             'numberFormat');
+  bind('set-reduceMotion',             'reduceMotion',         'bool');
+  bind('set-sounds',                   'sounds');
+  bind('set-volume',                   'volume',               'percent');
+  bind('set-defaultPrivacyMode',       'defaultPrivacyMode');
+  bind('set-autoLockMinutes',          'autoLockMinutes',      'int');
+  bind('set-showFullHashes',           'showFullHashes',       'bool');
+  bind('set-hideWalletInTopbar',       'hideWalletInTopbar',   'bool');
+  bind('set-requireNfcPerMint',        'requireNfcPerMint',    'bool');
+  bind('set-defaultJurisdiction',      'defaultJurisdiction');
+  bind('set-defaultLicense',           'defaultLicense');
+  bind('set-defaultRoyaltyPct',        'defaultRoyaltyPct',    'int');
+  bind('set-defaultStakeRatio',        'defaultStakeRatio',    'int');
+  bind('set-defaultFractionalize',     'defaultFractionalize');
+  bind('set-defaultKillSwitch',        'defaultKillSwitch');
+  bind('set-autoDetectBpm',            'autoDetectBpm',        'bool');
+  bind('set-autoDetectKey',            'autoDetectKey',        'bool');
+  bind('set-tempoRange',               'tempoRange');
+  bind('set-keyProfile',               'keyProfile');
+  bind('set-tuningStandard',           'tuningStandard');
+  bind('set-defaultChain',             'defaultChain');
+  bind('set-gasPreference',            'gasPreference');
+  bind('set-autoRefreshBalancesSec',   'autoRefreshBalancesSec', 'int');
+  bind('set-secureNodeAutoReconnect',  'secureNodeAutoReconnect', 'bool');
+  bind('set-secureNodeHealthCheckSec', 'secureNodeHealthCheckSec', 'int');
+  bind('set-secureNodeVaultSlot',      'secureNodeVaultSlot');
+  bind('set-retentionDays',            'retentionDays',        'int');
+  bind('set-emptyTrashOnExit',         'emptyTrashOnExit',     'bool');
+  bind('set-toastPosition',            'toastPosition');
+  bind('set-toastDuration',            'toastDuration');
+  bind('set-nnMatchAlerts',            'nnMatchAlerts');
+  bind('set-autoSaveMode',             'autoSaveMode');
+  bind('set-showLastSaved',            'showLastSaved',        'bool');
+  bind('set-hapticFeedback',           'hapticFeedback',       'bool');
+  bind('set-stickyFloatingSubmit',     'stickyFloatingSubmit', 'bool');
+  bind('set-showDeveloperDiagnostics', 'showDeveloperDiagnostics', 'bool');
 
-  const empty = document.getElementById('set-empty-trash');
-  if (empty && !empty._bound) {
-    empty._bound = true;
-    empty.addEventListener('click', () => {
-      if (!state.trash || state.trash.length === 0) { toast('Deleted folder already empty', 'info'); return; }
-      if (!confirm('Permanently delete all ' + state.trash.length + ' items in the Deleted folder? This cannot be undone.')) return;
-      state.trash = []; save(); updateTrashBadge();
-      toast('Deleted folder emptied', 'ok');
+  // ===== Action buttons =====
+  const wire = (id, fn) => {
+    const el = document.getElementById(id);
+    if (el && !el._bound) { el._bound = true; el.addEventListener('click', fn); }
+  };
+  wire('set-empty-trash', () => {
+    if (!state.trash || state.trash.length === 0) { toast('Deleted folder already empty', 'info'); return; }
+    if (!confirm('Permanently delete all ' + state.trash.length + ' items in the Deleted folder? This cannot be undone.')) return;
+    state.trash = []; save(); updateTrashBadge();
+    toast('Deleted folder emptied', 'ok');
+  });
+  wire('set-go-trash',       () => showView('view-trash'));
+  wire('set-go-securenode',  () => showView('view-securenode'));
+  wire('set-configure-wc',   () => { try { openWalletConnectConfigPrompt(); } catch (e) {} });
+  wire('set-export-data',    () => {
+    try {
+      const payload = JSON.stringify({
+        exportedAt: new Date().toISOString(),
+        version: 'v4.1',
+        data: JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'),
+        settings: state.settings,
+      }, null, 2);
+      const blob = new Blob([payload], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'wireip-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast('Backup exported', 'ok');
+    } catch (e) { toast('Export failed: ' + (e && e.message || e), 'err'); }
+  });
+  wire('set-import-data', () => { const f = document.getElementById('set-import-file'); if (f) f.click(); });
+  const importFile = document.getElementById('set-import-file');
+  if (importFile && !importFile._bound) {
+    importFile._bound = true;
+    importFile.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      if (!confirm('Importing will OVERWRITE all current local data on this device. Continue?')) { e.target.value = ''; return; }
+      try {
+        const txt = await file.text();
+        const parsed = JSON.parse(txt);
+        if (parsed && parsed.data) localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed.data));
+        if (parsed && parsed.settings) localStorage.setItem('wireip_settings', JSON.stringify(parsed.settings));
+        toast('Import complete — reloading…', 'ok');
+        setTimeout(() => location.reload(), 800);
+      } catch (err) {
+        toast('Import failed: ' + (err && err.message || err), 'err', 5000);
+      } finally { e.target.value = ''; }
     });
   }
-  const go = document.getElementById('set-go-trash');
-  if (go && !go._bound) { go._bound = true; go.addEventListener('click', () => showView('view-trash')); }
-  const reset = document.getElementById('set-reset-all');
-  if (reset && !reset._bound) {
-    reset._bound = true;
-    reset.addEventListener('click', () => {
-      if (!confirm('Erase ALL local WireIP data on this device — assets, wallet, SecureNode, drafts, preferences? This cannot be undone.')) return;
-      try { localStorage.clear(); } catch (e) {}
-      location.reload();
-    });
-  }
+  wire('set-reset-all', () => {
+    if (!confirm('Erase ALL local WireIP data on this device — assets, wallet, SecureNode, drafts, preferences? This cannot be undone.')) return;
+    try { localStorage.clear(); } catch (e) {}
+    location.reload();
+  });
 }
 
 // ============================================================
