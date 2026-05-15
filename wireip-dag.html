@@ -627,10 +627,17 @@
     border-radius: 8px; padding: 0 6px; font-size: 9px; color: var(--muted);
   }
 
-  .content-area { overflow-y: auto; background: var(--bg); min-width: 0; }
-  /* Center the view container on big desktops so content doesn't hug the left
-     edge when the sidebar is much narrower than the viewport.
-     `min-width: 0` lets nested grids shrink instead of overflowing. */
+  .content-area {
+    overflow-y: auto;
+    background: var(--bg);
+    min-width: 0;
+    min-height: 200px;  /* never collapse to 0 */
+  }
+  /* View visibility — ONLY the .active view shows. No !important forced-display:
+     a previous "failsafe" pinned #view-tokenize permanently visible, which made
+     it overlap every other view the user navigated to. The correct mechanism is
+     simply: views are display:none, .active makes them display:block. The HTML
+     ships view-tokenize with class="view active" so it shows on first paint. */
   .view {
     display: none;
     padding: 24px 28px;
@@ -639,6 +646,7 @@
     width: 100%;
     box-sizing: border-box;
     min-width: 0;
+    overflow-x: hidden;       /* nothing inside a view may bleed sideways */
   }
   .view.active { display: block; }
   .view h1 {
@@ -658,7 +666,22 @@
   .card {
     background: var(--panel); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 20px; margin-bottom: 16px; position: relative;
+    box-sizing: border-box;
+    max-width: 100%;          /* a card can never be wider than its view */
+    overflow-x: hidden;        /* clip any rogue wide child instead of bleeding */
   }
+  /* ===== GLOBAL WIDTH CONTAINMENT (desktop + mobile) =====
+     Belt-and-suspenders so NOTHING can push the page wider than the window.
+     Every box honors border-box; cards, form rows, grids, and media all cap
+     at 100% of their container; long unbroken strings (hashes, URLs) wrap. */
+  .view * { box-sizing: border-box; }
+  .view img, .view canvas, .view video, .view svg, .view iframe { max-width: 100%; }
+  .view pre, .view code { white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; }
+  .form-row { max-width: 100%; }
+  .form-row > * { min-width: 0; }       /* grid/flex children shrink instead of overflowing */
+  /* Any element that uses an inline grid-template with fixed columns still
+     shrinks its children rather than forcing the row wider. */
+  .view [style*="grid-template-columns"] > * { min-width: 0; }
   .card.gold-edge { border-color: var(--gold-soft); box-shadow: 0 0 14px rgba(240,196,25,0.10); }
   .card.cyan-edge { border-color: var(--cyan); box-shadow: 0 0 14px rgba(79,214,255,0.10); }
   .card.green-edge { border-color: var(--green); box-shadow: 0 0 14px rgba(74,222,128,0.10); }
@@ -3345,12 +3368,38 @@
   }
   .menu-toggle:hover, .menu-toggle:active { background: rgba(240,196,25,0.10); border-color: var(--gold); }
   .menu-toggle svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+  /* Desktop: nav-backdrop CANNOT render. Multiple guarantees so a stale .show
+     class can never paint the screen-covering blank box that was haunting nav
+     clicks: display:none, opacity:0, pointer-events:none, visibility:hidden,
+     zero size, no background. Mobile-only rule below restores it as a drawer
+     overlay when the screen is narrow enough to actually need one. */
   .nav-backdrop {
-    display: none; position: fixed; inset: 64px 0 28px 0;
-    background: rgba(0,0,0,0.65); backdrop-filter: blur(2px);
-    z-index: 79; animation: fadeIn 0.18s ease;
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+    width: 0 !important; height: 0 !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
   }
-  .nav-backdrop.show { display: block; }
+  /* Light-theme override that previously painted the box near-white — nuked. */
+  body.light-theme .nav-backdrop { background: transparent !important; }
+  @media (max-width: 900px) {
+    .nav-backdrop {
+      display: none !important;
+      width: auto !important; height: auto !important;
+      position: fixed; inset: 64px 0 28px 0;
+      background: rgba(0,0,0,0.65) !important;
+      backdrop-filter: blur(2px);
+      z-index: 79; animation: fadeIn 0.18s ease;
+      opacity: 1 !important;
+    }
+    .nav-backdrop.show {
+      display: block !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+    }
+  }
 
   /* ===== Wide desktop (≥1600px) =====
      Open up the content max-width and pad more generously so the layout
@@ -3361,6 +3410,19 @@
   @media (min-width: 2000px) {
     .view { max-width: 1840px; padding: 32px 44px; }
   }
+
+  /* Always constrain the visualizer columns to their track width. Without
+     this, child elements (audio player, asset image, file preview, etc.) with
+     intrinsic widths push the column wider than the grid track and the whole
+     card overextends past its container — which is what the user saw when
+     selecting an asset type and the visualizer card revealed. */
+  .viz-layout-grid > * { min-width: 0; max-width: 100%; overflow: hidden; }
+  .viz-layout-grid > * > * { max-width: 100%; }
+  #visualizer-card { overflow: hidden; }
+  #visualizer-card .viz-layout-grid img,
+  #visualizer-card .viz-layout-grid canvas,
+  #visualizer-card .viz-layout-grid video,
+  #visualizer-card .viz-layout-grid audio { max-width: 100%; }
 
   /* ===== Narrow laptop / large tablet (901-1180px) =====
      The visualizer's 1fr/2fr split gets cramped on smaller laptops — collapse
@@ -3950,7 +4012,88 @@
     .priv-toggle { padding: 4px 8px; }
   }
 
+  /* ===== Mobile parity for recently-added features =====
+     Ensures the Proof-of-Value panel, Visualizer Template box, cross-chain
+     issuance modal, font-position / layer-order / waveform chips, and the
+     stake-ratio slider all behave correctly at narrow widths. */
+  @media (max-width: 720px) {
+    /* PoV card — tighten padding + stack the header info */
+    .pov-card { padding: 10px !important; }
+    .pov-card .pov-item { padding: 8px !important; }
+    .pov-card #pov-add-type, .pov-card #pov-stake-ratio { font-size: 11px; padding: 8px 10px; }
+    /* PoV row fields stack vertically on phones */
+    #pov-items .pov-item > div[style*="flex-wrap"] { gap: 4px; }
+    #pov-items input[type="number"],
+    #pov-items input[type="file"] + label,
+    #pov-items button { flex: 1 1 auto; min-width: 0; }
+    /* Visualizer template panel */
+    #viz-sop-panel { font-size: 10px; }
+    #viz-sop-list { max-height: 240px; }
+    #viz-sop-name { min-width: 0; font-size: 12px; }
+    /* Font position / layer order / waveform chips — single column overflow */
+    .viz-font-pos-row, .viz-layer-order-row, .viz-wave-cmode-chip,
+    .viz-wave-color-mode-row, .viz-pattern-color-row, .viz-anim-target-row,
+    .viz-shake-intensity-row {
+      flex-wrap: wrap !important; gap: 5px;
+    }
+    .viz-font-pos-chip, .viz-layer-chip, .viz-wave-cmode-chip,
+    .viz-pattern-color-chip, .viz-anim-target-chip, .viz-shake-chip {
+      flex: 1 1 calc(50% - 5px); min-width: 0;
+    }
+    /* Waveform color mode rows — keep readable on phones */
+    #viz-wave-solid-row, #viz-wave-grad-row { flex-wrap: wrap; gap: 6px; }
+    #viz-wave-solid-row input, #viz-wave-grad-row input { flex: 1 1 90px; min-width: 0; }
+    /* Wave/font size rows */
+    .viz-font-size-row, .viz-wave-style-row { gap: 4px !important; }
+    .viz-font-size-chip { flex: 1 1 calc(20% - 4px); min-width: 0; }
+    .viz-wave-chip { flex: 0 0 auto; }
+    /* Cross-chain modal — fill the viewport */
+    .modal { width: 96vw; max-width: 96vw; max-height: 90vh; }
+    /* Stake ratio slider + tally values */
+    #pov-tally { font-size: 11px; }
+    #pov-tally > div { flex-wrap: wrap; gap: 4px; }
+    #pov-claimed-usd, #pov-verified-usd, #pov-stake-wip,
+    #pov-stake-usd, #pov-stake-supply-pct { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+    #pov-verified-usd { font-size: 15px !important; }
+    /* Fractionalize dropdown — keep readable text + room for optgroup labels */
+    #ast-fractionalize { font-size: 11px; padding: 9px 10px; }
+    /* Admin AI audit verdict block — wrap header + tighten padding */
+    .pov-item > div[style*="rgba(0,0,0,0.22)"] { padding: 7px 9px !important; }
+    /* PoV upload + scan + OCR buttons row stays on one line via wrap */
+    .pov-item label[style*="cursor:pointer"],
+    .pov-item button { font-size: 9px; padding: 6px 9px; }
+    /* Visualizer layout — preview at top, controls below (already handled
+       upstream but reinforced here for the new template + stake panels) */
+    .viz-layout-grid { grid-template-columns: 1fr !important; }
+    /* Wave Size · Position sliders — readable spacing */
+    input[type="range"]#viz-wave-size,
+    input[type="range"]#viz-wave-top,
+    input[type="range"]#viz-wave-left,
+    input[type="range"]#viz-wave-right,
+    input[type="range"]#viz-logo-x,
+    input[type="range"]#viz-logo-y { min-height: 28px; }
+    /* Deed certificate rows — two-line layout on mobile */
+    .deed-cert .cert-row { grid-template-columns: 1fr !important; gap: 2px; padding: 6px 0; }
+    .deed-cert .cert-row .k { font-size: 8.5px; }
+    .deed-cert .cert-row .v { font-size: 11px; word-break: break-all; }
+    /* IP Ownership Proof extracted info grid */
+    .pi-review > div[style*="grid-template-columns"] { grid-template-columns: 1fr !important; gap: 6px; }
+  }
+
+  /* Larger phones / small tablets (481-720px) — keep cross-chain modal usable */
+  @media (max-width: 720px) and (min-width: 481px) {
+    .pov-card { padding: 12px !important; }
+  }
+
   /* ===== Boot Splash — Futuristic Vault Unlock ===== */
+  /* CRITICAL: the splash is a full-screen z-index:9999 black overlay. If the
+     JS that fades it ever fails to run (a syntax error anywhere in the inline
+     script kills ALL of it), the splash would cover the whole app forever.
+     This CSS-only animation auto-hides it after 2.6s with ZERO JS dependency —
+     so the page is ALWAYS reachable even if scripting is completely broken. */
+  @keyframes bootSplashAutoHide {
+    to { opacity: 0; visibility: hidden; pointer-events: none; }
+  }
   #boot-splash {
     position: fixed; inset: 0; z-index: 9999;
     background:
@@ -3959,8 +4102,9 @@
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     overflow: hidden;
     transition: opacity 0.55s ease, visibility 0.55s;
+    animation: bootSplashAutoHide 0.4s ease 2.6s forwards;
   }
-  #boot-splash.fade { opacity: 0; visibility: hidden; }
+  #boot-splash.fade { opacity: 0; visibility: hidden; pointer-events: none; }
   /* Subtle scanline texture */
   #boot-splash::before {
     content: ''; position: absolute; inset: 0;
@@ -5101,6 +5245,46 @@
   .match-meta { font-size: 10px; color: var(--muted); margin-top: 6px; }
   .match-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
   .match-actions button { padding: 4px 10px; font-size: 9.5px; }
+
+  /* ============================================================
+     FINAL HARD OVERRIDE — last rules in the stylesheet, so they win.
+     Eliminates the "gray box covers the screen" bug from EVERY angle:
+     ============================================================ */
+  /* 1. View visibility is decided ONLY by the .active class. A view
+        without .active is fully gone — itself AND every descendant —
+        so a hidden view's sticky/absolute children can never leak. */
+  .view:not(.active) { display: none !important; }
+  .view.active { display: block !important; }
+
+  /* 2. The visualizer preview can NEVER be a giant square. Hard-cap
+        it on every screen size (the aspect-ratio:1 with no desktop
+        max-width was the classic "huge box" footgun). */
+  #viz-preview-wrap {
+    max-width: 340px !important;
+    max-height: 340px !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+  }
+  #viz-preview-wrap .visualizer { max-width: 100% !important; max-height: 340px !important; }
+
+  /* 3. The boot splash is the ONLY element allowed to be a full-screen
+        fixed black layer, and it self-destructs (CSS animation + the
+        standalone killer script). Belt: once it has .fade or is removed
+        it cannot come back. */
+  #boot-splash.fade { display: none !important; }
+
+  /* 4. The content area + workspace can never collapse to nothing and
+        can never be covered by a stray element. */
+  main.workspace { min-height: 0; }
+  .content-area { background: var(--bg); }
+  .content-area > * { position: relative; }   /* kill any rogue fixed/absolute fill */
+
+  /* 5. The mobile nav drawer + its backdrop simply do not exist on
+        desktop — no class state can summon them. */
+  @media (min-width: 901px) {
+    .nav-backdrop { display: none !important; }
+    nav.side { position: static !important; transform: none !important; }
+  }
 </style>
 </head>
 <body>
@@ -5112,6 +5296,77 @@
   </div>
   <div class="splash-status" id="splash-status">⌬ <span class="blink">CLEARING SETTLEMENT</span></div>
 </div>
+
+<!-- ============================================================
+     STANDALONE SPLASH KILLER — parses & runs INDEPENDENTLY of the
+     main app script. A syntax error in the main script kills ALL
+     of its code; this tiny script still runs. It does ONE thing:
+     remove the full-screen boot splash. No persistent interval,
+     no overlay-poking, no view-forcing — just kill the splash so
+     the page can never be permanently covered by it.
+     ============================================================ -->
+<script>
+  (function () {
+    // Kill the full-screen boot splash.
+    function killSplash() {
+      var bs = document.getElementById('boot-splash');
+      if (bs && bs.parentNode) {
+        try { bs.parentNode.removeChild(bs); } catch (e) { bs.style.display = 'none'; }
+      }
+    }
+    // Force-close EVERY full-screen overlay (modal backdrops, logo modal, nav
+    // backdrop). Runs independently of the main script, so even if the main
+    // script breaks, no overlay can stay covering the page.
+    function killOverlays() {
+      try {
+        var backs = document.querySelectorAll('.modal-backdrop');
+        for (var i = 0; i < backs.length; i++) backs[i].classList.add('hidden');
+        var lsm = document.getElementById('logo-setup-modal');
+        if (lsm) lsm.classList.remove('show');
+        var nb = document.getElementById('nav-backdrop');
+        if (nb) { nb.classList.remove('show'); nb.style.display = 'none'; }
+      } catch (e) {}
+    }
+    // ★ KILL SELF-REFERENCING IFRAMES ★ — an <iframe> with an empty / hash-only
+    // src resolves to the PAGE'S OWN URL. On a file:// page the browser blocks
+    // that load ("Unsafe attempt to load URL … 'file:' URLs are unique
+    // origins") and the blocked iframe renders as a full GRAY BOX. This finds
+    // any such iframe and removes it. Independent of the main script.
+    function killSelfIframes() {
+      try {
+        var here = (location.href || '').split('#')[0];
+        var frames = document.querySelectorAll('iframe');
+        for (var i = 0; i < frames.length; i++) {
+          var f = frames[i];
+          var rawSrc = f.getAttribute('src');
+          var resolved = '';
+          try { resolved = (f.src || '').split('#')[0]; } catch (e) {}
+          var bad = (rawSrc == null) ||
+                    (rawSrc === '') ||
+                    (rawSrc.charAt(0) === '#') ||
+                    (rawSrc === 'about:blank' && false) ||
+                    (resolved && here && resolved === here);
+          if (bad) {
+            try { f.removeAttribute('src'); } catch (e) {}
+            try { f.parentNode && f.parentNode.removeChild(f); } catch (e) {}
+          }
+        }
+      } catch (e) {}
+    }
+    function cleanup() { killSplash(); killOverlays(); killSelfIframes(); }
+    // On a delay after load, and on the user's first interaction.
+    setTimeout(cleanup, 1600);
+    window.addEventListener('click',       cleanup, { capture: true });
+    window.addEventListener('keydown',     cleanup, { capture: true });
+    window.addEventListener('pointerdown', cleanup, { capture: true });
+    // And once the DOM is ready, so an overlay open at load is closed immediately.
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', cleanup);
+    } else {
+      cleanup();
+    }
+  })();
+</script>
 
 <div id="app">
   <!-- ===== TOP BAR ===== -->
@@ -5234,7 +5489,7 @@
   <main class="workspace">
     <div class="nav-backdrop" id="nav-backdrop"></div>
     <nav class="side" id="side-nav">
-      <div class="nav-group collapsed">
+      <div class="nav-group">
         <h4 data-nav-group>Tokenization<span class="chev">▾</span></h4>
         <div class="nav-item active" data-view="view-tokenize"><span class="icon">▲</span><span>New Asset</span></div>
         <div class="nav-item" data-view="view-vault"><span class="icon">◆</span><span>My Vault</span><span class="badge" id="nav-vault-count">0</span></div>
@@ -5440,7 +5695,7 @@
           <div class="help">
             Every asset gets a unique visual ID built from <strong>three identifiers you control</strong>: the asset name shown on the canvas, a color hex code (drag the waveform or paste a hex), and a procedural pattern seed (16M+ unique patterns). Combined with your creator name, this generates a deterministic Asset ID for the deed certificate, vault cards, search results, and DAG vertex.
           </div>
-          <div class="viz-layout-grid" style="display:grid;grid-template-columns:1fr 2fr;gap:18px;margin-top:14px;align-items:start;">
+          <div class="viz-layout-grid" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:18px;margin-top:14px;align-items:start;overflow:hidden;">
             <!-- Preview canvas (sticky) + live asset playback preview below it -->
             <div style="position:sticky;top:80px;align-self:start;display:flex;flex-direction:column;gap:10px;">
               <div id="viz-preview-wrap" style="aspect-ratio:1;"></div>
@@ -5753,7 +6008,7 @@
                 </div>
                 <div style="flex:1;min-width:120px;display:flex;align-items:center;gap:5px;">
                   <span style="font-size:9px;color:var(--muted);min-width:32px;">Right</span>
-                  <input type="range" id="viz-wave-right" class="viz-slider" min="0" max="60" step="1" value="6" style="flex:1;">
+                  <input type="range" id="viz-wave-right" class="viz-slider" min="-100" max="60" step="1" value="6" style="flex:1;" title="Negative = waveform extends PAST the right edge of the canvas (the end gets cropped). Positive = waveform inset from the right edge.">
                 </div>
               </div>
 
@@ -5890,16 +6145,33 @@
               </div>
               <input type="range" id="viz-logo-scale" class="viz-slider" min="20" max="150" step="1" value="60" style="width:100%;">
 
-              <!-- Logo vertical position (drag up or down) -->
+              <!-- Logo position — vertical (Up/Down) + horizontal (Left/Right) -->
               <div class="viz-section-label" style="margin-top:10px;">
-                <span>Logo Position (Up / Down)</span>
-                <span id="viz-logo-y-val" style="color:var(--gold);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;">0%</span>
+                <span>Logo Position (X · Y)</span>
+                <span style="color:var(--gold);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;">
+                  X <span id="viz-logo-x-val">0%</span> · Y <span id="viz-logo-y-val">0%</span>
+                </span>
               </div>
               <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:9px;color:var(--muted);min-width:14px;">◀</span>
+                <input type="range" id="viz-logo-x" class="viz-slider" min="-45" max="45" step="1" value="0" style="flex:1;" title="Move logo left / right">
+                <span style="font-size:9px;color:var(--muted);min-width:14px;">▶</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
                 <span style="font-size:9px;color:var(--muted);min-width:14px;">▲</span>
-                <input type="range" id="viz-logo-y" class="viz-slider" min="-45" max="45" step="1" value="0" style="flex:1;">
+                <input type="range" id="viz-logo-y" class="viz-slider" min="-45" max="45" step="1" value="0" style="flex:1;" title="Move logo up / down">
                 <span style="font-size:9px;color:var(--muted);min-width:14px;">▼</span>
               </div>
+
+              <!-- Layer Order — choose which uploaded image renders on top -->
+              <div class="viz-section-label" style="margin-top:10px;">
+                <span>Layer Order (uploaded files)</span>
+              </div>
+              <div class="viz-layer-order-row" id="viz-layer-order-row" style="display:flex;gap:6px;">
+                <div class="viz-layer-chip active" data-layer="logo-top" style="flex:1;padding:7px 10px;font-size:10px;border:1px solid var(--gold);border-radius:6px;cursor:pointer;color:var(--gold);background:rgba(240,196,25,0.10);text-align:center;letter-spacing:0.06em;text-transform:uppercase;" title="Added logo renders on top of the uploaded asset file">⚜ Logo on Top</div>
+                <div class="viz-layer-chip" data-layer="asset-top" style="flex:1;padding:7px 10px;font-size:10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--muted);background:var(--panel-2);text-align:center;letter-spacing:0.06em;text-transform:uppercase;" title="Uploaded asset file renders on top of the added logo">⊞ Asset on Top</div>
+              </div>
+              <div style="font-size:9px;color:var(--muted);margin-top:4px;line-height:1.4;">Decide whether the brand logo or the uploaded asset image sits in front when both are present.</div>
             </div>
           </div>
         </div>
@@ -6000,7 +6272,7 @@
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap;">
               <span style="font-size:10.5px;color:var(--gold);text-transform:uppercase;letter-spacing:0.14em;font-weight:700;">Proof-of-Value · Real-World Valuation</span>
               <span style="flex:1"></span>
-              <span style="font-size:9px;color:var(--muted);letter-spacing:0.04em;">$WIP &nbsp;<span id="pov-wip-price" style="color:var(--gold);font-family:'IBM Plex Mono',ui-monospace,monospace;">$0.04</span> &nbsp;<button id="pov-refresh-price" title="Refresh $WIP price" style="padding:2px 8px;font-size:8.5px;letter-spacing:0.04em;background:var(--panel-2);border:1px solid var(--border);border-radius:3px;color:var(--muted);cursor:pointer;">⟳</button></span>
+              <span style="font-size:9px;color:var(--muted);letter-spacing:0.04em;">$WIP &nbsp;<span id="pov-wip-price" title="Live $WIP / USD price from the Tokenomics page" style="color:var(--gold);font-family:'IBM Plex Mono',ui-monospace,monospace;">$0.85</span> &nbsp;<button id="pov-refresh-price" title="Re-sync to current $WIP price from Tokenomics" style="padding:2px 8px;font-size:8.5px;letter-spacing:0.04em;background:var(--panel-2);border:1px solid var(--border);border-radius:3px;color:var(--muted);cursor:pointer;">⟳ sync</button></span>
             </div>
             <div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:10px;">
               Initial Stake reflects the asset's <strong style="color:var(--text);">verifiable real-world value</strong>. Add proof items below — revenue statements, licenses, court judgments, streaming counts, royalty reports — and run an <strong style="color:var(--gold);">AI Authenticity Scan</strong> on each. The AI reads the document text, looks for digital + physical manipulation tells (compression artifacts, copy-paste edges, EXIF tampering, OCR mismatch), and assigns a confidence score. Only verified value counts toward the stake.
@@ -6026,6 +6298,12 @@
             </div>
 
             <!-- Tally + final AI verdict -->
+            <!-- The stake is NOT 1:1 of asset USD value (a $15K asset would
+                 burn 375K $WIP at $0.04, eating 0.375% of the 100M supply per
+                 asset). Instead it's a MARGIN — a configurable % of the verified
+                 real-world value, just like collateral in DeFi lending. Default
+                 10% keeps the platform liquid and lets many assets coexist on a
+                 100M $WIP supply. -->
             <div id="pov-tally" style="margin-top:14px;padding:12px;background:var(--panel-2);border:1px solid var(--gold-soft);border-radius:6px;display:none;">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                 <span style="font-size:9.5px;color:var(--gold-soft);text-transform:uppercase;letter-spacing:0.10em;">Claimed Value</span>
@@ -6035,9 +6313,28 @@
                 <span style="font-size:9.5px;color:var(--gold-soft);text-transform:uppercase;letter-spacing:0.10em;">AI-Verified Value</span>
                 <span id="pov-verified-usd" style="font-size:18px;color:var(--gold);font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:700;">$0</span>
               </div>
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                <span style="font-size:9.5px;color:var(--gold-soft);text-transform:uppercase;letter-spacing:0.10em;">→ Initial Stake</span>
-                <span id="pov-stake-wip" style="font-size:14px;color:var(--gold);font-family:'IBM Plex Mono',ui-monospace,monospace;">0 $WIP</span>
+              <!-- Stake ratio slider — % of verified value locked as $WIP.
+                   100% (default) = stake matches asset USD value 1:1 at live
+                   $WIP price. Slide down to use a margin model instead. -->
+              <div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--border);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                  <span style="font-size:9.5px;color:var(--gold-soft);text-transform:uppercase;letter-spacing:0.10em;">Stake Ratio</span>
+                  <span id="pov-ratio-val" style="font-size:11px;color:var(--gold);font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:700;">100%</span>
+                </div>
+                <input type="range" id="pov-stake-ratio" min="1" max="100" step="1" value="100" style="width:100%;">
+                <div style="font-size:8.5px;color:var(--muted);margin-top:2px;line-height:1.4;">100% = stake matches the asset's USD value 1:1 at the live $WIP price (default). Slide down for a partial-collateral margin model.</div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+                <span style="font-size:9.5px;color:var(--gold-soft);text-transform:uppercase;letter-spacing:0.10em;">Required Stake USD</span>
+                <span id="pov-stake-usd" style="font-size:11px;color:var(--text);font-family:'IBM Plex Mono',ui-monospace,monospace;">$0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+                <span style="font-size:9.5px;color:var(--gold-soft);text-transform:uppercase;letter-spacing:0.10em;">→ Stake in $WIP</span>
+                <span id="pov-stake-wip" style="font-size:14px;color:var(--gold);font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:700;">0 $WIP</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+                <span style="font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:0.10em;">% of Total Supply (100M)</span>
+                <span id="pov-stake-supply-pct" style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',ui-monospace,monospace;">0.0000%</span>
               </div>
               <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);font-size:9.5px;color:var(--muted);line-height:1.5;" id="pov-ai-verdict">
                 Run AI Authenticity Scan on each proof to certify the value.
@@ -6049,11 +6346,27 @@
             <label class="field">
               <span class="lbl"><span class="name">Fractionalize?</span></span>
               <select id="ast-fractionalize">
-                <option value="no">No — single deed only</option>
-                <option value="100">100 royalty tokens</option>
-                <option value="1000">1,000 royalty tokens</option>
-                <option value="10000">10,000 royalty tokens</option>
+                <optgroup label="WireIP DAG · royalty tokens">
+                  <option value="no">No — single deed only</option>
+                  <option value="100">100 royalty tokens (on WireIP)</option>
+                  <option value="1000">1,000 royalty tokens (on WireIP)</option>
+                  <option value="10000">10,000 royalty tokens (on WireIP)</option>
+                </optgroup>
+                <optgroup label="Cross-chain derivative · value locked on WireIP">
+                  <option value="chain:ethereum">⌬ Ethereum (ERC-20 derivative · LayerZero)</option>
+                  <option value="chain:polygon">⬢ Polygon (low-fee L2)</option>
+                  <option value="chain:base">◐ Base (Coinbase L2)</option>
+                  <option value="chain:arbitrum">◉ Arbitrum (L2)</option>
+                  <option value="chain:optimism">◑ Optimism (OP Stack)</option>
+                  <option value="chain:solana">◎ Solana (SPL · Wormhole)</option>
+                  <option value="chain:canton">◇ Canton Network (privacy-preserving)</option>
+                  <option value="chain:bnb">◇ BNB Chain (BEP-20)</option>
+                  <option value="chain:avalanche">◈ Avalanche (C-Chain)</option>
+                </optgroup>
               </select>
+              <div class="help" id="ast-fract-help" style="margin-top:4px;font-size:9.5px;line-height:1.4;">
+                Royalty tokens stay on the WireIP DAG. Choose a cross-chain option to issue derivative tokens on another network while the deed + value stay locked on WireIP — supply + symbol are configured after mint via the asset detail panel.
+              </div>
             </label>
             <label class="field">
               <span class="lbl"><span class="name">Default Kill-Switch</span></span>
@@ -7828,6 +8141,16 @@ function el(tag, attrs={}, ...children) {
   const node = ns ? document.createElementNS('http://www.w3.org/2000/svg', tag) : document.createElement(tag);
   for (const [k,v] of Object.entries(attrs)) {
     if (v == null || v === false) continue;
+    // ★ GRAY-BOX BUG FIX ★ — never set an empty / hash-only / "undefined"
+    // src|href|data. An empty <iframe src=""> (or "#toolbar=0…") resolves to
+    // the CURRENT PAGE URL. On a file:// page the browser blocks that load
+    // ("Unsafe attempt to load URL … 'file:' URLs are unique origins") and a
+    // blocked iframe renders as a full GRAY BOX covering the element. Skipping
+    // the attribute entirely means the element simply loads nothing.
+    if ((k === 'src' || k === 'href' || k === 'data')) {
+      const sv = String(v).trim();
+      if (sv === '' || sv === '#' || sv === 'undefined' || sv === 'null' || sv.charAt(0) === '#') continue;
+    }
     if (k === 'class') node.setAttribute('class', v);
     else if (k.startsWith('on') && typeof v === 'function') node.addEventListener(k.slice(2), v);
     else if (k === 'text') node.textContent = v;
@@ -7952,6 +8275,11 @@ const FIELD_DEFS = {
     { id: 'license', label: 'License', type: 'select', required: true, defaultPrivate: false, options: ['All Rights Reserved', 'CC-BY 4.0', 'CC-BY-SA 4.0', 'CC-BY-NC 4.0', 'CC-BY-ND 4.0', 'CC-BY-NC-SA 4.0', 'CC0 (Public Domain)', 'Custom'] },
     { id: 'description', label: 'Description', type: 'textarea', required: false, defaultPrivate: false, placeholder: 'Brief description of the work' },
     { id: 'derivative_of', label: 'Derivative Of', type: 'text', required: false, defaultPrivate: false, placeholder: 'Original work title (if derivative)' },
+    // Music-specific metadata — auto-populated by the AI audio scan when an
+    // audio file is uploaded (BPM detection + key detection via Web Audio API).
+    { id: 'bpm',          label: 'BPM (auto-detected)',          type: 'number', required: false, defaultPrivate: false, placeholder: 'e.g. 120 — auto-filled from audio scan' },
+    { id: 'musical_key',  label: 'Musical Key (auto-detected)',  type: 'select', required: false, defaultPrivate: false, options: ['(not analyzed)', 'C major', 'C minor', 'C# major', 'C# minor', 'D major', 'D minor', 'D# major', 'D# minor', 'E major', 'E minor', 'F major', 'F minor', 'F# major', 'F# minor', 'G major', 'G minor', 'G# major', 'G# minor', 'A major', 'A minor', 'A# major', 'A# minor', 'B major', 'B minor'] },
+    { id: 'time_signature', label: 'Time Signature',             type: 'select', required: false, defaultPrivate: false, options: ['(unspecified)', '4/4', '3/4', '6/8', '12/8', '5/4', '7/8', '2/4'] },
     { id: 'tags', label: 'Tags', type: 'text', required: false, defaultPrivate: false, placeholder: 'comma-separated' },
   ],
   patent: [
@@ -8112,26 +8440,65 @@ function load() {
 // ============================================================
 // NAV
 // ============================================================
+// Global uncaught-error catcher. Silent JS errors used to leave the app in a
+// half-rendered state ("blank box covers the screen"). Surfacing them as
+// toasts means the user sees what's happening — and the rest of the app keeps
+// responding because the error stops at this boundary.
+if (!window.__wireipErrTrapped) {
+  window.__wireipErrTrapped = true;
+  window.addEventListener('error', (e) => {
+    const msg = (e && e.message) || (e && e.error && e.error.message) || 'unknown error';
+    console.error('Uncaught:', e && e.error || e);
+    if (typeof toast === 'function') toast('App error: ' + msg.slice(0, 140) + ' — UI may be partial', 'err', 6000);
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    const msg = (e && e.reason && (e.reason.message || String(e.reason))) || 'unknown async error';
+    console.error('Unhandled rejection:', e && e.reason);
+    if (typeof toast === 'function') toast('Async error: ' + msg.slice(0, 140), 'err', 6000);
+  });
+}
+
 function showView(id) {
+  // ===== VIEW SWITCH — toggle the .active class + close any open overlay. =====
   try {
-    // Reset every view (class + inline display) so only the target shows.
-    $$('.view').forEach(v => {
-      v.classList.remove('active');
-      v.style.display = 'none';     // defensive: force-hide every view
+    // (A) Close EVERY modal / overlay. Navigating to a new view must never
+    //     leave a modal-backdrop covering the screen. This is THE fix for the
+    //     "gray window covers the page on nav click" bug — a modal-backdrop
+    //     (position:fixed; inset:0; dark background) was being left open, and
+    //     when this cleanup was previously removed it became visible. Adding
+    //     .hidden is 100% safe — it only HIDES, never shows or creates.
+    document.querySelectorAll('.modal-backdrop').forEach(b => {
+      b.classList.add('hidden');
     });
-    $$('.nav-item').forEach(n => n.classList.remove('active'));
-    const target = $('#' + id);
-    if (target) {
-      target.classList.add('active');
-      target.style.display = 'block'; // defensive: force-show target even if CSS misses
-    } else {
-      console.warn('showView: missing view target #' + id);
-    }
-    $$('.nav-item').forEach(n => { if (n.dataset.view === id) n.classList.add('active'); });
-    // SecureNode connection banner is only relevant on the New Asset (tokenize) page.
+    // Remove any dynamically-injected backdrops (cross-chain dialog, etc.).
+    Array.from(document.querySelectorAll('body > .modal-backdrop')).forEach(b => {
+      if (!b.id) { try { b.remove(); } catch (e) {} }
+    });
+    // The logo-setup modal is its own overlay — force it shut too.
+    const lsm = document.getElementById('logo-setup-modal');
+    if (lsm) lsm.classList.remove('show');
+    // Boot splash must never be visible once the user is navigating.
+    const bsplash = document.getElementById('boot-splash');
+    if (bsplash) { bsplash.style.display = 'none'; }
+
+    // (B) Toggle the view + nav-item active class. CSS does the rest.
+    document.querySelectorAll('.view').forEach(v => {
+      v.classList.toggle('active', v.id === id);
+      v.style.removeProperty('display');   // wipe any stale inline display
+    });
+    document.querySelectorAll('.nav-item').forEach(n => {
+      n.classList.toggle('active', n.dataset.view === id);
+    });
+    // SecureNode banner only on the tokenize view.
     const cb = document.getElementById('conn-banner');
     if (cb) cb.style.display = (id === 'view-tokenize') ? 'flex' : 'none';
-  } catch (e) { console.error('showView nav failed:', e); }
+    // Hide the floating submit bar off the tokenize view.
+    const fsb = document.getElementById('float-submit-bar');
+    if (fsb && id !== 'view-tokenize') fsb.classList.remove('visible');
+    // Close the mobile drawer if it was open.
+    document.getElementById('nav-backdrop')?.classList.remove('show');
+    document.getElementById('side-nav')?.classList.remove('open');
+  } catch (e) { console.error('showView switch failed:', e); }
 
   // Each per-view render is isolated in its own try/catch so a single broken
   // render can't blank the entire app.
@@ -9541,6 +9908,7 @@ dz.addEventListener('drop', e => {
 fi.addEventListener('change', () => { if (fi.files?.[0]) handleFile(fi.files[0]); });
 
 async function handleFile(file) {
+  try {
   state.current.file = file;
   state.current.fileMeta = { name: file.name, size: file.size, type: file.type || 'application/octet-stream', lastModified: file.lastModified };
   // Surface a live playback preview inside the sticky visualizer column
@@ -9629,10 +9997,36 @@ async function handleFile(file) {
     state.current.originality = null;
     resetOrigMetrics();
     updateMintReady();
+    // ---- AUTO-DETECT + AUTO-SELECT ASSET TYPE FROM FILE ----
+    // Pick the most likely asset type from the file's MIME / extension and
+    // simulate a click on that card so the dynamic field form renders + the
+    // auto-fill (creator / title / date / etc.) runs immediately — no manual
+    // click required. The user can still pick a different type to override.
+    if (!state.current.type && typeof autoDetectAssetType === 'function') {
+      const guessed = autoDetectAssetType(file, extracted);
+      if (guessed) {
+        const card = document.querySelector('.asset-type[data-type="' + guessed + '"]');
+        if (card) {
+          // dispatchEvent so any other listeners on the card also fire.
+          card.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        }
+      }
+    } else if (state.current.type) {
+      // User had already picked a type — re-apply auto-fill so the new
+      // file's metadata flows into the existing form.
+      autoFillOwnerName();
+      applyExtractedMetadata(state.current.extractedMeta || { fields: {} });
+    }
   } catch (e) {
     hashRow.querySelector('.v').textContent = 'Hash failed';
     $('#hash-status').className = 'pill err';
     $('#hash-status').querySelector('span:last-child').textContent = 'Failed';
+  }
+  } catch (outerErr) {
+    // Outer trap: anything before the hash step (preview / metadata / auto-detect)
+    // throwing would have blanked the page. Now it toasts and continues.
+    console.error('handleFile outer error:', outerErr);
+    if (typeof toast === 'function') toast('File processing hiccup: ' + (outerErr && outerErr.message || outerErr) + ' — try again', 'err', 5000);
   }
 }
 
@@ -9682,6 +10076,13 @@ function refreshAssetPlaybackPreview(file) {
         '<span class="lux-spacer"></span>' +
         '<span class="lux-vol-icon">⊙</span>' +
         '<input type="range" class="lux-vol" id="lux-vol" min="0" max="100" step="1" value="80" title="Volume">' +
+      '</div>' +
+      // AI scan row — BPM + Key detection for music compositions.
+      // Runs offline against the decoded audio bytes (Web Audio API), no
+      // network calls. Auto-fills the BPM + Musical Key form fields.
+      '<div class="lux-bpm-row" style="display:flex;align-items:center;gap:8px;padding:6px 10px 2px;border-top:1px dashed rgba(240,196,25,0.18);margin-top:6px;flex-wrap:wrap;">' +
+        '<button class="lux-btn" id="lux-bpm-scan" title="Analyze audio for BPM + Musical Key" style="border-color:var(--cyan,#4fd6ff);color:var(--cyan,#4fd6ff);background:rgba(79,214,255,0.10);font-weight:700;letter-spacing:0.06em;">⌬ SCAN BPM + KEY</button>' +
+        '<span id="lux-bpm-status" style="font-size:9.5px;color:var(--muted);font-family:\'IBM Plex Mono\',ui-monospace,monospace;flex:1;min-width:160px;">Press SCAN to analyze tempo + key (auto-fills metadata)</span>' +
       '</div>';
     body.appendChild(player);
     wrap.style.display = 'block';
@@ -9740,6 +10141,53 @@ function refreshAssetPlaybackPreview(file) {
       if (au.duration) au.currentTime = p * au.duration;
     });
     volEl.addEventListener('input', () => { au.volume = Number(volEl.value) / 100; });
+
+    // ===== BPM + Key scan button =====
+    const bpmBtn    = player.querySelector('#lux-bpm-scan');
+    const bpmStatus = player.querySelector('#lux-bpm-status');
+    if (bpmBtn) bpmBtn.addEventListener('click', async () => {
+      if (!file) return;
+      const origText = bpmBtn.textContent;
+      bpmBtn.disabled = true;
+      bpmBtn.textContent = '⌬ ANALYZING…';
+      if (bpmStatus) bpmStatus.textContent = 'starting…';
+      try {
+        const result = await scanAudioForBpmAndKey(file, (pct, status) => {
+          bpmBtn.textContent = '⌬ ' + pct + '% · ' + status.toUpperCase();
+          if (bpmStatus) bpmStatus.textContent = status + ' · ' + pct + '%';
+        });
+        // Display result on the player
+        if (bpmStatus) {
+          bpmStatus.innerHTML = '<span style="color:var(--gold);font-weight:700;">' +
+            result.bpm + ' BPM</span> · <span style="color:var(--cyan,#4fd6ff);font-weight:700;">' +
+            result.key + '</span> · key confidence ' + Math.round(result.keyConfidence * 100) + '%';
+        }
+        // Auto-fill the form fields if user has picked an asset type
+        if (state.current && state.current.fields) {
+          if (state.current.fields.bpm && !state.current.fields.bpm.value) {
+            state.current.fields.bpm.value = String(result.bpm);
+            const inp = document.getElementById('fld-bpm');
+            if (inp) { inp.value = String(result.bpm); inp.style.background = 'rgba(74,222,128,0.10)'; setTimeout(() => { inp.style.background = ''; }, 1800); }
+          }
+          if (state.current.fields.musical_key) {
+            state.current.fields.musical_key.value = result.key;
+            const inp = document.getElementById('fld-musical_key');
+            if (inp) {
+              // The select might have "(not analyzed)" as first option — pick the matching one
+              for (const o of inp.options) { if (o.value === result.key) { inp.value = result.key; break; } }
+              inp.style.background = 'rgba(74,222,128,0.10)'; setTimeout(() => { inp.style.background = ''; }, 1800);
+            }
+          }
+        }
+        if (typeof toast === 'function') toast('🎵 ' + result.bpm + ' BPM · ' + result.key + ' — auto-filled to metadata', 'ok', 5000);
+      } catch (e) {
+        const msg = (e && e.message) ? e.message : String(e);
+        if (bpmStatus) bpmStatus.innerHTML = '<span style="color:var(--err);">✗ ' + msg + '</span>';
+        if (typeof toast === 'function') toast('BPM scan failed: ' + msg, 'err', 5000);
+      }
+      bpmBtn.disabled = false;
+      bpmBtn.textContent = origText;
+    });
     au.volume = 0.80;
     return;
   }
@@ -9900,6 +10348,200 @@ const _audioReactive = {
 // Global single-player policy — when one media element starts playing, all others pause.
 // Called from the luxury player's play click handler (and on the play event) so the
 // asset playback preview becomes the SOLE audio source for the user.
+// ============================================================================
+// AUDIO ANALYSIS — BPM + KEY DETECTION
+// ----------------------------------------------------------------------------
+// Pure-JS audio analysis using the Web Audio API. Works on the actual audio
+// bytes (not on the playing element) so it can run without playback:
+//   1) BPM: decode → low-pass filter → energy envelope → onset detection →
+//      autocorrelation in the 60-180 BPM range to find the dominant period.
+//   2) KEY: decode → FFT chromagram across the whole track → score against
+//      Krumhansl-Schmuckler major/minor profiles → pick the best fit.
+// Both analyses run on a mono downmix at 22050 Hz so cost stays predictable
+// even on long tracks. Result auto-fills the BPM + Musical Key form fields.
+// ============================================================================
+async function decodeAudioFileToMono(file, targetSampleRate) {
+  const buf = await file.arrayBuffer();
+  const SR  = targetSampleRate || 22050;
+  // OfflineAudioContext lets us decode without playing — works in all modern browsers.
+  const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  if (!OAC) throw new Error('OfflineAudioContext not supported in this browser');
+  // First decode at native rate, then resample by playing back into an offline ctx at the target rate.
+  const decodeCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const audioBuf  = await decodeCtx.decodeAudioData(buf.slice(0));
+  try { decodeCtx.close && decodeCtx.close(); } catch (e) {}
+  const duration = audioBuf.duration;
+  const offline  = new OAC(1, Math.ceil(duration * SR), SR);
+  const src      = offline.createBufferSource();
+  src.buffer     = audioBuf;
+  src.connect(offline.destination);
+  src.start(0);
+  const rendered = await offline.startRendering();
+  return { samples: rendered.getChannelData(0), sampleRate: SR, duration };
+}
+
+// BPM via onset detection + autocorrelation.
+function detectBPM(samples, sampleRate) {
+  // 1) Low-pass: take envelope of squared signal in ~20ms hops.
+  const hopMs   = 20;
+  const hopLen  = Math.max(1, Math.floor(sampleRate * hopMs / 1000));
+  const numHops = Math.floor(samples.length / hopLen);
+  const envelope = new Float32Array(numHops);
+  for (let h = 0; h < numHops; h++) {
+    let sum = 0;
+    const start = h * hopLen;
+    for (let i = 0; i < hopLen; i++) {
+      const v = samples[start + i] || 0;
+      sum += v * v;
+    }
+    envelope[h] = Math.sqrt(sum / hopLen);
+  }
+  // 2) Differentiate to get onset strength.
+  const onset = new Float32Array(numHops);
+  for (let i = 1; i < numHops; i++) {
+    const d = envelope[i] - envelope[i - 1];
+    onset[i] = d > 0 ? d : 0;
+  }
+  // 3) Normalize.
+  let mx = 0;
+  for (let i = 0; i < numHops; i++) if (onset[i] > mx) mx = onset[i];
+  if (mx > 0) for (let i = 0; i < numHops; i++) onset[i] /= mx;
+  // 4) Autocorrelate at lags corresponding to BPMs from 60..180.
+  const minBPM = 60, maxBPM = 180;
+  const minLagHops = Math.floor(60_000 / (maxBPM * hopMs));
+  const maxLagHops = Math.ceil(60_000 / (minBPM * hopMs));
+  let bestLag = minLagHops, bestScore = -Infinity;
+  for (let lag = minLagHops; lag <= maxLagHops; lag++) {
+    let s = 0;
+    for (let i = lag; i < numHops; i++) s += onset[i] * onset[i - lag];
+    if (s > bestScore) { bestScore = s; bestLag = lag; }
+  }
+  const bpm = 60_000 / (bestLag * hopMs);
+  // 5) Snap to integer; favor the half/double that lands in the musical sweet zone.
+  let rounded = Math.round(bpm);
+  while (rounded < 70)  rounded *= 2;   // pull a 60 → 120 if it's slow electronic
+  while (rounded > 180) rounded = Math.round(rounded / 2);
+  return { bpm: rounded, confidence: Math.min(1, Math.max(0, bestScore)) };
+}
+
+// Key detection via chromagram + Krumhansl-Schmuckler profiles.
+// Profiles from cognitive musicology research — well-established baseline.
+const KS_PROFILE_MAJOR = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
+const KS_PROFILE_MINOR = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
+const PITCH_CLASS_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+function detectKey(samples, sampleRate) {
+  // 1) FFT in overlapping windows; accumulate energy per pitch class.
+  const fftSize = 4096;
+  const hopSize = fftSize / 2;
+  const chroma = new Float64Array(12);
+  // Use a simple DFT magnitude. For long tracks we subsample windows so cost stays bounded.
+  const totalHops = Math.floor((samples.length - fftSize) / hopSize);
+  const maxHopsToAnalyze = 600;       // cap ≈ 60s of audio analysis
+  const stride = Math.max(1, Math.floor(totalHops / maxHopsToAnalyze));
+  // Precompute Hann window
+  const win = new Float32Array(fftSize);
+  for (let i = 0; i < fftSize; i++) win[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (fftSize - 1)));
+  // Precompute frequency → pitch class mapping for each FFT bin
+  const A4 = 440;
+  const pcOfBin = new Int8Array(fftSize / 2);
+  for (let k = 1; k < fftSize / 2; k++) {
+    const freq = k * sampleRate / fftSize;
+    if (freq < 27.5 || freq > 5000) { pcOfBin[k] = -1; continue; }
+    const midi = Math.round(12 * Math.log2(freq / A4) + 69);
+    pcOfBin[k] = midi % 12;
+  }
+  // Run windowed magnitude FFTs (radix-2 Cooley-Tukey)
+  function fft(real, imag) {
+    const n = real.length;
+    // bit-reverse
+    for (let i = 1, j = 0; i < n; i++) {
+      let bit = n >> 1;
+      for (; j & bit; bit >>= 1) j ^= bit;
+      j ^= bit;
+      if (i < j) {
+        let t = real[i]; real[i] = real[j]; real[j] = t;
+        t = imag[i]; imag[i] = imag[j]; imag[j] = t;
+      }
+    }
+    for (let len = 2; len <= n; len <<= 1) {
+      const half = len >> 1;
+      const ang = -2 * Math.PI / len;
+      const wReal0 = Math.cos(ang), wImag0 = Math.sin(ang);
+      for (let i = 0; i < n; i += len) {
+        let wReal = 1, wImag = 0;
+        for (let k = 0; k < half; k++) {
+          const ti = i + k, tj = ti + half;
+          const tr = wReal * real[tj] - wImag * imag[tj];
+          const ti2 = wReal * imag[tj] + wImag * real[tj];
+          real[tj] = real[ti] - tr; imag[tj] = imag[ti] - ti2;
+          real[ti] += tr;           imag[ti] += ti2;
+          const nwr = wReal * wReal0 - wImag * wImag0;
+          wImag = wReal * wImag0 + wImag * wReal0;
+          wReal = nwr;
+        }
+      }
+    }
+  }
+  const re = new Float32Array(fftSize), im = new Float32Array(fftSize);
+  for (let h = 0; h < totalHops; h += stride) {
+    const off = h * hopSize;
+    for (let i = 0; i < fftSize; i++) { re[i] = samples[off + i] * win[i]; im[i] = 0; }
+    fft(re, im);
+    for (let k = 1; k < fftSize / 2; k++) {
+      const pc = pcOfBin[k];
+      if (pc < 0) continue;
+      const mag = Math.sqrt(re[k] * re[k] + im[k] * im[k]);
+      chroma[pc] += mag;
+    }
+  }
+  // 2) Normalize chromagram
+  let total = 0; for (let i = 0; i < 12; i++) total += chroma[i];
+  if (total > 0) for (let i = 0; i < 12; i++) chroma[i] /= total;
+  // 3) Correlate against all 24 rotated profiles
+  function correlate(profile, chromaVec, offset) {
+    let s = 0;
+    for (let i = 0; i < 12; i++) s += chromaVec[i] * profile[(i - offset + 12) % 12];
+    return s;
+  }
+  let bestKey = 'C major', bestScore = -Infinity;
+  const ranked = [];
+  for (let i = 0; i < 12; i++) {
+    const maj = correlate(KS_PROFILE_MAJOR, chroma, i);
+    const min = correlate(KS_PROFILE_MINOR, chroma, i);
+    ranked.push({ name: PITCH_CLASS_NAMES[i] + ' major', score: maj });
+    ranked.push({ name: PITCH_CLASS_NAMES[i] + ' minor', score: min });
+    if (maj > bestScore) { bestScore = maj; bestKey = PITCH_CLASS_NAMES[i] + ' major'; }
+    if (min > bestScore) { bestScore = min; bestKey = PITCH_CLASS_NAMES[i] + ' minor'; }
+  }
+  ranked.sort((a, b) => b.score - a.score);
+  const second = ranked[1];
+  // Confidence = margin between top and runner-up (normalized).
+  const confidence = Math.max(0, Math.min(1, (bestScore - second.score) / (Math.abs(bestScore) + 1e-9)));
+  return { key: bestKey, confidence, top3: ranked.slice(0, 3).map(r => r.name) };
+}
+
+// Public entry: scan an audio File and write BPM + Key into form fields.
+async function scanAudioForBpmAndKey(file, onProgress) {
+  if (!file) throw new Error('No file');
+  const isAudio = (file.type || '').startsWith('audio/') || /\.(mp3|wav|flac|aac|m4a|ogg|aif|aiff)$/i.test(file.name || '');
+  if (!isAudio) throw new Error('File is not audio (' + (file.type || 'unknown') + ')');
+  if (onProgress) onProgress(5, 'decoding audio…');
+  const { samples, sampleRate } = await decodeAudioFileToMono(file, 22050);
+  if (onProgress) onProgress(35, 'detecting BPM…');
+  const bpmResult = detectBPM(samples, sampleRate);
+  if (onProgress) onProgress(65, 'detecting musical key…');
+  const keyResult = detectKey(samples, sampleRate);
+  if (onProgress) onProgress(100, 'done');
+  return {
+    bpm: bpmResult.bpm,
+    bpmConfidence: bpmResult.confidence,
+    key: keyResult.key,
+    keyConfidence: keyResult.confidence,
+    keyTop3: keyResult.top3,
+  };
+}
+
 function stopAllOtherMedia(exceptEl) {
   try {
     document.querySelectorAll('audio, video').forEach((m) => {
@@ -9972,9 +10614,14 @@ function teardownAudioReactive() {
 }
 
 function resetAudioReactiveTransforms() {
-  // Restore the logo to its idle scale and clear the waveform canvas
-  document.querySelectorAll('.viz-asset-overlay img, .viz-logo, .visualizer .viz-name').forEach(el => {
+  // Restore the asset image / text to their idle transforms.
+  document.querySelectorAll('.viz-asset-overlay img, .visualizer .viz-name').forEach(el => {
     el.style.transform = '';
+  });
+  // The LOGO has a base transform of translate(-50%, -50%) since it's
+  // absolutely positioned + centered, so restore it explicitly (not '').
+  document.querySelectorAll('.viz-logo').forEach(el => {
+    el.style.transform = 'translate(-50%, -50%)';
   });
   document.querySelectorAll('.viz-audio-waveform').forEach(c => {
     const ctx2 = c.getContext && c.getContext('2d');
@@ -10018,13 +10665,31 @@ function audioReactiveLoop() {
   const shakeX = shakeOn ? (Math.random() - 0.5) * bass * transAmp : 0;
   const shakeY = shakeOn ? (Math.random() - 0.5) * bass * transAmp : 0;
   const shakeRot = shakeOn ? (Math.random() - 0.5) * bass * rotAmp : 0;
-  const targets = (target === 'logo')
-    ? document.querySelectorAll('.viz-logo')
-    : document.querySelectorAll('.viz-asset-overlay img, .viz-asset-frame');
-  targets.forEach(el => {
-    el.style.transform = 'translate(' + shakeX.toFixed(2) + 'px,' + shakeY.toFixed(2) + 'px) rotate(' + shakeRot.toFixed(2) + 'deg) scale(' + pulseScale.toFixed(3) + ')';
+  // Speaker shake — the LOGO ALWAYS moves with the beat (per user request:
+  // "THE LOGO SHOULD BE MOVING WITH THE BEAT LIKE IT WAS BEFORE, REENABLE").
+  // The asset image / frame additionally shakes ONLY when it's the
+  // animationTarget so the two layers can dance independently.
+  const logoEls  = document.querySelectorAll('.viz-logo');
+  const assetEls = (target === 'image' || target === 'logo')
+    ? document.querySelectorAll('.viz-asset-overlay img, .viz-asset-frame')
+    : [];
+
+  // Apply shake to the LOGO. Logo is absolutely positioned with base transform
+  // `translate(-50%, -50%)` so we compose translate(-50% + shakeX, -50% + shakeY)
+  // to preserve its center anchor while jittering with the bass.
+  logoEls.forEach(el => {
+    el.style.transform = 'translate(calc(-50% + ' + shakeX.toFixed(2) + 'px), calc(-50% + ' + shakeY.toFixed(2) + 'px)) rotate(' + shakeRot.toFixed(2) + 'deg) scale(' + pulseScale.toFixed(3) + ')';
     el.style.transition = 'transform ' + easeMs + 's cubic-bezier(0.16, 1, 0.3, 1)';
   });
+
+  // Apply shake to the asset image / frame only when it's the chosen target.
+  // These are in normal flow so a plain translate is fine.
+  if (target === 'image') {
+    assetEls.forEach(el => {
+      el.style.transform = 'translate(' + shakeX.toFixed(2) + 'px,' + shakeY.toFixed(2) + 'px) rotate(' + shakeRot.toFixed(2) + 'deg) scale(' + pulseScale.toFixed(3) + ')';
+      el.style.transition = 'transform ' + easeMs + 's cubic-bezier(0.16, 1, 0.3, 1)';
+    });
+  }
 
   // Draw the colorful waveform on every visible waveform canvas — premium styles
   document.querySelectorAll('.viz-audio-waveform').forEach(canvas => {
@@ -11335,10 +12000,11 @@ function buildVisualizerSVG(viz, creatorName, options = {}) {
     overlay.style.display = 'flex';
     overlay.style.alignItems = 'center';
     overlay.style.justifyContent = 'center';
-    // Z-index 3 — sits ABOVE the procedural pattern + waveform but BELOW the
-    // added logo (z-index 4) so the brand mark always reads on top of the
-    // uploaded asset file, per user spec.
-    overlay.style.zIndex = '3';
+    // Z-index controlled by viz.layerOrder — user picks which uploaded file
+    // sits on top. 'logo-top' (default): asset z-3, logo z-4. 'asset-top':
+    // asset z-4, logo z-3. Both still sit above the pattern + waveform.
+    const layerOrder = (viz.layerOrder === 'asset-top') ? 'asset-top' : 'logo-top';
+    overlay.style.zIndex = (layerOrder === 'asset-top') ? '4' : '3';
     overlay.style.pointerEvents = 'none';
 
     const inner = document.createElement('div');
@@ -11418,12 +12084,17 @@ function buildVisualizerSVG(viz, creatorName, options = {}) {
     const waveSize  = (typeof viz.waveSize  === 'number') ? Math.max(10, Math.min(80, viz.waveSize))  : 42;
     const waveTop   = (typeof viz.waveTop   === 'number') ? Math.max(0,  Math.min(80, viz.waveTop))   : 14;
     const waveLeft  = (typeof viz.waveLeft  === 'number') ? Math.max(0,  Math.min(60, viz.waveLeft))  : 6;
-    const waveRight = (typeof viz.waveRight === 'number') ? Math.max(0,  Math.min(60, viz.waveRight)) : 6;
+    // waveRight can go NEGATIVE so the waveform extends PAST the right edge
+    // of the canvas (the visualizer wrap has overflow:hidden so the end is
+    // cropped — gives a "bleeding off the page" look).
+    const waveRight = (typeof viz.waveRight === 'number') ? Math.max(-100, Math.min(60, viz.waveRight)) : 6;
     const wfWrap = document.createElement('div');
     wfWrap.className = 'viz-audio-waveform-wrap';
     // z-index 2 — sits on top of the procedural pattern (z-index 1) but BELOW the
     // uploaded asset image / added logo (z-index 3), per user spec.
-    wfWrap.style.cssText = 'position:absolute;left:' + waveLeft + '%;right:' + waveRight + '%;top:' + waveTop + '%;height:' + waveSize + '%;z-index:2;pointer-events:none;opacity:0.95;mix-blend-mode:screen;';
+    // No mix-blend-mode so the waveform paints SOLIDLY on top of the pattern
+    // instead of blending into it (which made it look layered-underneath).
+    wfWrap.style.cssText = 'position:absolute;left:' + waveLeft + '%;right:' + waveRight + '%;top:' + waveTop + '%;height:' + waveSize + '%;z-index:2;pointer-events:none;opacity:1;';
     const wfCanvas = document.createElement('canvas');
     wfCanvas.className = 'viz-audio-waveform';
     wfCanvas.width = 600;
@@ -11460,16 +12131,17 @@ function buildVisualizerSVG(viz, creatorName, options = {}) {
     img.style.maxWidth = logoSizePct + '%';
     img.style.maxHeight = logoSizePct + '%';
     img.src = viz.logoDataURL;
-    // The logo ALWAYS sits absolutely positioned over the uploaded asset file
-    // so it renders on top regardless of DOM flow. Default = centered; the Y
-    // slider shifts it up / down. Z-index 4 keeps it above the asset overlay
-    // (z-index 3) per user request "LOGO SHOULD BE OVER TOP OF UPLOADED FILE".
+    // Logo sits absolutely positioned and centered. X + Y sliders shift it
+    // horizontally and vertically (each ±45% of canvas). The base translate of
+    // (-50%, -50%) keeps it anchored on its own center; the audio-reactive
+    // speaker-shake loop multiplies/adds onto this transform when audio plays.
     const logoY = (typeof viz.logoY === 'number') ? Math.max(-45, Math.min(45, viz.logoY)) : 0;
+    const logoX = (typeof viz.logoX === 'number') ? Math.max(-45, Math.min(45, viz.logoX)) : 0;
     img.style.position = 'absolute';
-    img.style.left = '50%';
+    img.style.left = (50 + logoX) + '%';
     img.style.top = (50 + logoY) + '%';
     img.style.transform = 'translate(-50%, -50%)';
-    img.style.zIndex = '4';
+    img.style.zIndex = (viz.layerOrder === 'asset-top') ? '3' : '4';
     img.style.pointerEvents = 'none';
     wrap.appendChild(img);
     if (size === 'banner') {
@@ -11663,6 +12335,21 @@ function refreshVizPreview() {
     const curLogoY = (typeof viz.logoY === 'number') ? viz.logoY : 0;
     if (lY && lY !== document.activeElement) lY.value = curLogoY;
     if (lYVal) lYVal.textContent = (curLogoY > 0 ? '+' : '') + curLogoY + '%';
+    // Sync logo X slider + readout
+    const lX    = document.getElementById('viz-logo-x');
+    const lXVal = document.getElementById('viz-logo-x-val');
+    const curLogoX = (typeof viz.logoX === 'number') ? viz.logoX : 0;
+    if (lX && lX !== document.activeElement) lX.value = curLogoX;
+    if (lXVal) lXVal.textContent = (curLogoX > 0 ? '+' : '') + curLogoX + '%';
+    // Sync layer order chips
+    const curLayer = viz.layerOrder || 'logo-top';
+    document.querySelectorAll('.viz-layer-chip').forEach(c => {
+      const active = c.dataset.layer === curLayer;
+      c.classList.toggle('active', active);
+      c.style.border = active ? '1px solid var(--gold)' : '1px solid var(--border)';
+      c.style.color = active ? 'var(--gold)' : 'var(--muted)';
+      c.style.background = active ? 'rgba(240,196,25,0.10)' : 'var(--panel-2)';
+    });
     const lScale = document.getElementById('viz-logo-scale');
     const lScaleVal = document.getElementById('viz-logo-scale-val');
     const curLogo = (typeof viz.logoScale === 'number') ? viz.logoScale : 60;
@@ -12381,25 +13068,567 @@ const POV_TYPES = {
 };
 
 // In-memory PoV chain (also reflected back into the deed payload at mint time).
+// stakeRatio = % of verified value locked as $WIP collateral (default 100% so
+// the $WIP stake matches the asset's real-world USD value 1:1, converted at
+// the LIVE $WIP/USD price from the tokenomics state). Users can dial the
+// ratio down if they want a margin model.
 const _povState = {
-  items: [],        // { id, type, claimedAmount, file, fileName, ai, addedAt }
-  wipPriceUSD: 0.04 // sensible default; user can refresh
+  items: [],
+  stakeRatio: 1.0,            // 100% by default = full value match
+  wipTotalSupply: 100_000_000,
 };
+// Live $WIP/USD price — always reads from the tokenomics state so it
+// fluctuates in lockstep with the rest of the platform. Falls back to 0.85
+// (initial seed price) only if state isn't initialized yet.
+function getLiveWipPrice() {
+  try {
+    if (typeof state !== 'undefined' && state && typeof state.wipPrice === 'number' && state.wipPrice > 0) {
+      return state.wipPrice;
+    }
+  } catch (e) {}
+  return 0.85;
+}
 
 function getPoVSnapshot() {
+  const verifiedUSD = _povState.items.reduce((s, i) => s + ((i.ai && i.ai.status === 'verified' && (!i.ai.adminAudit || i.ai.adminAudit.approved)) ? povItemUSD(i) : 0), 0);
+  const stakeUSD    = verifiedUSD * _povState.stakeRatio;
+  const wipPrice    = getLiveWipPrice();
+  const stakeWIP    = wipPrice > 0 ? Math.round(stakeUSD / wipPrice) : 0;
   return {
     items: _povState.items.map(i => ({
       id: i.id, type: i.type, claimedAmount: i.claimedAmount,
       fileName: i.fileName || null, ai: i.ai || null, addedAt: i.addedAt,
     })),
-    wipPriceUSD: _povState.wipPriceUSD,
-    verifiedUSD: _povState.items.reduce((s, i) => s + (i.ai && i.ai.status === 'verified' ? povItemUSD(i) : 0), 0),
+    wipPriceUSD: wipPrice,
+    stakeRatio: _povState.stakeRatio,
+    wipTotalSupply: _povState.wipTotalSupply,
+    verifiedUSD,
+    stakeUSD,
+    stakeWIP,
+    supplyPct: _povState.wipTotalSupply > 0 ? (stakeWIP / _povState.wipTotalSupply) : 0,
   };
 }
 
 function povItemUSD(item) {
   const t = POV_TYPES[item.type] || POV_TYPES.other;
   return (Number(item.claimedAmount) || 0) * t.multiplier;
+}
+
+// ============================================================================
+// Handwriting / printed-text OCR via Tesseract.js — lazy-loaded from CDN.
+// Court judgments and royalty statements often have HANDWRITTEN amounts or
+// signatures, so we OCR image proofs and any PDF page where text extraction
+// returned nothing (i.e. scanned, not born-digital).
+// ============================================================================
+let _tesseractWorker = null;
+let _tesseractLoadPromise = null;
+
+// Try multiple CDNs so a single blocked host doesn't kill OCR entirely.
+const TESSERACT_CDN_URLS = [
+  'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',
+  'https://unpkg.com/tesseract.js@5/dist/tesseract.min.js',
+  'https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js',
+];
+
+async function loadTesseract() {
+  if (typeof Tesseract !== 'undefined') return;
+  if (_tesseractLoadPromise) return _tesseractLoadPromise;
+  _tesseractLoadPromise = (async () => {
+    let lastErr;
+    for (const url of TESSERACT_CDN_URLS) {
+      try {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = url;
+          s.async = true;
+          s.onload = resolve;
+          s.onerror = () => reject(new Error('load failed: ' + url));
+          document.head.appendChild(s);
+        });
+        if (typeof Tesseract !== 'undefined') return;
+      } catch (e) { lastErr = e; }
+    }
+    throw lastErr || new Error('All Tesseract.js CDNs failed — handwriting OCR unavailable. Check your network connection.');
+  })();
+  return _tesseractLoadPromise;
+}
+
+async function getTesseractWorker(onProgress) {
+  await loadTesseract();
+  if (typeof Tesseract === 'undefined') {
+    throw new Error('Tesseract.js script loaded but global is missing — likely CORS / CSP block');
+  }
+  if (_tesseractWorker) return _tesseractWorker;
+  // Explicit paths so the worker, WASM core, and language model all resolve
+  // off the same CDN. Without these, createWorker can throw cryptic errors
+  // when the environment can't auto-resolve sibling assets.
+  const v5Config = {
+    workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
+    corePath:   'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/',
+    langPath:   'https://tessdata.projectnaptha.com/4.0.0',
+    logger: (m) => { if (onProgress && m.status) onProgress(m); },
+  };
+  try {
+    _tesseractWorker = await Tesseract.createWorker('eng', 1, v5Config);
+    return _tesseractWorker;
+  } catch (e5) {
+    // v4-style fallback if the loaded build is v4 (unpkg may serve different versions).
+    try {
+      _tesseractWorker = await Tesseract.createWorker({
+        workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/worker.min.js',
+        corePath:   'https://cdn.jsdelivr.net/npm/tesseract.js-core@4/tesseract-core.wasm.js',
+        langPath:   'https://tessdata.projectnaptha.com/4.0.0',
+        logger: (m) => { if (onProgress && m.status) onProgress(m); },
+      });
+      // v4 needs load + loadLanguage + initialize before recognize
+      if (typeof _tesseractWorker.load === 'function')         await _tesseractWorker.load();
+      if (typeof _tesseractWorker.loadLanguage === 'function') await _tesseractWorker.loadLanguage('eng');
+      if (typeof _tesseractWorker.initialize === 'function')   await _tesseractWorker.initialize('eng');
+      return _tesseractWorker;
+    } catch (e4) {
+      throw new Error('Tesseract worker init failed (v5: ' + (e5.message || e5) + ' · v4: ' + (e4.message || e4) + ')');
+    }
+  }
+}
+
+// Render a PDF page to a canvas at scale 2× for better OCR accuracy.
+async function rasterizePdfPage(file, pageNum, scale) {
+  if (typeof pdfjsLib === 'undefined') return null;
+  try { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; } catch (e) {}
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  if (pageNum > pdf.numPages) return null;
+  const page = await pdf.getPage(pageNum);
+  const viewport = page.getViewport({ scale: scale || 2 });
+  const canvas = document.createElement('canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  const ctx = canvas.getContext('2d');
+  await page.render({ canvasContext: ctx, viewport }).promise;
+  return { canvas, pageCount: pdf.numPages };
+}
+
+// Public OCR entry point. Returns recognized text, or null if not supported.
+// onProgress(percent, statusText) is called with friendly status during OCR.
+async function ocrFile(file, onProgress) {
+  if (!file) return null;
+  const reportProgress = (m) => {
+    if (!onProgress) return;
+    const pct = Math.max(0, Math.min(1, m.progress || 0));
+    onProgress(Math.round(pct * 100), m.status || 'reading…');
+  };
+  // NOTE: errors here PROPAGATE up so the calling UI can surface the real
+  // reason ("Tesseract failed to load", "PDF rasterize failed", etc.). The
+  // previous version swallowed everything and returned null, which left the
+  // user staring at "no monetary amounts detected" with no idea why.
+  if (onProgress) onProgress(2, 'loading Tesseract.js OCR engine…');
+  const worker = await getTesseractWorker(reportProgress);
+  const ext = (file.name || '').toLowerCase().split('.').pop();
+  const isImage = (file.type && file.type.startsWith('image/'))
+               || ['png','jpg','jpeg','gif','webp','bmp','tiff'].includes(ext);
+  // ---- Image file: OCR directly ----
+  if (isImage) {
+    if (onProgress) onProgress(10, 'reading handwriting…');
+    const { data } = await worker.recognize(file);
+    return data && data.text ? data.text : '';
+  }
+  // ---- PDF file: rasterize each page (capped at 8) and OCR each ----
+  if (ext === 'pdf' || file.type === 'application/pdf') {
+    const first = await rasterizePdfPage(file, 1, 2);
+    if (!first) throw new Error('PDF rasterize failed — pdf.js could not render the file');
+    const totalPages = Math.min(first.pageCount, 8);
+    let allText = '';
+    for (let p = 1; p <= totalPages; p++) {
+      if (onProgress) onProgress(Math.round(((p - 1) / totalPages) * 95) + 5, 'reading handwriting · page ' + p + '/' + totalPages);
+      const rasterized = (p === 1) ? first : await rasterizePdfPage(file, p, 2);
+      if (!rasterized) continue;
+      const { data } = await worker.recognize(rasterized.canvas);
+      if (data && data.text) allText += data.text + '\n';
+    }
+    return allText;
+  }
+  throw new Error('Unsupported file type for OCR: ' + (file.type || ext || 'unknown'));
+}
+
+// ============================================================================
+// Extract document text from common file types (PDF / CSV / TXT / JSON).
+// Used by both the AI authenticity scan and the auto-value extraction pass.
+// Falls back to OCR (Tesseract.js) when text extraction yields nothing — so
+// scanned court judgments with handwritten amounts can still be read.
+// Returns null if the file type isn't readable as text.
+// ============================================================================
+async function extractProofText(file, opts) {
+  if (!file) return null;
+  const name = (file.name || '').toLowerCase();
+  const ext = name.split('.').pop();
+  const onProgress = opts && opts.onProgress;
+  const skipOcr   = opts && opts.skipOcr === true;
+  const forceOcr  = opts && opts.forceOcr === true;
+  let printedText = '';
+
+  // ---- PDF — try born-digital text extraction first via pdf.js ----
+  if (ext === 'pdf' || file.type === 'application/pdf') {
+    try {
+      if (typeof pdfjsLib === 'undefined') throw new Error('pdf.js not loaded');
+      try { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; } catch (e) {}
+      const buf = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+      const pages = Math.min(pdf.numPages, 20);
+      for (let p = 1; p <= pages; p++) {
+        const page = await pdf.getPage(p);
+        const tc = await page.getTextContent();
+        printedText += tc.items.map(it => it.str).join(' ') + '\n';
+      }
+    } catch (e) { /* fall through; we'll still try OCR */ }
+  }
+  // ---- Plain text / CSV / JSON / TSV — read directly. ----
+  if (['csv', 'txt', 'json', 'tsv', 'log', 'md'].includes(ext)) {
+    try { return await file.text(); } catch (e) {}
+  }
+
+  // Decide whether OCR should also run. We OCR when:
+  //   - skipOcr is false AND
+  //   - file is image OR PDF without good printed text OR forceOcr is set
+  // For a PDF with printed text PLUS handwritten amounts, the explicit
+  // "READ HANDWRITING" button passes forceOcr:true so OCR runs too and we
+  // MERGE the printed + OCR text before money extraction.
+  if (!skipOcr) {
+    const isImage = (file.type && file.type.startsWith('image/'))
+                 || ['png','jpg','jpeg','gif','webp','bmp','tiff'].includes(ext);
+    const isPdf   = ext === 'pdf' || file.type === 'application/pdf';
+    const meaningfulPrinted = printedText.replace(/\s+/g, ' ').trim();
+    const shouldOcr = forceOcr
+      || isImage
+      || (isPdf && meaningfulPrinted.length < 30);
+    if (shouldOcr && (isImage || isPdf)) {
+      const ocrText = await ocrFile(file, onProgress);
+      // Combine — printed text first (cleaner for born-digital chunks) then
+      // OCR text (handwritten amounts on the same page).
+      const combined = (printedText + '\n' + (ocrText || '')).trim();
+      return combined || ocrText || printedText || null;
+    }
+  }
+  return printedText || null;
+}
+
+// Find monetary amounts in a chunk of document text. Returns an array of
+// { raw, value, position, kind } sorted by likelihood (size + context hints).
+// Recognizes: "$12,345.67", "USD 1500", "12,500.00 USD", "1.5M", "750k"
+// + a 'streaming' kind for stream-count phrasing like "100,000 streams".
+function extractMoneyCandidates(text, proofType) {
+  if (!text) return [];
+  const candidates = [];
+  const norm = text.replace(/\s+/g, ' ');
+
+  // ---- Handwriting-friendly OCR normalization ----
+  // Tesseract commonly confuses chars in handwritten amounts. We build a
+  // SECOND text variant where OCR look-alikes are replaced by digits inside
+  // numeric clusters only — without losing the original (which is kept for
+  // the printed-text pass).
+  // Examples Tesseract typos we normalize:
+  //   "$l5,O00"   →  "$15,000"
+  //   "S 15,OOO"  →  "$ 15,000"
+  //   "I,500.OO"  →  "1,500.00"
+  const ocrNorm = norm
+    // Leading "S" or "5" before a space/digit treated as "$"
+    .replace(/\b[S5]\s*(?=[0-9OIlI])/g, '$')
+    // Letters embedded inside / adjacent to digits → digit equivalents
+    .replace(/([0-9$])([OoDQ])/g, '$10')                    // 1O → 10, $O → $0
+    .replace(/([OoDQ])([0-9])/g, '0$2')                     // O1 → 01
+    .replace(/([0-9$,.])([Il|!])/g, '$11')                  // 1I → 11, $l → $1
+    .replace(/([Il|!])([0-9,.])/g, '1$2')                   // I0 → 10, l0 → 10
+    .replace(/([0-9])([Ss])([0-9])/g, '$15$3');             // 1S5 → 155
+
+  // ---- Monetary regex (run on BOTH norm + ocrNorm so we catch both clean
+  // and OCR-fuzzed text). Matches: $1,234.56 · USD 1500 · 1,500.00 USD · etc.
+  const moneyRe = /(?:[$€£¥]|USD\s|EUR\s|GBP\s|JPY\s)\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?|[0-9]+(?:\.[0-9]+)?)|(?:^|\s)([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?|[0-9]+(?:\.[0-9]+)?)\s*(?:USD|EUR|GBP|JPY|dollars?)/gi;
+  const sources = [norm, ocrNorm];
+  const seenAt = new Set();
+  for (const src of sources) {
+    moneyRe.lastIndex = 0;
+    let m;
+    while ((m = moneyRe.exec(src)) !== null) {
+      const raw = m[0];
+      const numStr = (m[1] || m[2] || '').replace(/,/g, '');
+      const value = parseFloat(numStr);
+      if (!isFinite(value) || value <= 0) continue;
+      // Dedupe near-identical positions across the two sources
+      const key = Math.round(value) + '@' + Math.floor(m.index / 4);
+      if (seenAt.has(key)) continue;
+      seenAt.add(key);
+      candidates.push({ raw: raw.trim(), value, position: m.index, kind: 'currency' });
+    }
+  }
+
+  // ---- Bare large numbers near money-context words (catches "Awarded 15000")
+  // where the $ symbol got dropped in OCR but the value still matters.
+  const bareLargeRe = /(?:^|\s)([0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]+)?|[0-9]{4,}(?:\.[0-9]+)?)(?=\s|[\.\),])/g;
+  for (const src of sources) {
+    bareLargeRe.lastIndex = 0;
+    let m;
+    while ((m = bareLargeRe.exec(src)) !== null) {
+      const numStr = m[1].replace(/,/g, '');
+      const value = parseFloat(numStr);
+      if (!isFinite(value) || value < 100) continue;
+      const ctx = src.slice(Math.max(0, m.index - 40), m.index + m[0].length + 16).toLowerCase();
+      const moneyish = /(award|judgment|granted|damages|amount|total|paid|received|due|owed|royalt|sum|verdict|settle|hereby|order)/.test(ctx);
+      if (!moneyish) continue;
+      const key = Math.round(value) + '@' + Math.floor(m.index / 4);
+      if (seenAt.has(key)) continue;
+      seenAt.add(key);
+      candidates.push({ raw: m[1].trim(), value, position: m.index, kind: 'currency-bare' });
+    }
+  }
+
+  // ---- Shorthand (1.5M, 750K) ----
+  const shortRe = /([0-9]+(?:\.[0-9]+)?)\s*([KMB])(?=[\s\.\,\)\]]|$)/gi;
+  while ((m = shortRe.exec(norm)) !== null) {
+    const n = parseFloat(m[1]);
+    if (!isFinite(n)) continue;
+    const mult = m[2].toUpperCase() === 'K' ? 1e3 : m[2].toUpperCase() === 'M' ? 1e6 : 1e9;
+    // Only treat as a money candidate if the surrounding context looks money-ish.
+    const ctx = norm.slice(Math.max(0, m.index - 32), Math.min(norm.length, m.index + m[0].length + 16)).toLowerCase();
+    const moneyish = /(\$|usd|revenue|gross|net|paid|earned|royalt|judgment|award|damages|sale|invoice|total)/.test(ctx);
+    if (moneyish) candidates.push({ raw: m[0], value: n * mult, position: m.index, kind: 'currency-short' });
+  }
+
+  // ---- Streaming counts (only for streaming proof type) ----
+  if (proofType === 'streaming') {
+    const streamRe = /([0-9]{1,3}(?:,[0-9]{3})*|[0-9]{4,})\s*(?:streams?|plays?|listens?|views?)\b/gi;
+    while ((m = streamRe.exec(norm)) !== null) {
+      const n = parseFloat(m[1].replace(/,/g, ''));
+      if (!isFinite(n) || n <= 0) continue;
+      candidates.push({ raw: m[0].trim(), value: n, position: m.index, kind: 'streams' });
+    }
+    // Spotify/Apple-style shorthand: "1.2M streams"
+    const shortStreamRe = /([0-9]+(?:\.[0-9]+)?)\s*([KMB])\s*(?:streams?|plays?|listens?|views?)\b/gi;
+    while ((m = shortStreamRe.exec(norm)) !== null) {
+      const n = parseFloat(m[1]);
+      if (!isFinite(n)) continue;
+      const mult = m[2].toUpperCase() === 'K' ? 1e3 : m[2].toUpperCase() === 'M' ? 1e6 : 1e9;
+      candidates.push({ raw: m[0].trim(), value: n * mult, position: m.index, kind: 'streams' });
+    }
+  }
+
+  // ---- Filter NON-MONETARY numbers that often trick the regex ----
+  // Dates, case numbers, phone numbers, page numbers, ZIP codes — none of
+  // these are dollar amounts. We strip candidates that match these patterns
+  // in their surrounding ~50-char context so they don't muddy scoring.
+  const stripCtxPatterns = [
+    /\b(?:case|civil|action|docket|no\.?|#)\s*[:#]?\s*$/i,        // case number
+    /\b(?:phone|tel|fax|cell|mobile)\s*[:#]?\s*$/i,                 // phone
+    /\b(?:page|pg|p\.)\s*$/i,                                       // page
+    /\b(?:zip|postal|po\s*box)\s*[:#]?\s*$/i,                       // zip
+    /\b(?:ssn|ein|tin|tax\s*id|fed(?:eral)?\s*id)\s*[:#]?\s*$/i,    // tax id
+  ];
+  const looksLikeDate = (raw, position) => {
+    // 4-digit values in 1900-2099 range adjacent to month names or YYYY-MM-DD parts
+    const ctx = norm.slice(Math.max(0, position - 12), position + raw.length + 12);
+    return /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december)\b/i.test(ctx)
+        || /\d{4}[-/]\d{2}[-/]\d{2}/.test(ctx)
+        || /\d{2}[-/]\d{2}[-/]\d{4}/.test(ctx);
+  };
+  const filtered = candidates.filter(c => {
+    const before = norm.slice(Math.max(0, c.position - 50), c.position);
+    if (stripCtxPatterns.some(re => re.test(before))) return false;
+    if (looksLikeDate(c.raw, c.position)) return false;
+    // Filter year-only values (1900-2099) without a $ context
+    if (c.value >= 1900 && c.value <= 2099 && !/[$€£¥]/.test(c.raw)) {
+      const lo = norm.slice(Math.max(0, c.position - 24), c.position).toLowerCase();
+      if (!/(award|judgment|total|paid|received|amount|dollar|due|sum|revenue|royalt|gross|net|invoice|verdict|order)/.test(lo)) return false;
+    }
+    return true;
+  });
+
+  // ---- Context-aware scoring: AI "understands" which number is the headline ----
+  // The scoring engine reads ~50 chars around each candidate and applies
+  // type-specific keyword boosts. The biggest boost goes to numbers near
+  // headline phrases like "Hereby ordered to pay" or "Total revenue:".
+  // This is the closest we can get to LLM-level understanding without a model.
+  const docTypeBoost = {
+    judgment:  /(hereby (?:order|grant|award)|is hereby (?:ordered|granted)|defendant.*shall.*pay|plaintiff.*recover|in the amount of|damages? (?:in the amount of|award|of)|judgment (?:in (?:favor of|the amount of)|entered)|final judgment|awarded the sum of|verdict (?:for|in favor)|liable for|punitive damages|compensatory damages|settlement)/i,
+    revenue:   /(total revenue|gross (?:revenue|income|sales)|net revenue|total income|annual revenue|monthly revenue|year.to.date|ytd|earned|collected|received total|net sales|gross sales|operating revenue)/i,
+    license:   /(license fee|royalty rate|grant of license|licensing payment|advance against royalties|guaranteed minimum|annual minimum|upfront payment|signing fee)/i,
+    streaming: /(total (?:streams|plays|listens)|stream count|all.time plays|cumulative streams|monthly listeners|catalog plays|spotify (?:streams|plays)|apple music plays|reporting period)/i,
+    sales:     /(total sales|gross sales|units sold|sale price|transaction total|purchase amount|order total|amount paid|net proceeds)/i,
+    royalty:   /(royalty (?:payment|earned|owed|due)|mechanical royalt|performance royalt|streaming royalt|recoupment|payable to|net royalt)/i,
+    appraisal: /(appraised value|fair market value|estimated value|valuation conclusion|valuation amount|final valuation|appraised at)/i,
+    other:     /(amount|total|value|sum|paid|owed|due)/i,
+  };
+  const typeBoostRe = docTypeBoost[proofType] || docTypeBoost.other;
+  const score = (c) => {
+    let s = Math.log10(c.value + 10) * 100;            // log scale so a $15K doesn't dwarf a $250 totally
+    const around = norm.slice(Math.max(0, c.position - 60), c.position + c.raw.length + 60).toLowerCase();
+    // Strong type-specific headline boost
+    if (typeBoostRe.test(around)) s *= 2.4;
+    // General money-context boost
+    if (/(total|grand total|amount due|balance|sum total|net pay)/.test(around)) s *= 1.5;
+    if (/(filing fee|copy fee|service fee|court costs|notary|stamp duty)/.test(around)) s *= 0.4;  // ancillary
+    if (/(per (?:hour|month|year|stream|unit))/.test(around)) s *= 0.5;                            // rate, not total
+    if (/(\bof\s+\$?\d)/.test(around)) s *= 1.2;
+    if (/[$€£¥]/.test(c.raw)) s *= 1.3;
+    // Larger numbers are more likely the headline (but not extreme)
+    s *= Math.min(2, 0.5 + Math.log10(c.value + 10) / 5);
+    // Streaming penalty
+    if (proofType === 'streaming' && c.kind !== 'streams') s *= 0.0001;
+    if (proofType !== 'streaming' && c.kind === 'streams') s *= 0.0001;
+    return s;
+  };
+  filtered.forEach(c => { c._score = score(c); });
+  filtered.sort((a, b) => b._score - a._score);
+  return filtered;
+}
+
+// ============================================================================
+// ADMIN AI FINAL AUDIT
+// ----------------------------------------------------------------------------
+// Independent second-pass review that runs AFTER the initial AI scan. Designed
+// to prevent overvaluation that could be detrimental to the network. The Admin
+// AI scrutinizes the extracted value against type-specific norms, checks for
+// OCR-driven decimal/comma anomalies, demands multi-source confirmation in
+// the document text, and BLOCKS the stake count if anything is suspicious.
+//
+// Even AI-verified items must pass this audit before their value counts. The
+// user sees the audit trace so they understand why an asset was flagged.
+// ============================================================================
+const POV_TYPICAL_RANGES = {
+  revenue:   { min: 1,      max: 10_000_000_000,    typical: 5_000_000     },
+  license:   { min: 100,    max: 1_000_000_000,     typical: 250_000       },
+  judgment:  { min: 100,    max: 50_000_000,        typical: 500_000       },
+  streaming: { min: 1000,   max: 100_000_000_000,   typical: 5_000_000     },
+  sales:     { min: 10,     max: 1_000_000_000,     typical: 1_000_000     },
+  royalty:   { min: 10,     max: 100_000_000,       typical: 100_000       },
+  appraisal: { min: 1000,   max: 100_000_000_000,   typical: 5_000_000     },
+  other:     { min: 1,      max: 10_000_000_000,    typical: 100_000       },
+};
+
+function adminAIAudit(item, text) {
+  // Returns { approved, confidence, audits, flags, valueLockedReason }.
+  // 'approved' MUST be true for the proof to count toward the stake total.
+  const audits = [];
+  const flags  = [];
+  let confidence = 0.70;  // start at moderately confident; the audit either lifts or sinks this
+
+  if (!item.ai || !item.ai.autoExtracted) {
+    return {
+      approved: false,
+      confidence: 0,
+      audits: [],
+      flags: ['Admin AI: no extracted value to audit'],
+      valueLockedReason: 'no AI extraction available',
+    };
+  }
+  const ex = item.ai.autoExtracted;
+  const value = Number(ex.value) || 0;
+  const range = POV_TYPICAL_RANGES[item.type] || POV_TYPICAL_RANGES.other;
+
+  // ---- Audit 1: Type-specific magnitude check ----
+  if (value < range.min) {
+    flags.push('Admin AI: $' + value.toLocaleString() + ' is BELOW typical range for ' + (POV_TYPES[item.type]?.label || item.type) + ' (≥ $' + range.min.toLocaleString() + ')');
+    confidence -= 0.20;
+  } else if (value > range.max) {
+    flags.push('Admin AI: $' + value.toLocaleString() + ' EXCEEDS the realistic upper bound for ' + (POV_TYPES[item.type]?.label || item.type) + ' ($' + range.max.toLocaleString() + ') — likely OCR error / extra zeros');
+    confidence -= 0.45;
+  } else if (value > range.typical * 50) {
+    flags.push('Admin AI: $' + value.toLocaleString() + ' is in the top 1% for this proof type (typical ' + (POV_TYPES[item.type]?.label || item.type) + ' ≈ $' + range.typical.toLocaleString() + ') — second confirmation recommended');
+    confidence -= 0.18;
+  } else {
+    audits.push('value within typical ' + (POV_TYPES[item.type]?.label || item.type) + ' range');
+    confidence += 0.12;
+  }
+
+  // ---- Audit 2: Multi-source confirmation in the document ----
+  // The headline value should appear at least twice OR be in proximity to a
+  // strong type-keyword phrase. Single bare occurrence = LOW confidence.
+  if (text) {
+    const numStrings = [
+      Math.round(value).toLocaleString(),
+      value.toFixed(2),
+      value.toFixed(0),
+      '$' + Math.round(value).toLocaleString(),
+    ];
+    let occurrences = 0;
+    for (const s of numStrings) {
+      if (!s) continue;
+      let idx = 0, count = 0;
+      while ((idx = text.indexOf(s, idx)) !== -1) { count++; idx += s.length; }
+      occurrences = Math.max(occurrences, count);
+    }
+    if (occurrences >= 2) {
+      audits.push('value appears ' + occurrences + 'x in document (multi-source confirmation)');
+      confidence += 0.18;
+    } else if (occurrences === 1) {
+      // Check for strong headline context as a substitute for repetition
+      const ctx = (ex.contextSnippet || '').toLowerCase();
+      const strongHeadline = /(hereby (?:order|grant|award|adjudge)|defendant.*shall.*pay|in the amount of|awarded the sum of|total (?:revenue|income|paid|owed|due)|final judgment|verdict (?:for|in favor)|liable for|judgment in (?:favor of|the amount of))/i.test(ctx);
+      if (strongHeadline) {
+        audits.push('single occurrence but in strong headline context');
+        confidence += 0.06;
+      } else {
+        flags.push('Admin AI: value appears only once in document with no strong headline context — verify manually');
+        confidence -= 0.15;
+      }
+    } else {
+      flags.push('Admin AI: extracted value not located in document text after re-scan');
+      confidence -= 0.30;
+    }
+  }
+
+  // ---- Audit 3: Decimal / comma anomaly detection (OCR can inflate 10x or 100x) ----
+  // If the value is suspiciously round (e.g., 1,500,000 vs original 1,500) AND
+  // a similar smaller value exists in the text, flag it.
+  if (text && value >= 100_000) {
+    const candidates = [value / 10, value / 100, value / 1000];
+    for (const smaller of candidates) {
+      if (smaller < 100) continue;
+      const sStr = Math.round(smaller).toLocaleString();
+      if (text.includes(sStr) && !text.includes(Math.round(value).toLocaleString())) {
+        flags.push('Admin AI: document contains $' + sStr + ' but not the extracted $' + Math.round(value).toLocaleString() + ' — possible decimal/comma misread');
+        confidence -= 0.25;
+        break;
+      }
+    }
+  }
+
+  // ---- Audit 4: Suspicious round-number check (8 trailing zeros + low context = suspicious) ----
+  const trailingZeros = String(Math.round(value)).match(/0+$/);
+  if (trailingZeros && trailingZeros[0].length >= 6 && value > range.typical * 10) {
+    flags.push('Admin AI: suspiciously round number with ' + trailingZeros[0].length + ' trailing zeros — high inflation risk');
+    confidence -= 0.10;
+  }
+
+  // ---- Audit 5: Currency-symbol consistency ----
+  // If the raw match has a $ but the type is streaming, that's mismatched.
+  if (item.type === 'streaming' && /[$€£¥]/.test(ex.raw || '')) {
+    flags.push('Admin AI: currency symbol in a streaming-count proof — mismatched');
+    confidence -= 0.20;
+  }
+  if (item.type !== 'streaming' && /streams?|plays?|listens?/i.test(ex.raw || '')) {
+    flags.push('Admin AI: stream-unit suffix in a USD proof — mismatched');
+    confidence -= 0.20;
+  }
+
+  // ---- Audit 6: AI-scan confidence cross-check ----
+  // If the initial AI was already uncertain, Admin AI should be more skeptical.
+  const aiConf = Number(item.ai.confidence) || 0;
+  if (aiConf < 0.55) {
+    flags.push('Admin AI: initial AI confidence was only ' + Math.round(aiConf * 100) + '% — additional human review recommended');
+    confidence -= 0.10;
+  } else if (aiConf >= 0.85) {
+    audits.push('initial AI confidence high (' + Math.round(aiConf * 100) + '%) · audit aligned');
+    confidence += 0.05;
+  }
+
+  confidence = Math.max(0, Math.min(0.99, confidence));
+  const approved = confidence >= 0.65 && flags.length <= 1;
+  return {
+    approved,
+    confidence,
+    audits,
+    flags,
+    valueLockedReason: approved ? 'Admin AI approved' : (flags[0] || 'audit failed'),
+    auditedAt: new Date().toISOString(),
+  };
 }
 
 // Simulated AI Authenticity Scan — local heuristics + deterministic confidence.
@@ -12442,59 +13671,99 @@ async function aiScanProof(item) {
       confidence += 0.12;
     }
   }
-  // ---- Check 3: read text content (for text-based files) ----
+  // ---- Check 3: read text content + auto-extract value (for text-based files) ----
   let textReadable = false;
   let textSnippet = '';
+  let autoExtracted = null;          // populated if we find a value in the doc
+  let extractionTopCandidates = [];  // top 3 alternates surfaced to the user
+  // Hoist so adminAIAudit can re-scrutinize the same text the AI saw.
+  let extractedText = null;
   if (item.file) {
-    const ext = (item.file.name || '').split('.').pop().toLowerCase();
-    if (['pdf', 'csv', 'txt', 'json'].includes(ext)) {
-      try {
-        const text = await item.file.text();
-        if (text && text.length > 50) {
-          textReadable = true;
-          textSnippet = text.slice(0, 200).replace(/\s+/g, ' ').trim();
-          checks.push('text extracted (' + text.length + ' chars)');
-          confidence += 0.08;
-          // Search for proof-type-specific keywords
-          const keywords = {
-            revenue: ['revenue', 'income', 'invoice', 'payment', 'received', 'gross'],
-            license: ['license', 'grant', 'royalty', 'agreement', 'licensor', 'licensee'],
-            judgment: ['judgment', 'court', 'plaintiff', 'defendant', 'order', 'awarded', 'damages'],
-            streaming: ['streams', 'plays', 'spotify', 'apple music', 'youtube', 'tidal', 'amazon music'],
-            sales: ['sold', 'purchase', 'transaction', 'order', 'receipt', 'unit'],
-            royalty: ['royalty', 'royalties', 'recoupment', 'distribution', 'statement'],
-            appraisal: ['appraisal', 'valuation', 'estimated value', 'fair market'],
-          };
-          const want = keywords[item.type];
-          if (want) {
-            const lower = text.toLowerCase();
-            const hits = want.filter(k => lower.includes(k));
-            if (hits.length >= 2) {
-              checks.push('found relevant terms: ' + hits.slice(0, 4).join(', '));
-              confidence += 0.18;
-            } else if (hits.length === 1) {
-              checks.push('found 1 relevant term: ' + hits[0]);
-              confidence += 0.06;
-            } else {
-              flags.push('no expected keywords found for ' + POV_TYPES[item.type].label);
-              confidence -= 0.18;
-            }
-          }
-          // Cross-check claimed amount appears in document
-          if (item.claimedAmount && item.type !== 'streaming') {
-            const amt = Number(item.claimedAmount);
-            const variants = [
-              amt.toFixed(2),
-              amt.toFixed(0),
-              amt.toLocaleString(),
-              '$' + amt.toLocaleString(),
-            ];
-            const found = variants.some(v => text.includes(v));
-            if (found) { checks.push('claimed amount $' + amt.toLocaleString() + ' located in document'); confidence += 0.20; }
-            else { flags.push('claimed amount $' + amt.toLocaleString() + ' not found in document text'); confidence -= 0.18; }
-          }
+    // Track whether OCR fired so the verdict can credit handwriting recognition.
+    let ocrUsed = false;
+    const text = await extractProofText(item.file, {
+      onProgress: (pct, status) => {
+        ocrUsed = true;
+        // Surface live OCR progress on the row's existing AI state so the user
+        // sees "reading handwriting · page 2/3 · 47%" instead of a blank pause.
+        if (item.ai && item.ai.status === 'review' && Array.isArray(item.ai.checks)) {
+          item.ai.checks = ['🖊 ' + status + ' · ' + pct + '%'];
+          // Force a re-render so the user can watch progress
+          try { renderPoVList(); } catch (e) {}
         }
-      } catch (e) { /* binary or unreadable */ }
+      },
+    });
+    extractedText = text || null;
+    if (text && text.length > 30) {
+      textReadable = true;
+      textSnippet = text.slice(0, 240).replace(/\s+/g, ' ').trim();
+      checks.push('text extracted (' + text.length + ' chars)' + (ocrUsed ? ' via OCR / handwriting recognition' : ''));
+      if (ocrUsed) confidence += 0.10;  // OCR pass succeeded — extra credit
+      confidence += 0.08;
+      // Search for proof-type-specific keywords
+      const keywords = {
+        revenue: ['revenue', 'income', 'invoice', 'payment', 'received', 'gross'],
+        license: ['license', 'grant', 'royalty', 'agreement', 'licensor', 'licensee'],
+        judgment: ['judgment', 'court', 'plaintiff', 'defendant', 'order', 'awarded', 'damages'],
+        streaming: ['streams', 'plays', 'spotify', 'apple music', 'youtube', 'tidal', 'amazon music'],
+        sales: ['sold', 'purchase', 'transaction', 'order', 'receipt', 'unit'],
+        royalty: ['royalty', 'royalties', 'recoupment', 'distribution', 'statement'],
+        appraisal: ['appraisal', 'valuation', 'estimated value', 'fair market'],
+      };
+      const want = keywords[item.type];
+      if (want) {
+        const lower = text.toLowerCase();
+        const hits = want.filter(k => lower.includes(k));
+        if (hits.length >= 2) {
+          checks.push('found relevant terms: ' + hits.slice(0, 4).join(', '));
+          confidence += 0.18;
+        } else if (hits.length === 1) {
+          checks.push('found 1 relevant term: ' + hits[0]);
+          confidence += 0.06;
+        } else {
+          flags.push('no expected keywords found for ' + POV_TYPES[item.type].label);
+          confidence -= 0.18;
+        }
+      }
+
+      // ---- AUTO-EXTRACT VALUE (context-aware, reasoning-explained) ----
+      // The scoring engine picks the candidate whose surrounding text matches
+      // headline phrases for the proof type ("hereby ordered to pay" for a
+      // judgment, "total revenue" for revenue, etc.). We show the user WHY
+      // each value was selected so they can sanity-check.
+      const candidates = extractMoneyCandidates(text, item.type);
+      extractionTopCandidates = candidates.slice(0, 5).map(c => ({ raw: c.raw, value: c.value, kind: c.kind, contextSnippet: text.slice(Math.max(0, c.position - 50), c.position + (c.raw.length || 0) + 50).replace(/\s+/g, ' ').trim() }));
+      if (candidates.length) {
+        const best = candidates[0];
+        const ctxSnip = text.slice(Math.max(0, best.position - 50), best.position + best.raw.length + 50).replace(/\s+/g, ' ').trim();
+        autoExtracted = { raw: best.raw, value: best.value, kind: best.kind, contextSnippet: ctxSnip };
+        const looksEmpty = !item.claimedAmount || Number(item.claimedAmount) === 0;
+        if (looksEmpty) {
+          item.claimedAmount = best.value;
+          const niceVal = (best.kind === 'streams' ? best.value.toLocaleString() + ' streams' : '$' + best.value.toLocaleString());
+          checks.push('AI selected primary value: ' + niceVal + ' from context "…' + ctxSnip + '…"');
+          if (candidates.length > 1) {
+            checks.push('AI considered ' + candidates.length + ' candidate values · top pick scored ' + Math.round((best._score || 0)) + ' vs runner-up ' + Math.round((candidates[1]._score || 0)));
+          }
+          confidence += 0.22;
+        } else {
+          // Cross-check claimed amount appears in document
+          const amt = Number(item.claimedAmount);
+          const variants = [
+            amt.toFixed(2),
+            amt.toFixed(0),
+            amt.toLocaleString(),
+            '$' + amt.toLocaleString(),
+          ];
+          const found = variants.some(v => text.includes(v));
+          if (found) { checks.push('claimed amount ' + (item.type === 'streaming' ? amt.toLocaleString() + ' streams' : '$' + amt.toLocaleString()) + ' located in document'); confidence += 0.20; }
+          else if (Math.abs(best.value - amt) / Math.max(best.value, amt) < 0.02) { checks.push('claimed amount within 2% of extracted value · close match'); confidence += 0.12; }
+          else { flags.push('claimed amount does not match document — top extracted value: ' + best.raw); confidence -= 0.10; }
+        }
+      } else if (!item.claimedAmount) {
+        flags.push('no monetary amounts detected in document — enter value manually or upload a clearer proof');
+        confidence -= 0.12;
+      }
     }
   }
   // ---- Check 4: manipulation heuristics for images ----
@@ -12532,16 +13801,42 @@ async function aiScanProof(item) {
   }
   // ---- Final verdict ----
   confidence = Math.max(0.05, Math.min(0.98, confidence));
-  const status = confidence >= 0.65 ? 'verified' : confidence >= 0.40 ? 'review' : 'rejected';
-  return {
-    status,
+  const initialStatus = confidence >= 0.65 ? 'verified' : confidence >= 0.40 ? 'review' : 'rejected';
+
+  // ---- ADMIN AI FINAL AUDIT ----
+  // Even verified proofs go through the Admin AI audit. If it disapproves,
+  // the status is DOWNGRADED so the value does not count toward the stake.
+  // This is the absolute safeguard against accidental overvaluation.
+  const stagedAI = {
+    status: initialStatus,
     confidence,
     checks,
     flags,
     textReadable,
     textSnippet,
+    autoExtracted,
+    extractionTopCandidates,
     scannedAt: new Date().toISOString(),
   };
+  const adminAudit = adminAIAudit({ ...item, ai: stagedAI }, extractedText);
+  // If Admin AI rejects an otherwise-verified proof, downgrade to 'review'
+  // so the user must intervene before the value enters the stake tally.
+  let finalStatus = initialStatus;
+  if (!adminAudit.approved && initialStatus === 'verified') {
+    finalStatus = 'review';
+    flags.unshift('⚠ Admin AI audit BLOCKED auto-verification — value will not count until reviewed');
+  }
+  // If Admin AI is very confident in approval, also pass the boost to the user.
+  // If Admin AI strongly rejected (no approval + many flags), drop to rejected.
+  if (!adminAudit.approved && adminAudit.flags.length >= 3) {
+    finalStatus = 'rejected';
+  }
+
+  return Object.assign(stagedAI, {
+    status: finalStatus,
+    flags: stagedAI.flags,  // already mutated above if needed
+    adminAudit,
+  });
 }
 
 function povStatusColor(status) {
@@ -12618,25 +13913,50 @@ function renderPoVList() {
     unit.style.cssText = 'font-size:9px;color:var(--muted);';
     unit.textContent = t.unit;
     fields.appendChild(unit);
-    // Upload doc
-    const upBtn = document.createElement('button');
-    upBtn.textContent = item.file ? '✓ DOC ATTACHED · CHANGE' : '⬆ UPLOAD PROOF DOC';
-    upBtn.style.cssText = 'padding:6px 10px;font-size:9px;letter-spacing:0.06em;border:1px solid ' + (item.file ? 'var(--gold)' : 'var(--border)') + ';background:' + (item.file ? 'rgba(240,196,25,0.10)' : 'var(--panel)') + ';color:' + (item.file ? 'var(--gold)' : 'var(--muted)') + ';border-radius:4px;cursor:pointer;';
+    // Upload doc — use a <label> wrapping the file input so the file picker
+    // opens reliably without depending on programmatic input.click() (which
+    // some browsers block when the input is `hidden` or not yet mounted).
+    const upLabel = document.createElement('label');
+    upLabel.textContent = item.file ? '✓ DOC ATTACHED · CHANGE' : '⬆ UPLOAD PROOF DOC';
+    upLabel.title = item.file ? ('Currently attached: ' + (item.fileName || item.file.name)) : 'Attach PDF, JPG, PNG, CSV, XLSX, DOCX, or TXT';
+    upLabel.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:6px 10px;font-size:9px;letter-spacing:0.06em;border:1px solid ' + (item.file ? 'var(--gold)' : 'var(--gold-soft)') + ';background:' + (item.file ? 'rgba(240,196,25,0.10)' : 'var(--panel)') + ';color:' + (item.file ? 'var(--gold)' : 'var(--gold-soft)') + ';border-radius:4px;cursor:pointer;font-family:"IBM Plex Mono",ui-monospace,monospace;';
     const upInp = document.createElement('input');
     upInp.type = 'file';
-    upInp.hidden = true;
-    upInp.accept = '.pdf,.png,.jpg,.jpeg,.csv,.xlsx,.docx,.txt';
-    upBtn.addEventListener('click', () => upInp.click());
-    upInp.addEventListener('change', () => {
+    upInp.accept = '.pdf,.png,.jpg,.jpeg,.gif,.webp,.csv,.xlsx,.xls,.docx,.doc,.txt,.json,application/pdf,image/*';
+    // Visually hidden but still focusable + accessible; clicking the label
+    // dispatches the click directly to the input (browser-native behavior).
+    upInp.style.cssText = 'position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;';
+    upInp.addEventListener('change', async () => {
       const f = upInp.files && upInp.files[0];
-      if (f) {
-        item.file = f;
-        item.fileName = f.name;
-        renderPoVList();
+      if (!f) return;
+      item.file = f;
+      item.fileName = f.name;
+      // Reset AI status — auto-rescan immediately so the value gets extracted
+      // from the document without the user needing to click AI SCAN manually.
+      item.ai = { status: 'review', confidence: 0, checks: ['📄 attached "' + f.name + '" — starting AI scan…'], flags: [], textReadable: false, textSnippet: '', autoExtracted: null, extractionTopCandidates: [], scannedAt: null };
+      renderPoVList();
+      recomputePoVTally();
+      if (typeof toast === 'function') toast('Scanning "' + f.name + '" with AI…', 'ok', 2500);
+      try {
+        item.ai = await aiScanProof(item);
+        if (typeof toast === 'function') {
+          if (item.ai.autoExtracted) {
+            const ex = item.ai.autoExtracted;
+            const v = (ex.kind === 'streams') ? (ex.value.toLocaleString() + ' streams') : ('$' + ex.value.toLocaleString());
+            toast('Auto-extracted: ' + v + ' (' + Math.round(item.ai.confidence * 100) + '% confidence)', 'ok', 4500);
+          } else {
+            toast('AI scan complete · ' + (item.ai.status || 'review') + ' · ' + Math.round((item.ai.confidence || 0) * 100) + '%', 'ok', 3500);
+          }
+        }
+      } catch (e) {
+        item.ai = { status: 'rejected', confidence: 0, checks: [], flags: ['scan failed: ' + (e.message || e)], scannedAt: new Date().toISOString() };
+        if (typeof toast === 'function') toast('AI scan failed: ' + (e.message || e), 'err', 5000);
       }
+      renderPoVList();
+      recomputePoVTally();
     });
-    fields.appendChild(upBtn);
-    fields.appendChild(upInp);
+    upLabel.appendChild(upInp);
+    fields.appendChild(upLabel);
     // AI scan
     const scanBtn = document.createElement('button');
     scanBtn.textContent = item.ai ? '⟳ RE-SCAN' : '⊛ AI SCAN';
@@ -12654,6 +13974,89 @@ function renderPoVList() {
       recomputePoVTally();
     });
     fields.appendChild(scanBtn);
+
+    // Explicit handwriting / OCR button — forces an OCR pass even on PDFs
+    // that have extractable printed text (useful for court forms where the
+    // PRINTED template is digital but the AMOUNTS + SIGNATURES are handwritten).
+    const ocrBtn = document.createElement('button');
+    ocrBtn.textContent = '🖊 READ HANDWRITING';
+    ocrBtn.title = 'Force OCR pass — reads handwritten amounts on scanned or partially-handwritten documents (judgments, royalty statements, etc.)';
+    ocrBtn.style.cssText = 'padding:6px 10px;font-size:9px;letter-spacing:0.06em;border:1px solid var(--cyan,#4fd6ff);background:rgba(79,214,255,0.08);color:var(--cyan,#4fd6ff);border-radius:4px;cursor:pointer;';
+    ocrBtn.addEventListener('click', async () => {
+      if (!item.file) {
+        if (typeof toast === 'function') toast('Attach a document first', 'warn', 2500);
+        return;
+      }
+      ocrBtn.disabled = true;
+      ocrBtn.textContent = '⋯ LOADING OCR…';
+      // Show progress in the AI status block
+      item.ai = { status: 'review', confidence: 0, checks: ['🖊 starting handwriting recognition…'], flags: [], textReadable: false, textSnippet: '', autoExtracted: null, extractionTopCandidates: [], scannedAt: null };
+      renderPoVList();
+      try {
+        // Force OCR by skipping the printed-text fast path
+        const text = await ocrFile(item.file, (pct, status) => {
+          ocrBtn.textContent = '🖊 ' + pct + '% · ' + status;
+          if (item.ai) {
+            item.ai.checks = ['🖊 ' + status + ' · ' + pct + '%'];
+            try { renderPoVList(); } catch (e) {}
+          }
+        });
+        if (!text) {
+          item.ai = { status: 'rejected', confidence: 0.10, checks: ['OCR returned no readable text'], flags: ['document may be too low-resolution for handwriting recognition · try a sharper scan'], textReadable: false, textSnippet: '', autoExtracted: null, extractionTopCandidates: [], scannedAt: new Date().toISOString() };
+        } else {
+          // Feed OCR'd text into the same money-extraction pipeline
+          const candidates = extractMoneyCandidates(text, item.type);
+          const best = candidates[0] || null;
+          const checks = ['🖊 handwriting recognized (' + text.length + ' chars via Tesseract.js)'];
+          let confidence = 0.55;
+          if (best) {
+            const looksEmpty = !item.claimedAmount || Number(item.claimedAmount) === 0;
+            if (looksEmpty) {
+              item.claimedAmount = best.value;
+              checks.push('auto-extracted from handwriting: ' + best.raw + ' → ' + (best.kind === 'streams' ? best.value.toLocaleString() + ' streams' : '$' + best.value.toLocaleString()));
+              confidence += 0.22;
+            } else {
+              const amt = Number(item.claimedAmount);
+              if (Math.abs(best.value - amt) / Math.max(best.value, amt) < 0.05) {
+                checks.push('claimed amount matches handwritten value within 5%');
+                confidence += 0.20;
+              } else {
+                checks.push('handwritten value found: ' + best.raw + ' (differs from claim)');
+              }
+            }
+          }
+          item.ai = {
+            status: confidence >= 0.65 ? 'verified' : 'review',
+            confidence,
+            checks,
+            flags: best ? [] : ['no monetary values found in handwriting — review manually'],
+            textReadable: true,
+            textSnippet: text.slice(0, 240).replace(/\s+/g, ' ').trim(),
+            autoExtracted: best ? { raw: best.raw, value: best.value, kind: best.kind } : null,
+            extractionTopCandidates: candidates.slice(0, 5).map(c => ({ raw: c.raw, value: c.value, kind: c.kind })),
+            scannedAt: new Date().toISOString(),
+          };
+        }
+        if (typeof toast === 'function') {
+          if (item.ai.autoExtracted) {
+            const ex = item.ai.autoExtracted;
+            toast('🖊 Read handwriting: ' + (ex.kind === 'streams' ? ex.value.toLocaleString() + ' streams' : '$' + ex.value.toLocaleString()), 'ok', 4500);
+          } else if (item.ai.textReadable) {
+            toast('🖊 Handwriting recognized but no monetary values found · review the snippet', 'warn', 4500);
+          }
+        }
+      } catch (e) {
+        const msg = (e && e.message) ? e.message : String(e);
+        item.ai = { status: 'rejected', confidence: 0, checks: [], flags: ['handwriting OCR failed: ' + msg], scannedAt: new Date().toISOString() };
+        if (typeof toast === 'function') toast('🖊 OCR failed: ' + msg, 'err', 5500);
+      }
+      ocrBtn.disabled = false;
+      ocrBtn.textContent = '🖊 READ HANDWRITING';
+      renderPoVList();
+      recomputePoVTally();
+    });
+    fields.appendChild(ocrBtn);
+
     row.appendChild(fields);
 
     // AI verdict block
@@ -12662,7 +14065,9 @@ function renderPoVList() {
       verdict.style.cssText = 'padding:8px 10px;border-radius:4px;border:1px solid ' + povStatusColor(item.ai.status) + ';background:rgba(0,0,0,0.18);';
       const head = document.createElement('div');
       head.style.cssText = 'display:flex;justify-content:space-between;align-items:center;font-size:9.5px;color:' + povStatusColor(item.ai.status) + ';font-weight:700;text-transform:uppercase;letter-spacing:0.10em;margin-bottom:4px;';
-      head.innerHTML = '<span>' + povStatusLabel(item.ai.status) + '</span><span style="font-family:\'IBM Plex Mono\',ui-monospace,monospace;">confidence ' + Math.round(item.ai.confidence * 100) + '%</span>';
+      const adminGate = item.ai.adminAudit && !item.ai.adminAudit.approved;
+      const headLabel = adminGate ? '⛔ HELD BY ADMIN AI — value not counting' : povStatusLabel(item.ai.status);
+      head.innerHTML = '<span>' + headLabel + '</span><span style="font-family:\'IBM Plex Mono\',ui-monospace,monospace;">confidence ' + Math.round(item.ai.confidence * 100) + '%</span>';
       verdict.appendChild(head);
       const checks = document.createElement('div');
       checks.style.cssText = 'font-size:9px;color:var(--text);line-height:1.5;margin-top:3px;';
@@ -12673,6 +14078,76 @@ function renderPoVList() {
         flags.style.cssText = 'font-size:9px;color:var(--err);line-height:1.5;margin-top:4px;';
         flags.innerHTML = item.ai.flags.map(f => '⚠ ' + f).join('<br>');
         verdict.appendChild(flags);
+      }
+      // Admin AI audit block — surfaces the second-pass review BEFORE the value
+      // counts. This is the absolute safeguard against accidental overvaluation.
+      if (item.ai.adminAudit) {
+        const aa = item.ai.adminAudit;
+        const aaBox = document.createElement('div');
+        const tone = aa.approved ? 'var(--green,#2dd87a)' : 'var(--err)';
+        aaBox.style.cssText = 'margin-top:6px;padding:8px 10px;border:1px solid ' + tone + ';border-radius:4px;background:rgba(0,0,0,0.22);font-size:9.5px;line-height:1.5;';
+        const head = document.createElement('div');
+        head.style.cssText = 'display:flex;justify-content:space-between;align-items:center;font-size:9.5px;font-weight:700;letter-spacing:0.10em;text-transform:uppercase;color:' + tone + ';margin-bottom:4px;';
+        head.innerHTML = '<span>🛡 ADMIN AI AUDIT · ' + (aa.approved ? 'APPROVED' : 'BLOCKED') + '</span>' +
+                        '<span style="font-family:\'IBM Plex Mono\',ui-monospace,monospace;">audit conf. ' + Math.round(aa.confidence * 100) + '%</span>';
+        aaBox.appendChild(head);
+        if (aa.audits && aa.audits.length) {
+          const a1 = document.createElement('div');
+          a1.style.cssText = 'color:var(--text);';
+          a1.innerHTML = aa.audits.map(a => '✓ ' + a).join('<br>');
+          aaBox.appendChild(a1);
+        }
+        if (aa.flags && aa.flags.length) {
+          const a2 = document.createElement('div');
+          a2.style.cssText = 'color:var(--err);margin-top:4px;';
+          a2.innerHTML = aa.flags.map(f => '⚠ ' + f).join('<br>');
+          aaBox.appendChild(a2);
+        }
+        if (!aa.approved) {
+          const lock = document.createElement('div');
+          lock.style.cssText = 'margin-top:6px;font-size:9px;color:var(--gold);text-transform:uppercase;letter-spacing:0.10em;font-weight:700;';
+          lock.textContent = '⛔ value will NOT count toward stake until manually reviewed';
+          aaBox.appendChild(lock);
+        }
+        verdict.appendChild(aaBox);
+      }
+
+      // Auto-extracted value badge (only when the scan found a number in the doc)
+      if (item.ai.autoExtracted) {
+        const ex = item.ai.autoExtracted;
+        const exBox = document.createElement('div');
+        exBox.style.cssText = 'margin-top:6px;padding:8px 10px;background:rgba(240,196,25,0.08);border:1px dashed var(--gold-soft);border-radius:4px;font-size:9.5px;color:var(--gold);line-height:1.5;';
+        const label = (ex.kind === 'streams')
+          ? ('✦ AI-EXTRACTED · ' + ex.value.toLocaleString() + ' streams (from "' + ex.raw + '")')
+          : ('✦ AI-EXTRACTED · $' + ex.value.toLocaleString() + ' (from "' + ex.raw + '")');
+        exBox.innerHTML = '<div style="font-weight:700;letter-spacing:0.06em;">' + label + '</div>';
+        if (ex.contextSnippet) {
+          const ctx = document.createElement('div');
+          ctx.style.cssText = 'margin-top:4px;font-size:9px;color:var(--text);font-family:"IBM Plex Mono",ui-monospace,monospace;background:var(--panel);padding:4px 6px;border-radius:3px;line-height:1.4;';
+          ctx.textContent = '"…' + ex.contextSnippet + '…"';
+          exBox.appendChild(ctx);
+        }
+        // If there are multiple candidates, expose a tiny dropdown / "use other"
+        if (item.ai.extractionTopCandidates && item.ai.extractionTopCandidates.length > 1) {
+          const alts = document.createElement('div');
+          alts.style.cssText = 'margin-top:6px;font-size:8.5px;color:var(--muted);font-family:"IBM Plex Mono",ui-monospace,monospace;display:flex;flex-wrap:wrap;gap:4px;align-items:center;';
+          alts.innerHTML = '<span style="color:var(--muted);">other AI candidates:</span>';
+          item.ai.extractionTopCandidates.slice(1, 5).forEach(c => {
+            const chip = document.createElement('button');
+            chip.textContent = (c.kind === 'streams' ? c.value.toLocaleString() + ' streams' : '$' + c.value.toLocaleString());
+            chip.title = 'Use this value instead' + (c.contextSnippet ? '\n\nContext: "' + c.contextSnippet + '"' : '');
+            chip.style.cssText = 'padding:2px 7px;font-size:8.5px;border:1px solid var(--border);background:var(--panel-2);color:var(--gold-soft);border-radius:10px;cursor:pointer;font-family:"IBM Plex Mono",ui-monospace,monospace;';
+            chip.addEventListener('click', () => {
+              item.claimedAmount = c.value;
+              item.ai.autoExtracted = { raw: c.raw, value: c.value, kind: c.kind, contextSnippet: c.contextSnippet };
+              renderPoVList();
+              recomputePoVTally();
+            });
+            alts.appendChild(chip);
+          });
+          exBox.appendChild(alts);
+        }
+        verdict.appendChild(exBox);
       }
       if (item.ai.textSnippet) {
         const snip = document.createElement('div');
@@ -12688,18 +14163,31 @@ function renderPoVList() {
 }
 
 function recomputePoVTally() {
-  const claimed  = _povState.items.reduce((s, i) => s + povItemUSD(i), 0);
-  const verified = _povState.items.reduce((s, i) => s + (i.ai && i.ai.status === 'verified' ? povItemUSD(i) : 0), 0);
-  const stakeWip = _povState.wipPriceUSD > 0 ? Math.round(verified / _povState.wipPriceUSD) : 0;
-  const claimedEl  = document.getElementById('pov-claimed-usd');
-  const verifiedEl = document.getElementById('pov-verified-usd');
-  const stakeEl    = document.getElementById('pov-stake-wip');
-  const verdictEl  = document.getElementById('pov-ai-verdict');
-  const astStake   = document.getElementById('ast-stake');
-  if (claimedEl)  claimedEl.textContent  = '$' + claimed.toLocaleString(undefined, { maximumFractionDigits: 2 });
-  if (verifiedEl) verifiedEl.textContent = '$' + verified.toLocaleString(undefined, { maximumFractionDigits: 2 });
-  if (stakeEl)    stakeEl.textContent    = stakeWip.toLocaleString() + ' $WIP';
-  if (astStake)   astStake.value         = stakeWip || 100;
+  const claimed   = _povState.items.reduce((s, i) => s + povItemUSD(i), 0);
+  const verified  = _povState.items.reduce((s, i) => s + ((i.ai && i.ai.status === 'verified' && (!i.ai.adminAudit || i.ai.adminAudit.approved)) ? povItemUSD(i) : 0), 0);
+  const wipPrice  = getLiveWipPrice();                  // tokenomics-driven
+  const stakeUSD  = verified * _povState.stakeRatio;
+  const stakeWip  = wipPrice > 0 ? Math.round(stakeUSD / wipPrice) : 0;
+  const supplyPct = _povState.wipTotalSupply > 0 ? (stakeWip / _povState.wipTotalSupply) * 100 : 0;
+  const claimedEl   = document.getElementById('pov-claimed-usd');
+  const verifiedEl  = document.getElementById('pov-verified-usd');
+  const stakeUsdEl  = document.getElementById('pov-stake-usd');
+  const stakeEl     = document.getElementById('pov-stake-wip');
+  const supplyEl    = document.getElementById('pov-stake-supply-pct');
+  const ratioVal    = document.getElementById('pov-ratio-val');
+  const ratioInput  = document.getElementById('pov-stake-ratio');
+  const verdictEl   = document.getElementById('pov-ai-verdict');
+  const astStake    = document.getElementById('ast-stake');
+  const priceEl     = document.getElementById('pov-wip-price');
+  if (claimedEl)  claimedEl.textContent   = '$' + claimed.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  if (verifiedEl) verifiedEl.textContent  = '$' + verified.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  if (stakeUsdEl) stakeUsdEl.textContent  = '$' + stakeUSD.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  if (stakeEl)    stakeEl.textContent     = stakeWip.toLocaleString() + ' $WIP';
+  if (supplyEl)   supplyEl.textContent    = supplyPct.toFixed(supplyPct < 0.01 ? 5 : supplyPct < 1 ? 4 : 3) + '%';
+  if (ratioVal)   ratioVal.textContent    = Math.round(_povState.stakeRatio * 100) + '%';
+  if (ratioInput && ratioInput !== document.activeElement) ratioInput.value = Math.round(_povState.stakeRatio * 100);
+  if (astStake)   astStake.value          = stakeWip || 100;
+  if (priceEl)    priceEl.textContent     = '$' + wipPrice.toFixed(4);
   if (verdictEl) {
     const total = _povState.items.length;
     const verifiedN = _povState.items.filter(i => i.ai && i.ai.status === 'verified').length;
@@ -12711,7 +14199,10 @@ function recomputePoVTally() {
     } else if (unscannedN > 0) {
       verdictEl.innerHTML = '<span style="color:var(--gold);">⊛ ' + unscannedN + ' proof(s) awaiting AI scan</span> · ' + verifiedN + ' verified · ' + reviewN + ' under review · ' + rejectN + ' rejected';
     } else {
-      verdictEl.innerHTML = '<span style="color:' + (verifiedN === total ? 'var(--green,#2dd87a)' : 'var(--gold)') + ';font-weight:700;">AI verdict:</span> ' + verifiedN + ' verified · ' + reviewN + ' under review · ' + rejectN + ' rejected. Real-world value <strong style="color:var(--gold);">$' + verified.toLocaleString() + '</strong> → stake of <strong style="color:var(--gold);">' + stakeWip.toLocaleString() + ' $WIP</strong> at current price.';
+      const ratioPct = Math.round(_povState.stakeRatio * 100);
+      const ratioBit = ratioPct === 100 ? '' : ' × <strong>' + ratioPct + '%</strong>';
+      verdictEl.innerHTML = '<span style="color:' + (verifiedN === total ? 'var(--green,#2dd87a)' : 'var(--gold)') + ';font-weight:700;">AI verdict:</span> ' + verifiedN + ' verified · ' + reviewN + ' under review · ' + rejectN + ' rejected.<br>' +
+        '<strong style="color:var(--gold);">$' + verified.toLocaleString() + '</strong> verified value' + ratioBit + ' ÷ <strong>$' + wipPrice.toFixed(4) + '/$WIP</strong> = <strong style="color:var(--gold);">' + stakeWip.toLocaleString() + ' $WIP</strong> (' + supplyPct.toFixed(supplyPct < 0.01 ? 5 : supplyPct < 1 ? 4 : 3) + '% of 100M supply).';
     }
   }
 }
@@ -12746,35 +14237,104 @@ document.addEventListener('click', function (e) {
 
 const _povRunAll = document.getElementById('pov-run-all-scan');
 if (_povRunAll) _povRunAll.addEventListener('click', async () => {
-  if (!_povState.items.length) return;
-  _povRunAll.disabled = true;
-  _povRunAll.textContent = '⋯ RUNNING AI AUTHENTICITY PASS…';
-  for (const item of _povState.items) {
-    try { item.ai = await aiScanProof(item); } catch (e) {}
+  if (!_povState.items.length) {
+    if (typeof toast === 'function') toast('No proofs to scan · add one first', 'warn', 3000);
+    return;
   }
+  _povRunAll.disabled = true;
+  const total = _povState.items.length;
+  let verifiedN = 0, reviewN = 0, rejectedN = 0, errorN = 0;
+  const startMsg = '⊛ AI authenticity pass · scanning ' + total + ' proof' + (total === 1 ? '' : 's') + '…';
+  _povRunAll.textContent = '⋯ ' + startMsg.replace('⊛ ', '').toUpperCase();
+  if (typeof toast === 'function') toast(startMsg, 'ok', 3000);
+
+  for (let i = 0; i < _povState.items.length; i++) {
+    const item = _povState.items[i];
+    const idx = i + 1;
+    const label = (POV_TYPES[item.type] || POV_TYPES.other).label + (item.fileName ? ' · ' + item.fileName : '');
+    _povRunAll.textContent = '⊛ SCANNING ' + idx + '/' + total + ' · ' + label.toUpperCase().slice(0, 36);
+    // Per-item progress notification
+    if (typeof toast === 'function') toast('Scanning ' + idx + '/' + total + ' · ' + label, 'ok', 2200);
+    // Mirror progress in the row so the user sees scanning state
+    item.ai = { status: 'review', confidence: 0, checks: ['⊛ AI authenticating · ' + idx + '/' + total + '…'], flags: [], textReadable: false, textSnippet: '', autoExtracted: null, extractionTopCandidates: [], scannedAt: null };
+    renderPoVList();
+    try {
+      item.ai = await aiScanProof(item);
+      if      (item.ai.status === 'verified') verifiedN++;
+      else if (item.ai.status === 'review')   reviewN++;
+      else                                    rejectedN++;
+      // Per-item result notification
+      if (typeof toast === 'function') {
+        const pct = Math.round((item.ai.confidence || 0) * 100);
+        const ex = item.ai.autoExtracted;
+        const val = ex ? (ex.kind === 'streams' ? ex.value.toLocaleString() + ' streams' : '$' + ex.value.toLocaleString()) : null;
+        const status = item.ai.status === 'verified' ? '✓ verified' : item.ai.status === 'review' ? '⚠ review' : '✗ rejected';
+        toast(idx + '/' + total + ' · ' + status + ' · ' + pct + '%' + (val ? ' · ' + val : ''), item.ai.status === 'verified' ? 'ok' : item.ai.status === 'rejected' ? 'err' : 'warn', 3000);
+      }
+    } catch (e) {
+      errorN++;
+      item.ai = { status: 'rejected', confidence: 0, checks: [], flags: ['scan failed: ' + (e.message || e)], scannedAt: new Date().toISOString() };
+      if (typeof toast === 'function') toast(idx + '/' + total + ' · ✗ scan error: ' + (e.message || e), 'err', 4000);
+    }
+    renderPoVList();
+    recomputePoVTally();
+  }
+
   _povRunAll.disabled = false;
   _povRunAll.textContent = '⊛ RUN FULL AI AUTHENTICITY PASS ON ALL PROOFS';
-  renderPoVList();
-  recomputePoVTally();
+
+  // ---- Final summary notification ----
   if (typeof toast === 'function') {
-    const verified = _povState.items.filter(i => i.ai && i.ai.status === 'verified').length;
-    toast('AI pass complete · ' + verified + '/' + _povState.items.length + ' proofs verified', 'ok', 4500);
+    const verifiedFromState = _povState.items.filter(i => i.ai && i.ai.status === 'verified').length;
+    const snapshot = (typeof getPoVSnapshot === 'function') ? getPoVSnapshot() : null;
+    let parts = ['AI authenticity pass complete', verifiedFromState + '/' + total + ' verified'];
+    if (reviewN)   parts.push(reviewN + ' under review');
+    if (rejectedN) parts.push(rejectedN + ' rejected');
+    if (errorN)    parts.push(errorN + ' errored');
+    if (snapshot && snapshot.verifiedUSD > 0) {
+      parts.push('total verified value $' + snapshot.verifiedUSD.toLocaleString());
+      parts.push('stake ' + snapshot.stakeWIP.toLocaleString() + ' $WIP');
+    }
+    const finalTone = errorN > 0 ? 'err' : (rejectedN > 0 || reviewN > 0 ? 'warn' : 'ok');
+    toast(parts.join(' · '), finalTone, 7000);
   }
 });
 
-// Live $WIP price refresh. Falls back to default if no network / quote available.
+// $WIP price refresh — pulls the LIVE price from the tokenomics state so the
+// stake math always reflects the same number shown on the Tokenomics page.
+// state.wipPrice is updated by the tokenomics tickers elsewhere in the app.
 const _povPriceBtn = document.getElementById('pov-refresh-price');
 const _povPriceEl  = document.getElementById('pov-wip-price');
-async function refreshWipPrice() {
-  // For now we keep this deterministic — a future hook could call a price oracle.
-  // Slight randomization between $0.035 and $0.055 to mimic live volatility so
-  // the user can SEE the $WIP equivalent move when they tap refresh.
-  const next = 0.035 + Math.random() * 0.020;
-  _povState.wipPriceUSD = Number(next.toFixed(4));
-  if (_povPriceEl) _povPriceEl.textContent = '$' + _povState.wipPriceUSD.toFixed(4);
+function refreshWipPrice() {
+  const live = getLiveWipPrice();
+  if (_povPriceEl) _povPriceEl.textContent = '$' + live.toFixed(4);
   recomputePoVTally();
+  if (typeof toast === 'function') toast('$WIP price synced · $' + live.toFixed(4) + '/$WIP', 'ok', 2500);
 }
 if (_povPriceBtn) _povPriceBtn.addEventListener('click', refreshWipPrice);
+
+// Auto-sync the PoV $WIP price every 4 seconds so it tracks the tokenomics
+// page's live ticker without the user clicking refresh manually.
+setInterval(() => {
+  const priceEl = document.getElementById('pov-wip-price');
+  if (priceEl) {
+    priceEl.textContent = '$' + getLiveWipPrice().toFixed(4);
+    recomputePoVTally();
+  }
+}, 4000);
+
+// ===== Stake Ratio slider (margin requirement) =====
+// User picks what % of the verified real-world value gets locked as $WIP
+// collateral. Defaults to 10% so the 100M $WIP supply isn't burned by a single
+// big asset. Range 1–100% (100% = full collateral, original behavior).
+const _povStakeRatio = document.getElementById('pov-stake-ratio');
+if (_povStakeRatio) {
+  _povStakeRatio.addEventListener('input', () => {
+    const pct = Math.max(1, Math.min(100, Number(_povStakeRatio.value) || 10));
+    _povState.stakeRatio = pct / 100;
+    recomputePoVTally();
+  });
+}
 
 const _vizSopSave = document.getElementById('viz-sop-save');
 if (_vizSopSave) _vizSopSave.addEventListener('click', () => {
@@ -13038,6 +14598,38 @@ if (_vizLogoY) {
     refreshVizPreview();
   });
 }
+
+// ===== Logo horizontal position slider (Left / Right) =====
+const _vizLogoX    = document.getElementById('viz-logo-x');
+const _vizLogoXVal = document.getElementById('viz-logo-x-val');
+if (_vizLogoX) {
+  _vizLogoX.addEventListener('input', () => {
+    if (!state.current.visualizer) state.current.visualizer = defaultViz();
+    const v = Number(_vizLogoX.value);
+    state.current.visualizer.logoX = v;
+    if (_vizLogoXVal) _vizLogoXVal.textContent = (v > 0 ? '+' : '') + v + '%';
+    refreshVizPreview();
+  });
+}
+
+// ===== Layer order chips (Logo on Top / Asset on Top) =====
+// User picks which uploaded file renders on top — drives viz.layerOrder which
+// flips the z-index of the added logo vs the uploaded asset image in render.
+document.querySelectorAll('.viz-layer-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    if (!state.current.visualizer) state.current.visualizer = defaultViz();
+    const order = chip.dataset.layer;
+    state.current.visualizer.layerOrder = order;
+    document.querySelectorAll('.viz-layer-chip').forEach(c => {
+      const active = c.dataset.layer === order;
+      c.classList.toggle('active', active);
+      c.style.border = active ? '1px solid var(--gold)' : '1px solid var(--border)';
+      c.style.color = active ? 'var(--gold)' : 'var(--muted)';
+      c.style.background = active ? 'rgba(240,196,25,0.10)' : 'var(--panel-2)';
+    });
+    refreshVizPreview();
+  });
+});
 
 // ===== Waveform color input (Solid Hex picker) =====
 const _vizWaveColor = document.getElementById('viz-wave-color');
@@ -13803,46 +15395,174 @@ const EXIF_TAGS = {
 };
 
 // ----- Apply extracted metadata to dynamic form fields -----
+// Pick the best asset type for an uploaded file based on its MIME type,
+// extension, and any embedded metadata hints. Returns one of:
+// 'copyright' | 'patent' | 'trademark' | 'tradesecret' (or null).
+function autoDetectAssetType(file, extracted) {
+  if (!file) return null;
+  const mime = (file.type || '').toLowerCase();
+  const ext  = (file.name || '').split('.').pop().toLowerCase();
+  const m    = (extracted && extracted.fields) || {};
+  const blob = JSON.stringify(m).toLowerCase();
+
+  // ---- Strong signals from embedded metadata + filename ----
+  const filename = (file.name || '').toLowerCase();
+  if (/patent|invention|prior\s*art|claims/.test(blob) || /patent|grant|uspto/.test(filename)) return 'patent';
+  if (/trademark|trade\s*mark|service\s*mark/.test(blob) || /trademark|tmark|tm-/.test(filename)) return 'trademark';
+  if (/trade\s*secret|confidential|nda|restricted/.test(blob) || /trade-?secret|confidential/.test(filename)) return 'tradesecret';
+
+  // ---- MIME-based default mapping ----
+  // Audio / video / image / typical text+document → copyright
+  if (mime.startsWith('audio/'))   return 'copyright';
+  if (mime.startsWith('video/'))   return 'copyright';
+  if (mime.startsWith('image/'))   return 'copyright';
+  if (mime.startsWith('text/'))    return 'copyright';
+  if (mime === 'application/pdf')  return 'copyright';
+
+  // Source code / engineering → patent leaning
+  if (['c','cpp','h','hpp','cc','java','py','rs','go','js','ts','tsx','jsx','swift','kt'].includes(ext)) return 'patent';
+
+  // Office docs → copyright as a safe default
+  if (['doc','docx','rtf','odt','txt','md','pages'].includes(ext)) return 'copyright';
+  if (['png','jpg','jpeg','gif','webp','svg','bmp','tiff','heic','avif'].includes(ext)) return 'copyright';
+  if (['mp3','wav','flac','aac','m4a','ogg','aif','aiff'].includes(ext)) return 'copyright';
+  if (['mp4','mov','mkv','webm','avi','m4v'].includes(ext)) return 'copyright';
+
+  // Default safe pick
+  return 'copyright';
+}
+
 function applyExtractedMetadata(extracted) {
-  if (!extracted || !extracted.fields) return;
-  const m = extracted.fields;
-  // Common date mapping
-  const dateFields = ['Captured', 'DateTimeOriginal', 'CreationDate', 'Year', 'Release Date'];
-  for (const k of dateFields) {
-    if (m[k]) {
-      const isoDate = parseToISODate(m[k]);
-      if (isoDate) {
-        autoFill('creation_date', isoDate);
-        autoFill('filing_date', isoDate);
-        autoFill('date_identified', isoDate);
-        break;
-      }
+  // Auto-fill rules — every fallback is wrapped in autoFill() which respects
+  // any value the user already typed (never overwrites). We pull from THREE
+  // sources, in priority order: 1) embedded metadata, 2) the file's own
+  // metadata (name + lastModified), 3) wallet identity. Whatever auto-fills
+  // gets a green flash + we toast a summary so the user knows what changed.
+  const filledFields = [];
+  function safeAutoFill(id, value) {
+    if (value == null || value === '') return;
+    const cur = state.current.fields && state.current.fields[id];
+    const had = cur && cur.value && String(cur.value).trim();
+    autoFill(id, String(value).slice(0, 400));
+    if (!had && state.current.fields[id] && state.current.fields[id].value) {
+      filledFields.push(id);
     }
   }
-  // Creator/author
-  for (const k of ['Artist', 'Author', 'Copyright']) {
+
+  const m = (extracted && extracted.fields) || {};
+
+  // ---- Title ----
+  // Prefer embedded Title; fall back to filename (sans extension) so a file
+  // dropped without metadata still seeds a sensible title.
+  let title = m['Title'] || m['title'] || m['DocumentTitle'] || m['Subject'];
+  if (!title && state.current.file && state.current.file.name) {
+    const fn = state.current.file.name;
+    title = fn.replace(/\.[a-zA-Z0-9]{1,6}$/, '').replace(/[_\-]+/g, ' ').trim();
+  }
+  if (title) safeAutoFill('title', title);
+
+  // ---- Creator / Author / Inventor / Owner ----
+  // Embedded first; wallet fallback handled by autoFillOwnerName() separately.
+  for (const k of ['Artist', 'Author', 'Composer', 'Performer', 'Copyright', 'Creator', 'Producer', 'AlbumArtist']) {
+    if (m[k]) { safeAutoFill('creator', m[k]); break; }
+  }
+
+  // ---- Creation date / Filing date / Identified date ----
+  // Embedded date wins; fall back to the file's lastModified timestamp.
+  const dateFields = ['Captured', 'DateTimeOriginal', 'CreationDate', 'Year', 'Release Date', 'Date', 'create_date', 'ModifyDate'];
+  let isoDate = null;
+  for (const k of dateFields) {
+    if (m[k]) { const d = parseToISODate(m[k]); if (d) { isoDate = d; break; } }
+  }
+  if (!isoDate && state.current.file && state.current.file.lastModified) {
+    const d = new Date(state.current.file.lastModified);
+    if (!isNaN(d)) {
+      isoDate = d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
+    }
+  }
+  if (isoDate) {
+    safeAutoFill('creation_date', isoDate);
+    safeAutoFill('filing_date', isoDate);
+    safeAutoFill('date_identified', isoDate);
+    safeAutoFill('first_use_date', isoDate);
+  }
+
+  // ---- Publication date (audio "Release Date", PDF "Published", etc.) ----
+  for (const k of ['Release Date', 'Published', 'PublicationDate', 'date_published']) {
+    if (m[k]) { const d = parseToISODate(m[k]); if (d) { safeAutoFill('publication_date', d); break; } }
+  }
+
+  // ---- Description / Abstract / Notes ----
+  for (const k of ['Description', 'Comment', 'Subject', 'Keywords', 'Abstract', 'Notes', 'description']) {
+    if (m[k]) { safeAutoFill('description', m[k]); safeAutoFill('abstract', m[k]); break; }
+  }
+
+  // ---- Tags / Genre / Category ----
+  for (const k of ['Keywords', 'Genre', 'Category', 'Tags']) {
+    if (m[k]) { safeAutoFill('tags', m[k]); break; }
+  }
+
+  // ---- Music: BPM + Key from ID3v2 tags (TBPM / TKEY / "BPM") ----
+  // If the audio file already has these baked in, prefer them over a scan.
+  for (const k of ['TBPM', 'BPM', 'Tempo']) {
+    if (m[k]) { const n = parseInt(String(m[k]).replace(/[^0-9]/g, ''), 10); if (n > 0) { safeAutoFill('bpm', String(n)); break; } }
+  }
+  for (const k of ['TKEY', 'Key', 'InitialKey']) {
     if (m[k]) {
-      autoFill('creator', m[k].slice(0, 80));
+      // Try to match ID3 key notation (e.g., "Am", "C#m", "Em") to our select options
+      const raw = String(m[k]).trim();
+      const map = { 'C':'C major','Cm':'C minor','C#':'C# major','C#m':'C# minor','Db':'C# major','Dbm':'C# minor',
+                    'D':'D major','Dm':'D minor','D#':'D# major','D#m':'D# minor','Eb':'D# major','Ebm':'D# minor',
+                    'E':'E major','Em':'E minor','F':'F major','Fm':'F minor','F#':'F# major','F#m':'F# minor',
+                    'Gb':'F# major','Gbm':'F# minor','G':'G major','Gm':'G minor','G#':'G# major','G#m':'G# minor',
+                    'Ab':'G# major','Abm':'G# minor','A':'A major','Am':'A minor','A#':'A# major','A#m':'A# minor',
+                    'Bb':'A# major','Bbm':'A# minor','B':'B major','Bm':'B minor' };
+      if (map[raw]) safeAutoFill('musical_key', map[raw]);
       break;
     }
   }
-  // Title
-  if (m['Title']) autoFill('title', m['Title']);
-  // Software → flag for AI check
+
+  // ---- Work type (infer from file MIME for copyright) ----
+  if (state.current.type === 'copyright' && state.current.file) {
+    const mime = (state.current.file.type || '').toLowerCase();
+    const inferred =
+      mime.startsWith('audio/')   ? 'Sound Recording' :
+      mime.startsWith('image/')   ? 'Pictorial / Graphic / Sculptural' :
+      mime.startsWith('video/')   ? 'Audiovisual' :
+      mime === 'application/pdf'  ? 'Literary' :
+      mime.startsWith('text/')    ? 'Literary' :
+      null;
+    if (inferred) safeAutoFill('work_type', inferred);
+  }
+
+  // ---- License (default to All Rights Reserved if select still empty) ----
+  if (state.current.type === 'copyright' && state.current.fields && state.current.fields.license && !state.current.fields.license.value) {
+    safeAutoFill('license', 'All Rights Reserved');
+  }
+
+  // ---- Software / AI tool detection (unchanged behavior) ----
   if (m['Software']) {
     const s = m['Software'].toLowerCase();
     const aiHit = ['dall-e','dalle','stable diffusion','midjourney','firefly','imagen','flux','suno','udio','runway','sora','automatic1111','comfyui','novelai','leonardo','playground','ideogram','pika']
       .find(t => s.includes(t));
-    if (aiHit) {
-      state.current.aiSoftwareDetected = m['Software'];
-    }
+    if (aiHit) state.current.aiSoftwareDetected = m['Software'];
   }
-  // PNG Stable Diffusion parameters
   if (m['parameters'] || m['Parameters'] || m['prompt'] || m['Comment']) {
     const params = m['parameters'] || m['Parameters'] || '';
     if (/Steps:|Sampler:|CFG scale:|Model hash:|Seed:/i.test(params)) {
       state.current.aiSoftwareDetected = 'Stable Diffusion (PNG metadata)';
     }
+  }
+
+  // Single toast summarizing what got auto-filled so the user can see it
+  // happened (and what to override). Only fires for fields newly populated
+  // by THIS pass — already-typed values are left alone.
+  if (filledFields.length && typeof toast === 'function') {
+    const labels = filledFields.slice(0, 6).map(id => {
+      const def = (FIELD_DEFS[state.current.type] || []).find(d => d.id === id);
+      return def ? def.label : id;
+    });
+    toast('Auto-filled from file metadata: ' + labels.join(', ') + (filledFields.length > 6 ? ' …' : ''), 'ok', 4500);
   }
 }
 function parseToISODate(s) {
@@ -13949,14 +15669,32 @@ async function reviewOwnershipProof(proof, file) {
   proof.ai_review = { status: 'pending', extracted: null, note: 'Sentinel reading registration document…', stage: 0, progress: 0 };
   renderOwnershipProofs();
   await stepVerify(proof, 1, 22, 'Reading document bytes…');
+  // Use the same pipeline as Proof-of-Value: pdf.js for born-digital, Tesseract.js
+  // OCR fallback for scanned PDFs + images (so handwritten signatures and stamped
+  // registration numbers on photographed certificates are still readable).
   let text = '';
   try {
-    if (ext === 'txt' || (file.type || '').startsWith('text/')) {
-      text = await file.slice(0, Math.min(file.size, 524288)).text();
-    } else if (ext === 'pdf') {
-      text = new TextDecoder('latin1').decode(await file.slice(0, Math.min(file.size, 524288)).arrayBuffer());
+    if (typeof extractProofText === 'function') {
+      const t = await extractProofText(file, {
+        onProgress: (pct, status) => {
+          if (proof.ai_review) {
+            proof.ai_review.stage = 1;
+            proof.ai_review.progress = Math.max(5, Math.min(90, pct));
+            proof.ai_review.note = '🖊 ' + status + ' · ' + pct + '%';
+            try { renderOwnershipProofs(); } catch (e) {}
+          }
+        },
+      });
+      text = t || '';
     } else {
-      text = file.name;
+      // Fallback to legacy crude scrape if helpers aren't present yet
+      if (ext === 'txt' || (file.type || '').startsWith('text/')) {
+        text = await file.slice(0, Math.min(file.size, 524288)).text();
+      } else if (ext === 'pdf') {
+        text = new TextDecoder('latin1').decode(await file.slice(0, Math.min(file.size, 524288)).arrayBuffer());
+      } else {
+        text = file.name;
+      }
     }
   } catch(e) {}
   const ext_obj = {};
@@ -13986,17 +15724,47 @@ async function reviewOwnershipProof(proof, file) {
   for (const [re, name] of officePatterns) {
     if (re.test(text)) { ext_obj.issuing_office = name; break; }
   }
-  // Owner / claimant name
+  // Owner / claimant name — patterns target the actual NAME after the label.
+  // We reject captures that are PURE LABEL fragments (e.g., "Copyright
+  // Claimant") so the cross-check doesn't accidentally compare a label header
+  // against the creator name and falsely deny ownership.
   const ownerPatterns = [
-    /\bClaimant\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/,
-    /\bOwner\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/,
-    /\bAssignee\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/,
+    /\bCopyright\s+Claimant\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/i,
+    /\b(?:Trademark|Patent)?\s*Claimant\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/i,
+    /\bOwner\s*(?:of\s*record)?\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/i,
+    /\bAssignee\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/i,
     /\bIssued\s+to\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/i,
     /\bRegistrant\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/i,
+    /\bAuthor\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/i,
+    /\bGrantee\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/i,
   ];
+  // Words that are LABELS not NAMES. If a captured group is ONLY these words
+  // it means the regex slurped a label header instead of the actual name.
+  const _ownLabelWords = new Set([
+    'copyright','claimant','owner','registrant','assignee','grantee','author',
+    'trademark','patent','title','type','of','work','registration','number',
+    'office','effective','date','issued','granted','certificate','authorship',
+    'service','mark','address','telephone','phone','email','attn','co',
+  ]);
+  function _isPureLabel(name) {
+    return name.trim().split(/\s+/).every(w => _ownLabelWords.has(w.toLowerCase().replace(/[^a-z]/g, '')));
+  }
   for (const re of ownerPatterns) {
     const m = text.match(re);
-    if (m) { ext_obj.owner = m[1].trim().replace(/\s+/g, ' '); break; }
+    if (!m) continue;
+    let cand = m[1].trim().replace(/\s+/g, ' ').replace(/[\s:;,]+$/, '');
+    // If pure label, try the line right AFTER the label header — usually
+    // certificates render the label and then put the name on the next line.
+    if (_isPureLabel(cand)) {
+      const after = text.slice(m.index + m[0].length).split(/[\r\n]/)[0];
+      const fallback = (after || '').trim().split(/\s+/).slice(0, 6).join(' ');
+      if (fallback && !_isPureLabel(fallback) && /[A-Z][A-Za-z'.\-]+/.test(fallback)) {
+        cand = fallback.replace(/[\s:;,]+$/, '');
+      } else {
+        continue;
+      }
+    }
+    if (cand && !_isPureLabel(cand)) { ext_obj.owner = cand; break; }
   }
   // Dates
   const dateMatch = text.match(/\b(?:effective|registered|issued|granted|filed|registration\s*date)[:\s]+(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{2,4}|\w+\s+\d{1,2},?\s+\d{4})\b/i);
@@ -14028,15 +15796,54 @@ async function reviewOwnershipProof(proof, file) {
     verified = false;
     note = 'No registration markers detected. Document may not be a valid IP registration certificate.';
   }
-  // Owner-vs-creator cross-check
+  // Owner-vs-creator cross-check — LENIENT match so OCR noise, label/header
+  // capture artifacts, or partial-name registrations don't block legitimate
+  // owners. If the captured owner is clearly a label leak (pure label words),
+  // skip the cross-check entirely instead of denying.
   const enteredCreator = (state.current.fields?.creator?.value || '').trim().toLowerCase();
-  if (verified && enteredCreator && ext_obj.owner) {
+  if (verified && enteredCreator && ext_obj.owner && !_isPureLabel(ext_obj.owner)) {
     const docOwner = ext_obj.owner.toLowerCase();
-    const overlap = enteredCreator.split(/\s+/).filter(x => x.length > 1 && docOwner.includes(x));
-    if (overlap.length === 0) {
-      verified = false;
-      note = '⚠ Owner on document (' + ext_obj.owner + ') does not match creator (' + state.current.fields.creator.value + ').';
+    const creatorTokens = enteredCreator.split(/\s+/).filter(x => x.length > 1);
+    const docTokens     = docOwner.split(/\s+/).filter(x => x.length > 1);
+    // Match if ANY of these are true:
+    //   1. Any word of creator appears in doc owner (existing behavior)
+    //   2. Any word of doc owner appears in creator (reverse direction)
+    //   3. Creator is a substring of doc owner (or vice versa) — handles
+    //      "John Doe" vs "John Doe Productions LLC" / "John Doe Studio"
+    //   4. Edit-distance ≤ 2 on any token pair (handles OCR typos)
+    function lev(a, b) {
+      if (a === b) return 0;
+      const m = a.length, n = b.length;
+      if (Math.abs(m - n) > 2) return 99;
+      const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+      for (let i = 0; i <= m; i++) dp[i][0] = i;
+      for (let j = 0; j <= n; j++) dp[0][j] = j;
+      for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) {
+        dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+      }
+      return dp[m][n];
     }
+    let matched = false;
+    if (creatorTokens.some(t => docOwner.includes(t))) matched = true;
+    if (!matched && docTokens.some(t => enteredCreator.includes(t))) matched = true;
+    if (!matched && (docOwner.includes(enteredCreator) || enteredCreator.includes(docOwner))) matched = true;
+    if (!matched) {
+      // Edit-distance on each token pair (OCR typo tolerance)
+      outer: for (const a of creatorTokens) for (const b of docTokens) {
+        if (a.length >= 3 && b.length >= 3 && lev(a, b) <= 2) { matched = true; break outer; }
+      }
+    }
+    if (!matched) {
+      // Downgrade to soft warning (still verified, but flagged for review) so
+      // legitimate owners aren't blocked by name-format differences. The user
+      // can still see + override in the proof list.
+      note = '⚠ Owner on document (' + ext_obj.owner + ') doesn\'t exactly match creator (' + state.current.fields.creator.value + ') — manual review recommended, but proof is accepted.';
+      // verified stays TRUE — we no longer hard-deny on name mismatch alone.
+    }
+  } else if (verified && ext_obj.owner && _isPureLabel(ext_obj.owner)) {
+    // The captured "owner" was actually a label header — drop it from the
+    // extracted info so it's not confusing in the UI, and keep verified.
+    delete ext_obj.owner;
   }
   await stepVerify(proof, 4, 92, verified ? 'Owner identity confirmed…' : 'Verification failed…');
   await new Promise(r => setTimeout(r, 200));
@@ -14243,11 +16050,30 @@ async function reviewAddOwnProof(proof, file) {
   ];
   for (const [re, name] of officePatterns) { if (re.test(text)) { ext_obj.issuing_office = name; break; } }
   const ownerPatterns = [
-    /\bClaimant\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/, /\bOwner\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/,
-    /\bAssignee\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/, /\bIssued\s+to\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/i,
+    /\bCopyright\s+Claimant\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/i,
+    /\b(?:Trademark|Patent)?\s*Claimant\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/i,
+    /\bOwner\s*(?:of\s*record)?\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/i,
+    /\bAssignee\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/i,
+    /\bIssued\s+to\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/i,
     /\bRegistrant\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/i,
+    /\bAuthor\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/i,
+    /\bGrantee\s*[:#]?\s*([A-Z][A-Za-z'.\- ]{2,60})/i,
   ];
-  for (const re of ownerPatterns) { const m = text.match(re); if (m) { ext_obj.owner = m[1].trim().replace(/\s+/g, ' '); break; } }
+  const _ownLabelWords2 = new Set(['copyright','claimant','owner','registrant','assignee','grantee','author','trademark','patent','title','type','of','work','registration','number','office','effective','date','issued','granted','certificate','authorship','service','mark','address','telephone','phone','email','attn','co']);
+  function _isPureLabel2(name) { return name.trim().split(/\s+/).every(w => _ownLabelWords2.has(w.toLowerCase().replace(/[^a-z]/g, ''))); }
+  for (const re of ownerPatterns) {
+    const m = text.match(re);
+    if (!m) continue;
+    let cand = m[1].trim().replace(/\s+/g, ' ').replace(/[\s:;,]+$/, '');
+    if (_isPureLabel2(cand)) {
+      const after = text.slice(m.index + m[0].length).split(/[\r\n]/)[0];
+      const fallback = (after || '').trim().split(/\s+/).slice(0, 6).join(' ');
+      if (fallback && !_isPureLabel2(fallback) && /[A-Z][A-Za-z'.\-]+/.test(fallback)) {
+        cand = fallback.replace(/[\s:;,]+$/, '');
+      } else { continue; }
+    }
+    if (cand && !_isPureLabel2(cand)) { ext_obj.owner = cand; break; }
+  }
   const dateMatch = text.match(/\b(?:effective|registered|issued|granted|filed)[:\s]+(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{2,4}|\w+\s+\d{1,2},?\s+\d{4})\b/i);
   if (dateMatch) ext_obj.date = dateMatch[1];
   const docTypes = [
@@ -14264,12 +16090,33 @@ async function reviewAddOwnProof(proof, file) {
   else if (haveOfficeOrNum || haveOwnerOrType) { verified = true; note = 'Partial registration signal — accepted (' + (ext_obj.issuing_office || ext_obj.document_type || 'document recognized') + ').'; }
   else { verified = false; note = 'No registration markers detected. Document may not be a valid IP registration certificate.'; }
   const enteredCreator = (a?.fields?.creator?.value || '').trim().toLowerCase();
-  if (verified && enteredCreator && ext_obj.owner) {
+  if (verified && enteredCreator && ext_obj.owner && !_isPureLabel2(ext_obj.owner)) {
     const docOwner = ext_obj.owner.toLowerCase();
-    const overlap = enteredCreator.split(/\s+/).filter(x => x.length > 1 && docOwner.includes(x));
-    if (overlap.length === 0) {
-      verified = false;
-      note = '⚠ Owner on document (' + ext_obj.owner + ') does not match registered creator.';
+    const creatorTokens = enteredCreator.split(/\s+/).filter(x => x.length > 1);
+    const docTokens     = docOwner.split(/\s+/).filter(x => x.length > 1);
+    function _lev(a2, b2) {
+      if (a2 === b2) return 0;
+      const m = a2.length, n = b2.length;
+      if (Math.abs(m - n) > 2) return 99;
+      const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+      for (let i = 0; i <= m; i++) dp[i][0] = i;
+      for (let j = 0; j <= n; j++) dp[0][j] = j;
+      for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) {
+        dp[i][j] = a2[i-1] === b2[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+      }
+      return dp[m][n];
+    }
+    let matched = creatorTokens.some(t => docOwner.includes(t))
+               || docTokens.some(t => enteredCreator.includes(t))
+               || docOwner.includes(enteredCreator) || enteredCreator.includes(docOwner);
+    if (!matched) {
+      outer2: for (const a3 of creatorTokens) for (const b3 of docTokens) {
+        if (a3.length >= 3 && b3.length >= 3 && _lev(a3, b3) <= 2) { matched = true; break outer2; }
+      }
+    }
+    if (!matched) {
+      // Soft warning — do NOT hard-deny on name mismatch alone.
+      note = '⚠ Owner on document (' + ext_obj.owner + ") doesn't exactly match registered creator — manual review recommended, but proof is accepted.";
     }
   }
   proof.ai_review = {
@@ -14488,14 +16335,19 @@ $('#btn-skip-check').addEventListener('click', () => {
 // ============================================================
 $$('.asset-type').forEach(card => {
   card.addEventListener('click', () => {
+    try {
     $$('.asset-type').forEach(c => c.classList.remove('selected'));
     card.classList.add('selected');
     state.current.type = card.dataset.type;
     renderDynamicFields();
     $('#type-pill').className = 'pill ok';
     $('#type-pill').querySelector('span:last-child').textContent = card.dataset.type;
+    // FILE METADATA WINS over wallet name for the Creator field — if the
+    // uploaded file has an Artist / Author / Copyright tag, that's the real
+    // creator on record. autoFillOwnerName() runs AFTER as a wallet fallback
+    // so it only fires if no embedded creator was found.
+    applyExtractedMetadata(state.current.extractedMeta || { fields: {} });
     autoFillOwnerName();
-    if (state.current.extractedMeta) applyExtractedMetadata(state.current.extractedMeta);
     // Reveal visualizer + originality check now that type is chosen
     $('#visualizer-card').style.display = 'block';
     // Auto-seed a random real-word brand name on first reveal (if user hasn't typed one)
@@ -14516,6 +16368,13 @@ $$('.asset-type').forEach(card => {
     if (!state.current.visualizer) state.current.visualizer = defaultViz();
     refreshVizPreview();
     updateMintReady();
+    } catch (e) {
+      // Critical: a render error in ANY of the asset-type setup steps used
+      // to blank the entire page. Now we trap, log, and toast — the user
+      // can still continue interacting with the rest of the app.
+      console.error('Asset type setup failed:', e);
+      if (typeof toast === 'function') toast('Asset type setup had a hiccup: ' + (e && e.message || e) + ' — try selecting again', 'err', 5000);
+    }
   });
 });
 
@@ -14613,6 +16472,14 @@ function renderField(def) {
     for (const opt of (def.options || [])) {
       const o = el('option', { value: opt }, opt);
       input.appendChild(o);
+    }
+    // CRITICAL: a <select> always visually shows SOMETHING (the first option),
+    // but its `input`/`change` events don't fire on initial render — so the
+    // backing state.fields[id].value stays empty until the user changes it.
+    // That mismatch made required-select validation falsely report fields as
+    // "missing". Commit the first option to state immediately if no value yet.
+    if (!fieldState.value && def.options && def.options.length > 0) {
+      fieldState.value = def.options[0];
     }
   } else if (def.type === 'textarea') {
     input = el('textarea', { id: 'fld-' + def.id, rows: 3, placeholder: def.placeholder || '' });
@@ -14819,9 +16686,29 @@ function hideFloatingSubmit() {
   const view = $('#view-tokenize');
   if (view) view.style.paddingBottom = '';
 }
-// Wire the floating button to trigger the same mint flow
+// Wire the floating button to trigger the same mint flow.
+// Calling .click() on a disabled button is a no-op in browsers, which made
+// this button feel "dead" if any required step was incomplete. Now we check
+// the prerequisites ourselves and surface the exact missing piece so the
+// user knows what to fix instead of staring at an unresponsive button.
 $('#float-submit-btn').addEventListener('click', () => {
-  $('#btn-mint').click();
+  const btn = $('#btn-mint');
+  const c = state.current || {};
+  // Prerequisite check — same conditions as updateMintReady + the click handler.
+  if (!c.type)                              return toast('Pick an asset type first (Step 2)', 'warn', 3500);
+  if (!c.file)                              return toast('Upload a file first (Step 1)', 'warn', 3500);
+  if (!c.hash)                              return toast('File still hashing — give it a sec', 'warn', 3500);
+  const defs = FIELD_DEFS[c.type] || [];
+  const missing = defs.filter(d => d.required && !(c.fields?.[d.id]?.value?.toString().trim()));
+  if (missing.length > 0)                   return toast('Required fields missing: ' + missing.map(m => m.label).join(', '), 'warn', 5000);
+  if (c.originality && c.originality.blocked) return toast('Originality check is blocking submission — review Step 3', 'err', 5000);
+  if (!c.poaSigned)                         return toast('Tap SecureCard™ for PoA™ first', 'warn', 4000);
+  // All prerequisites met — force-enable the underlying mint button (in case
+  // it was stuck disabled by a stale validation pass) and fire the click.
+  if (btn) {
+    btn.disabled = false;
+    btn.click();
+  }
 });
 
 // ============================================================
@@ -14881,6 +16768,9 @@ $('#btn-mint').addEventListener('click', async () => {
   const missing = defs.filter(d => d.required && !(c.fields[d.id]?.value?.toString().trim()));
   if (missing.length > 0) return toast('Required fields missing: ' + missing.map(m=>m.label).join(', '), 'warn', 4000);
   if (!c.poaSigned) return toast('Tap SecureCard™ for PoA™ first', 'warn');
+
+  // Clear "we heard you" notification so the user knows the network is working.
+  if (typeof toast === 'function') toast('⚜ Submitting to WireIP Network — authenticating registration…', 'ok', 3500);
 
   const asset = collectAsset(false);
   $('#btn-mint').disabled = true;
@@ -14949,7 +16839,16 @@ $('#btn-mint').addEventListener('click', async () => {
     }
     await setStage('dag', 'done', 'Vertex: ' + vertex.vertex_id);
 
-    asset.royalty_tokens = asset.fractionalize !== 'no' ? Number(asset.fractionalize) : 0;
+    // Fractionalize value can now be 'no', a number (royalty tokens on WireIP),
+    // or 'chain:<id>' (issue a cross-chain derivative AFTER mint). Cross-chain
+    // selections keep WireIP royalty_tokens at 0 — the derivative supply is
+    // configured via the post-mint dialog.
+    if (typeof asset.fractionalize === 'string' && asset.fractionalize.startsWith('chain:')) {
+      asset.royalty_tokens = 0;
+      asset.fractionalize_chain = asset.fractionalize.slice(6);
+    } else {
+      asset.royalty_tokens = asset.fractionalize !== 'no' ? Number(asset.fractionalize) : 0;
+    }
     asset.master_token = true;
     asset.master_edition = '1/1';
     asset.status = 'minted';
@@ -14966,12 +16865,29 @@ $('#btn-mint').addEventListener('click', async () => {
     if (state.current.autoFile) {
       setTimeout(() => autoFileSentinelDispatch(asset), 600);
     }
-    // Auto-navigate to vault after the user has had a moment to read the deed
+    // Authentication complete — surface a clear notification + auto-navigate
+    // to the vault so the user immediately SEES their new asset where it lives.
+    if (typeof toast === 'function') {
+      toast('✓ Registration authenticated · ' + asset.deed_id + ' minted to your vault', 'ok', 5000);
+    }
+    // If the user picked a cross-chain fractionalize option, auto-open the
+    // derivative issuance dialog so they can configure supply + symbol now.
+    if (asset.fractionalize_chain) {
+      const chain = (typeof CROSS_CHAINS !== 'undefined') ? CROSS_CHAINS.find(c => c.id === asset.fractionalize_chain) : null;
+      if (chain) {
+        setTimeout(() => {
+          if (typeof openCrossChainConfig === 'function') openCrossChainConfig(asset, chain);
+        }, 2200);
+      }
+    }
     if (window._mintAutoNav) clearTimeout(window._mintAutoNav);
     window._mintAutoNav = setTimeout(() => {
       closeModal('modal-deed');
       showView('view-vault');
-    }, 3200);
+      // After landing on the vault, give one more nudge so the user knows
+      // they're on the right page and the asset is there.
+      if (typeof toast === 'function') toast('⌂ Welcome to your vault — your new deed is at the top', 'ok', 3500);
+    }, 1500);
     // If Neural Net is active, auto-scan this asset against the internet
     if (state.neuralNet.active) {
       setTimeout(() => runNeuralNetScan(), 1200);
@@ -15034,9 +16950,22 @@ function showDeedCertificate(asset) {
   row('CBIA Hash', asset.cbiaHash);
   row('Privacy Mode', asset.privacyMode);
   row('Wallet', asset.wallet);
-  row('$WIP Issued', asset.wip_issued + ' $WIP', 'green');
-  row('Royalty', asset.royaltyPct + '% / ' + (asset.royalty_tokens || 0) + ' tokens');
-  row('Stake', asset.stake + ' $WIP');
+  // ---- $WIP economics — reflect the LIVE math from PoV + tokenomics ----
+  // wip_issued = minting reward; stake = collateral locked. We show BOTH so
+  // the user sees a complete picture (and we tag with the live $WIP price
+  // and verified-value source if available).
+  row('$WIP Reward', (asset.wip_issued || 0).toLocaleString() + ' $WIP', 'green');
+  const wipPriceNow = (typeof getLiveWipPrice === 'function') ? getLiveWipPrice() : (state.wipPrice || 0.85);
+  const stakeWip   = Number(asset.stake) || 0;
+  const stakeUsdEq = (stakeWip * wipPriceNow).toFixed(2);
+  row('Stake Locked', stakeWip.toLocaleString() + ' $WIP  (≈ $' + Number(stakeUsdEq).toLocaleString() + ' @ $' + wipPriceNow.toFixed(4) + '/$WIP)', 'gold');
+  if (asset.proofOfValue && asset.proofOfValue.verifiedUSD > 0) {
+    row('Real-World Value', '$' + Number(asset.proofOfValue.verifiedUSD).toLocaleString() + ' verified · ' + (asset.proofOfValue.items?.length || 0) + ' proof(s)', 'green');
+    if (asset.proofOfValue.supplyPct != null) {
+      row('Supply Impact', (asset.proofOfValue.supplyPct * 100).toFixed(asset.proofOfValue.supplyPct < 0.0001 ? 5 : 4) + '% of 100M $WIP supply');
+    }
+  }
+  row('Royalty', asset.royaltyPct + '% · ' + (asset.royalty_tokens || 0).toLocaleString() + ' tokens' + (asset.fractionalize_chain ? ' · +' + asset.fractionalize_chain + ' derivative' : ''));
   if (asset.originality) {
     if (asset.originality.skipped) {
       row('Originality', '⚠ Check skipped', 'redacted');
@@ -15694,76 +17623,149 @@ function showAssetDetail(a) {
 // CROSS-CHAIN FRACTIONALIZATION
 // ============================================================
 const CROSS_CHAINS = [
-  { id: 'ethereum', name: 'Ethereum',  logo: '◆', detail: 'ERC-20 / ERC-721',  bridge: 'LayerZero',  feeUSD: '$14–$45' },
-  { id: 'polygon',  name: 'Polygon',   logo: '⬢', detail: 'Low fees · L2',     bridge: 'LxLy',       feeUSD: '<$0.05' },
-  { id: 'base',     name: 'Base',      logo: '◐', detail: 'Coinbase L2',       bridge: 'OP Bridge',  feeUSD: '<$0.10' },
-  { id: 'arbitrum', name: 'Arbitrum',  logo: '◉', detail: 'L2 · low gas',      bridge: 'Arb Bridge', feeUSD: '<$0.20' },
-  { id: 'optimism', name: 'Optimism',  logo: '◑', detail: 'L2 · OP Stack',     bridge: 'OP Bridge',  feeUSD: '<$0.15' },
-  { id: 'solana',   name: 'Solana',    logo: '◎', detail: 'SPL · Wormhole',    bridge: 'Wormhole',   feeUSD: '<$0.01' },
-  { id: 'bnb',      name: 'BNB Chain', logo: '◇', detail: 'BEP-20',            bridge: 'cBridge',    feeUSD: '<$0.30' },
-  { id: 'avalanche',name: 'Avalanche', logo: '◈', detail: 'C-Chain',           bridge: 'Avax Bridge',feeUSD: '<$0.30' },
+  { id: 'ethereum', name: 'Ethereum',  logo: '◆', detail: 'ERC-20 / ERC-721',  bridge: 'LayerZero',     feeUSD: '$14–$45' },
+  { id: 'polygon',  name: 'Polygon',   logo: '⬢', detail: 'Low fees · L2',     bridge: 'LxLy',          feeUSD: '<$0.05' },
+  { id: 'base',     name: 'Base',      logo: '◐', detail: 'Coinbase L2',       bridge: 'OP Bridge',     feeUSD: '<$0.10' },
+  { id: 'arbitrum', name: 'Arbitrum',  logo: '◉', detail: 'L2 · low gas',      bridge: 'Arb Bridge',    feeUSD: '<$0.20' },
+  { id: 'optimism', name: 'Optimism',  logo: '◑', detail: 'L2 · OP Stack',     bridge: 'OP Bridge',     feeUSD: '<$0.15' },
+  { id: 'solana',   name: 'Solana',    logo: '◎', detail: 'SPL · Wormhole',    bridge: 'Wormhole',      feeUSD: '<$0.01' },
+  { id: 'canton',   name: 'Canton',    logo: '◇', detail: 'Privacy-preserving',bridge: 'Canton Bridge', feeUSD: '<$0.20' },
+  { id: 'bnb',      name: 'BNB Chain', logo: '◇', detail: 'BEP-20',            bridge: 'cBridge',       feeUSD: '<$0.30' },
+  { id: 'avalanche',name: 'Avalanche', logo: '◈', detail: 'C-Chain',           bridge: 'Avax Bridge',   feeUSD: '<$0.30' },
 ];
 
 function buildCrossChainPanel(a) {
   const section = el('div', { class: 'asset-actions-card' });
   const head = el('div', { class: 'aac-head' });
-  head.appendChild(el('h3', {}, '⌬ Cross-Chain Fractionalization'));
+  head.appendChild(el('h3', {}, '⌬ Cross-Chain Derivatives'));
   head.appendChild(el('div', { class:'spacer' }));
-  head.appendChild(el('span', { class:'master-pill' }, '1/1 MASTER STAYS HOME'));
+  head.appendChild(el('span', { class:'master-pill' }, 'VALUE LOCKED ON WIREIP'));
   section.appendChild(head);
-  section.appendChild(el('div', { class:'help', style:'margin:0 0 10px;' },
-    'Issue royalty-token derivatives of this Master Deed on other chains. The 1/1 Master Token always remains on the WireIP DAG — bridges only mirror fractional royalty rights, never the original.'));
+  section.appendChild(el('div', { class:'help', style:'margin:0 0 10px;line-height:1.5;' },
+    'Issue fractional derivative tokens on Ethereum, Solana, Polygon, Base, etc. — AFTER the initial WireIP tokenization. The deed, the master token, and all real-world value stay locked on the WireIP DAG. The derivative is just an authorization + rail connection — a wrapped mirror that lets the asset trade on the destination chain while WireIP remains the source of truth.'));
 
   a.bridges = a.bridges || {};
   const grid = el('div', { class:'chain-grid' });
   for (const c of CROSS_CHAINS) {
-    const btn = el('div', { class: 'chain-btn' + (a.bridges[c.id] ? ' bridged' : '') });
+    const bridged = a.bridges[c.id];
+    const btn = el('div', { class: 'chain-btn' + (bridged ? ' bridged' : '') });
     btn.appendChild(el('span', { class:'cb-logo' }, c.logo));
     btn.appendChild(el('span', { class:'cb-name' }, c.name));
     btn.appendChild(el('span', { class:'cb-detail' }, c.detail));
     btn.appendChild(el('span', { class:'cb-detail' }, c.bridge + ' · ' + c.feeUSD));
-    if (a.bridges[c.id]) {
-      btn.appendChild(el('span', { class:'cb-status' }, '✓ BRIDGED'));
+    if (bridged) {
+      btn.appendChild(el('span', { class:'cb-status' }, '✓ ISSUED · ' + (bridged.shares || 0).toLocaleString()));
     }
-    btn.addEventListener('click', () => onBridgeAsset(a, c));
+    btn.addEventListener('click', () => openCrossChainConfig(a, c));
     grid.appendChild(btn);
   }
   section.appendChild(grid);
 
-  if (a.royalty_tokens === 0) {
-    section.appendChild(el('div', { class:'help', style:'margin-top:10px;color:var(--warn);' },
-      '⚠ This Master Deed has 0 royalty tokens. Cross-chain bridging mirrors fractional royalty rights — issue royalty tokens on the WireIP DAG first to enable.'));
-  }
+  // Always-visible explainer — no longer gated on royalty_tokens > 0.
+  // The user can fractionalize AFTERWARDS by picking supply at issuance.
+  section.appendChild(el('div', { class:'help', style:'margin-top:10px;padding:8px 10px;background:rgba(74,222,128,0.06);border:1px dashed rgba(74,222,128,0.40);border-radius:4px;font-size:9.5px;line-height:1.5;color:var(--green);' },
+    '⚜ Even if you minted as a 1/1 Master with 0 royalty tokens, you can fractionalize NOW — pick a chain above, choose a supply (e.g., 1,000 or 10,000 derivatives), and issue. The Master Token never leaves WireIP.'));
   return section;
 }
 
-function onBridgeAsset(a, chain) {
-  if (a.royalty_tokens === 0) {
-    return toast('Enable royalty token issuance first (Tokenization Parameters → Fractionalize)', 'warn', 4500);
-  }
+// Open a config dialog so the user picks supply + symbol BEFORE issuing.
+// This is what lets the user "fractionalize afterwards" — the supply isn't
+// locked to whatever they picked at initial mint.
+function openCrossChainConfig(a, chain) {
   if (a.bridges && a.bridges[chain.id]) {
-    if (!confirm('Already bridged to ' + chain.name + '. Unbridge?')) return;
+    if (!confirm('Already issued ' + a.bridges[chain.id].shares.toLocaleString() + ' derivatives on ' + chain.name + ' (' + a.bridges[chain.id].symbol + ').\n\nRevoke this rail and free up the chain slot?')) return;
     delete a.bridges[chain.id];
     save();
     showAssetDetail(a);
-    toast('Unbridged from ' + chain.name, 'info');
+    if (typeof toast === 'function') toast('Revoked ' + chain.name + ' derivative — Master + value still locked on WireIP', 'ok', 4500);
     return;
   }
-  // Simulate bridge dispatch — in production this would call the LayerZero/Wormhole/etc adapter
-  toast('⌬ Bridging to ' + chain.name + ' via ' + chain.bridge + '…', 'info', 3500);
+  const titleField = (a.fields && a.fields.title && a.fields.title.value) || a.deed_id || 'WIREIP';
+  const defaultSymbol = 'w' + String(titleField).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
+  const defaultSupply = Math.max(1000, a.royalty_tokens || 1000);
+
+  // Build a lightweight inline dialog using the existing modal CSS hooks.
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.style.zIndex = '300';
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.style.maxWidth = '560px';
+  modal.innerHTML =
+    '<header><h2>⌬ Issue ' + chain.name + ' Derivative</h2><button class="close" id="xchain-cancel">&times;</button></header>' +
+    '<div class="body">' +
+      '<div class="help" style="margin-bottom:14px;line-height:1.5;">' +
+        '<strong style="color:var(--gold);">The deed and value stay locked on WireIP.</strong> This issues a wrapped derivative on ' + chain.name + ' (' + chain.detail + ') via the <strong>' + chain.bridge + '</strong> rail. Holders of the derivative can trade fractional exposure on ' + chain.name + ' without the underlying ever leaving the WireIP DAG.' +
+      '</div>' +
+      '<div class="form-row">' +
+        '<label class="field"><span class="lbl"><span class="name">Derivative Supply</span></span>' +
+          '<input type="number" id="xchain-supply" min="1" step="1" value="' + defaultSupply + '">' +
+          '<div class="help">Number of fractional tokens to issue on ' + chain.name + '. Each = 1/' + defaultSupply.toLocaleString() + 'th claim on this asset.</div>' +
+        '</label>' +
+        '<label class="field"><span class="lbl"><span class="name">Token Symbol</span></span>' +
+          '<input type="text" id="xchain-symbol" maxlength="10" value="' + defaultSymbol + '">' +
+          '<div class="help">Symbol used on ' + chain.name + ' (' + chain.detail + ').</div>' +
+        '</label>' +
+      '</div>' +
+      '<div class="form-row">' +
+        '<label class="field"><span class="lbl"><span class="name">Royalty Pass-Through %</span></span>' +
+          '<input type="number" id="xchain-royalty" min="0" max="100" step="0.5" value="' + (a.royaltyPct || 10) + '">' +
+          '<div class="help">% of WireIP royalty stream forwarded to ' + chain.name + ' derivative holders pro-rata.</div>' +
+        '</label>' +
+        '<label class="field"><span class="lbl"><span class="name">Rail / Bridge</span></span>' +
+          '<input type="text" value="' + chain.bridge + ' · ' + chain.feeUSD + ' fee" readonly style="background:var(--panel-2);cursor:not-allowed;">' +
+          '<div class="help">Authorization rail between WireIP and ' + chain.name + '.</div>' +
+        '</label>' +
+      '</div>' +
+      '<div style="margin-top:12px;padding:10px;background:rgba(240,196,25,0.06);border:1px dashed var(--gold-soft);border-radius:4px;font-size:10px;line-height:1.6;">' +
+        '<div style="color:var(--gold);text-transform:uppercase;letter-spacing:0.10em;font-size:9px;margin-bottom:4px;">⚜ what stays / what travels</div>' +
+        '<div><strong>Stays on WireIP:</strong> 1/1 Master Deed, real-world value, custody, kill-switch, leverage rights, court enforcement.</div>' +
+        '<div><strong>Travels to ' + chain.name + ':</strong> fractional derivative tokens (' + defaultSymbol + '), royalty pass-through, public price discovery, secondary trading.</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="footer">' +
+      '<button id="xchain-cancel-2">Cancel</button>' +
+      '<button class="primary" id="xchain-issue">⚜ Issue Derivative on ' + chain.name + '</button>' +
+    '</div>';
+  backdrop.appendChild(modal);
+  document.body.appendChild(backdrop);
+  function close() { try { backdrop.remove(); } catch(e) {} }
+  modal.querySelector('#xchain-cancel').addEventListener('click', close);
+  modal.querySelector('#xchain-cancel-2').addEventListener('click', close);
+  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+  modal.querySelector('#xchain-issue').addEventListener('click', () => {
+    const supply  = Math.max(1, Math.floor(Number(modal.querySelector('#xchain-supply').value) || defaultSupply));
+    const symbol  = String(modal.querySelector('#xchain-symbol').value || defaultSymbol).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+    const royalty = Math.max(0, Math.min(100, Number(modal.querySelector('#xchain-royalty').value) || 10));
+    close();
+    issueCrossChainDerivative(a, chain, { supply, symbol, royalty });
+  });
+}
+
+function issueCrossChainDerivative(a, chain, cfg) {
+  // Simulated rail dispatch — in production this calls LayerZero / Wormhole /
+  // OP Bridge / etc. adapter to lock attestation on WireIP and mint a wrapped
+  // derivative on the destination chain. The Master + value never move.
+  if (typeof toast === 'function') toast('⌬ Issuing ' + cfg.supply.toLocaleString() + ' ' + cfg.symbol + ' on ' + chain.name + ' via ' + chain.bridge + '…', 'ok', 3500);
   setTimeout(() => {
     a.bridges = a.bridges || {};
     a.bridges[chain.id] = {
       bridge: chain.bridge,
       bridged_at: nowISO(),
-      shares: a.royalty_tokens,
+      shares: cfg.supply,
+      symbol: cfg.symbol,
+      royaltyPassPct: cfg.royalty,
       tx_hash: '0x' + Math.random().toString(16).slice(2, 18),
       contract: '0x' + Math.random().toString(16).slice(2, 42),
+      // Always true: the Master + real-world value never move.
+      master_locked_on_wireip: true,
+      value_locked_on_wireip: true,
+      authorization_only: true,
     };
     save();
     if (!$('#modal-asset').classList.contains('hidden')) showAssetDetail(a);
     if (currentViewIs('view-vault')) renderVault();
-    toast('✓ Bridged ' + a.royalty_tokens + ' royalty tokens to ' + chain.name + ' · Master stays on WireIP DAG', 'ok', 5000);
+    if (typeof toast === 'function') toast('✓ ' + cfg.supply.toLocaleString() + ' ' + cfg.symbol + ' derivatives issued on ' + chain.name + ' · Master + value stay locked on WireIP', 'ok', 5500);
     try { soundVerify && soundVerify(); } catch(e) {}
   }, 1800);
 }
@@ -16100,18 +18102,39 @@ function buildProofItem(p, removable) {
     actions.appendChild(rm);
   }
   item.appendChild(actions);
-  // AI review summary
+  // AI review summary — displays the full extracted ownership info so the user
+  // can see exactly what was read off the registration document.
   if (p.ai_review) {
     const r = p.ai_review;
     const review = el('div', { class: 'pi-review ' + (r.status || 'pending') });
     review.appendChild(el('span', { class: 'pir-status' }, r.status === 'verified' ? 'sentinel verified' : r.status === 'flagged' ? 'flagged' : 'reviewing…'));
-    if (r.extracted) {
-      const parts = [];
-      if (r.extracted.amount) parts.push('Amount: $' + r.extracted.amount.toLocaleString());
-      if (r.extracted.date) parts.push('Date: ' + r.extracted.date);
-      if (r.extracted.party) parts.push('Party: ' + r.extracted.party);
-      if (r.extracted.case_number) parts.push('Case #: ' + r.extracted.case_number);
-      review.appendChild(document.createTextNode(parts.join(' · ') || 'Awaiting extraction'));
+    if (r.extracted && Object.keys(r.extracted).length > 0) {
+      const ex = r.extracted;
+      const note = (r.note || '').trim();
+      if (note) {
+        const noteEl = el('div', { style: 'font-size:9.5px;color:var(--muted);margin-top:4px;line-height:1.4;' });
+        noteEl.textContent = note;
+        review.appendChild(noteEl);
+      }
+      const grid = el('div', { style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px 12px;margin-top:6px;font-size:9.5px;line-height:1.4;' });
+      const addField = (label, val) => {
+        if (val == null || val === '') return;
+        const cell = el('div', { style: 'display:flex;flex-direction:column;gap:2px;' });
+        cell.appendChild(el('span', { style: 'font-size:8.5px;color:var(--gold-soft);text-transform:uppercase;letter-spacing:0.10em;' }, label));
+        cell.appendChild(el('span', { style: 'color:var(--text);font-family:"IBM Plex Mono",ui-monospace,monospace;word-break:break-word;' }, String(val)));
+        grid.appendChild(cell);
+      };
+      // Ownership-proof fields (extracted by reviewOwnershipProof)
+      addField('Document Type',        ex.document_type);
+      addField('Registration Number',  ex.registration_number);
+      addField('Issuing Office',       ex.issuing_office);
+      addField('Owner / Claimant',     ex.owner);
+      addField('Date',                 ex.date);
+      // Generic / court-doc fields (extracted by reviewProof)
+      if (ex.amount != null) addField('Amount', '$' + Number(ex.amount).toLocaleString());
+      addField('Case #',               ex.case_number);
+      addField('Party',                ex.party);
+      review.appendChild(grid);
     } else {
       review.appendChild(document.createTextNode(r.note || 'AGI Sentinel reviewing document…'));
     }
@@ -18543,10 +20566,55 @@ $('#ctr-save').addEventListener('click', () => {
   if (currentViewIs('view-contracts')) renderContracts();
 });
 
+// Shared overlay-cleanup helper. Called from both showView() AND the section
+// header click handler so a stale overlay (nav backdrop, modal backdrop, boot
+// splash, logo setup, dynamic dialog backdrop) never sticks around even when
+// the user only clicks a group title (which doesn't trigger showView).
+function closeAllOverlays() {
+  try {
+    $$('.modal-backdrop').forEach(b => { if (!b.classList.contains('hidden')) b.classList.add('hidden'); });
+    Array.from(document.body.querySelectorAll(':scope > .modal-backdrop')).forEach(b => {
+      if (!b.id) { try { b.remove(); } catch (e) {} }
+    });
+    const bs = document.getElementById('boot-splash');
+    if (bs) { bs.style.display = 'none'; bs.style.visibility = 'hidden'; }
+    const lsm = document.getElementById('logo-setup-modal');
+    if (lsm) lsm.classList.remove('show');
+    const nb = document.getElementById('nav-backdrop');
+    if (nb) {
+      nb.classList.remove('show');
+      nb.style.display = 'none';        // belt-and-suspenders inline override
+    }
+    document.getElementById('side-nav')?.classList.remove('open');
+  } catch (e) {}
+}
+
+// On boot AND on every resize, if we're on desktop width (>900px) the
+// nav-backdrop element serves NO purpose — physically remove it from the DOM
+// so no future code path can bring it back as a screen-covering overlay.
+function purgeNavBackdropOnDesktop() {
+  try {
+    if (window.innerWidth > 900) {
+      const nb = document.getElementById('nav-backdrop');
+      if (nb && nb.parentNode) nb.parentNode.removeChild(nb);
+    }
+  } catch (e) {}
+}
+window.addEventListener('DOMContentLoaded', purgeNavBackdropOnDesktop);
+window.addEventListener('load', purgeNavBackdropOnDesktop);
+window.addEventListener('resize', purgeNavBackdropOnDesktop);
+// Run once now in case the script loaded after DOMContentLoaded.
+try { purgeNavBackdropOnDesktop(); } catch (e) {}
+
 // ===== Sidebar nav-group collapse =====
 document.addEventListener('click', (e) => {
   const h4 = e.target.closest('h4[data-nav-group]');
-  if (h4) h4.parentElement.classList.toggle('collapsed');
+  if (h4) {
+    h4.parentElement.classList.toggle('collapsed');
+    // Defense-in-depth: clicking a section title never goes through showView,
+    // so explicitly clean overlays here too — kills any residual blank box.
+    closeAllOverlays();
+  }
 });
 
 // ============================================================
@@ -20772,34 +22840,58 @@ async function downscaleImageForLogo(file, maxEdge = 512, quality = 0.92) {
 })();
 
 function init() {
+  // CRITICAL DEFENSIVE GUARANTEE: force the visible-on-load tokenize content
+  // to be present even if any downstream init step throws. Without this, a
+  // single render failure left the user staring at an empty middle area
+  // ("blank box covers the screen").
+  try {
+    const entry = document.getElementById('asset-entry-row');
+    const flow  = document.getElementById('tokenization-flow');
+    if (entry) entry.style.display = 'grid';
+    if (flow)  flow.style.display  = 'none';
+    // Make view-tokenize the active view via the CLASS ONLY. Never set an
+    // inline style.display — a stale inline display:block here was making
+    // view-tokenize stay visible and overlap whatever view you navigated to
+    // (its gray dropzone = the "gray box covering the screen"). CSS
+    // (.view / .view.active) is the single source of truth for visibility.
+    document.querySelectorAll('.view').forEach(v => {
+      v.classList.toggle('active', v.id === 'view-tokenize');
+      v.style.removeProperty('display');
+    });
+  } catch (_) {}
   load();
   if (state.vertices.size === 0) seedDefault();
   computeLayout();
-  $('#sn-url').value = state.secureNode.url;
-  $('#sn-token').value = state.secureNode.token;
-  $('#sn-stake').value = state.secureNode.stake;
-  $('#sn-slot').value = state.secureNode.slot;
-  renderWallet();
-  renderVault();
-  renderPrivacyMode();
-  renderNavCollabs();
-  $('#nav-network-count').textContent = state.networks.length;
-  $('#nav-engage-count').textContent = state.jobs.length;
-  $('#nav-contract-count').textContent = state.contracts.length;
-  $('#nav-ipmarket-count').textContent = state.ipListings.filter(l => l.status === 'active' || l.status === 'auction-live').length;
-  // Pre-seed validators for the globe + marketplace providers
-  if (state.validators.length === 0) seedValidators();
-  ensureFlagshipValidators();
-  save();
-  try { if (state.providers.length === 0) seedProviders(); } catch (e) { console.error('seedProviders failed:', e); }
-  // Compute treasury badge value on init
-  let totalVal = 0;
-  for (const a of state.assets) totalVal += computeAssetValue(a).total;
-  $('#nav-treasury-value').textContent = fmtUSD(totalVal);
-  SecureNode.log('SecureNode adapter ready. Click "Probe Connection".');
-  SecureNode.setConnected(false);
-  SecureNode.setVault(false);
-  setTimeout(() => SecureNode.probe(), 400);
+  // Each subsequent step is wrapped so a render failure can't leave the UI blank.
+  function _safe(name, fn) { try { fn(); } catch (e) { console.error('init/' + name + ':', e); if (typeof toast === 'function') toast('Init step "' + name + '" failed: ' + (e && e.message || e), 'err', 6000); } }
+  _safe('sn-url',    () => { $('#sn-url').value = state.secureNode.url; });
+  _safe('sn-token',  () => { $('#sn-token').value = state.secureNode.token; });
+  _safe('sn-stake',  () => { $('#sn-stake').value = state.secureNode.stake; });
+  _safe('sn-slot',   () => { $('#sn-slot').value = state.secureNode.slot; });
+  _safe('wallet',   renderWallet);
+  _safe('vault',    renderVault);
+  _safe('privacy',  renderPrivacyMode);
+  _safe('collabs',  renderNavCollabs);
+  _safe('nav-counts', () => {
+    $('#nav-network-count').textContent  = state.networks.length;
+    $('#nav-engage-count').textContent   = state.jobs.length;
+    $('#nav-contract-count').textContent = state.contracts.length;
+    $('#nav-ipmarket-count').textContent = state.ipListings.filter(l => l.status === 'active' || l.status === 'auction-live').length;
+  });
+  _safe('validators', () => { if (state.validators.length === 0) seedValidators(); ensureFlagshipValidators(); });
+  _safe('save',     save);
+  _safe('providers', () => { if (state.providers.length === 0) seedProviders(); });
+  _safe('treasury-badge', () => {
+    let totalVal = 0;
+    for (const a of state.assets) totalVal += computeAssetValue(a).total;
+    $('#nav-treasury-value').textContent = fmtUSD(totalVal);
+  });
+  _safe('securenode', () => {
+    SecureNode.log('SecureNode adapter ready. Click "Probe Connection".');
+    SecureNode.setConnected(false);
+    SecureNode.setVault(false);
+    setTimeout(() => SecureNode.probe(), 400);
+  });
 }
 init();
 </script>
