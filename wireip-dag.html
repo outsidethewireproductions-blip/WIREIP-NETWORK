@@ -346,7 +346,10 @@
     background: var(--panel); border: 1px solid var(--gold-soft);
     border-radius: var(--radius); box-shadow: var(--shadow);
     max-height: 420px; overflow-y: auto;
-    z-index: 50;
+    /* Top layer — above modals (z:100), tooltips (z:200), and everything
+       else inside the app. Previously search results disappeared behind the
+       step cards' glow shadows and the conn-banner. */
+    z-index: 10050;
     display: none;
   }
   .search-results.open { display: block; }
@@ -3604,12 +3607,54 @@
     footer.statusbar { padding: 0 10px; gap: 8px; font-size: 8.5px; letter-spacing: 0.06em; }
     footer.statusbar #status-msg, footer.statusbar #last-saved { display: none; }
     footer.statusbar > span:nth-of-type(2) { display: none; }
-    .globe-shell { height: 60vh; min-height: 360px; }
-    .globe-overlay-top { flex-direction: column; gap: 8px; left: 8px; right: 8px; top: 8px; }
+    /* Globe view on mobile — the filter tabs + stats panel were absolute-
+       positioned over the canvas and were covering the globe. Lift them
+       OUT of the absolute layer and stack them as static rows above the
+       canvas; constrain the canvas itself to the remaining space so the
+       earth is fully visible underneath the controls. */
+    .globe-shell {
+      height: auto !important; min-height: 0 !important;
+      display: flex; flex-direction: column;
+    }
+    .globe-overlay-top {
+      position: static !important;
+      inset: auto !important;
+      display: flex; flex-direction: column; gap: 8px;
+      padding: 10px 10px 6px;
+      background: linear-gradient(180deg, rgba(11,12,13,0.95), rgba(11,12,13,0.85));
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      z-index: 1;
+    }
+    /* Filter buttons — horizontal scroll instead of wrap so they never
+       eat more than one row of vertical space. */
+    .globe-buttons {
+      flex-wrap: nowrap !important;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding-bottom: 2px;
+    }
+    .globe-buttons::-webkit-scrollbar { display: none; }
+    .globe-buttons button {
+      padding: 6px 10px; font-size: 9.5px;
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
     .globe-stats { flex-wrap: wrap; gap: 10px; padding: 8px 10px; font-size: 9px; }
     .globe-stats .gs-item .gs-val { font-size: 12px; }
-    .globe-buttons { flex-wrap: wrap; }
-    .globe-buttons button { padding: 4px 8px; font-size: 9px; }
+    /* Reserve space for the globe itself below the static control bar. */
+    .globe-canvas-wrap {
+      position: relative !important; inset: auto !important;
+      width: 100%; height: 52vh; min-height: 320px;
+      flex: 1 1 auto;
+    }
+    .globe-labels { position: absolute !important; inset: 0 !important; }
+    .globe-tooltip { position: absolute !important; }
+    .globe-overlay-bottom {
+      position: static !important; inset: auto !important;
+      padding: 8px 10px 12px;
+    }
     .vertex-spec, .legend { display: none; }
     .globe-labels .g-label.city, .globe-labels .g-label.state { display: none; }
     .globe-labels .g-label { font-size: 8px; }
@@ -6030,6 +6075,13 @@
           </div>
         </div>
 
+        <!-- ===== UPLOAD AND CONNECT — its own subtitle section ===== -->
+        <h2 style="margin-top:26px;margin-bottom:6px;font-size:13px;color:var(--gold);letter-spacing:0.18em;text-transform:uppercase;padding-top:14px;border-top:1px solid var(--border);">
+          Upload and Connect
+        </h2>
+        <div class="lede" style="margin-top:0;margin-bottom:12px;">
+          Bring an existing tokenized asset into your vault from a connected wallet, or upload a fresh file to begin a new CBIA™ Digital Deed. Either path hashes locally, encrypts to your SecureNode™ SSD vault, and prepares the asset for mint.
+        </div>
         <!-- Asset entry — two prominent paths under the Master Token banner -->
         <div id="asset-entry-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0 18px;">
           <button id="btn-import-from-wallet" class="card" style="cursor:pointer;padding:18px 16px;background:var(--panel);border:1.5px solid var(--gold-soft);border-radius:var(--radius);text-align:left;color:var(--text);font-family:inherit;transition:all 0.18s;">
@@ -13413,8 +13465,8 @@ function vizAspectCSS(aspect) {
 // each seed — randomize once = a new pattern.
 // ============================================================
 function buildProceduralPattern(svg, svgNs, seed, color, lite, accent, dark, deep, uniq, nextRand, patternColor) {
-  const familyCount = 16;
-  const family = seed & 0x0F;                       // 0-15: pattern family
+  const familyCount = 32;
+  const family = seed & 0x1F;                       // 0-31: pattern family
   const density = ((seed >> 4) & 0x0F) + 3;          // 3-18: shape count per layer
   const layers  = ((seed >> 8) & 0x07) + 2;          // 2-9:  number of stacked layers
   const baseRot = ((seed >> 11) & 0xFF) * Math.PI / 128; // 0-2π rotation
@@ -13682,16 +13734,343 @@ function buildProceduralPattern(svg, svgNs, seed, color, lite, accent, dark, dee
     }
   }
   // --- Family 15: Lattice grid + diagonals ---
-  else {
+  else if (family === 15) {
     const step = 14;
     for (let i = 0; i <= 14; i++) {
       const v = i * step;
       svg.appendChild(makeNode('line', { x1: v, y1: 0, x2: v, y2: 200, stroke: baseStrokeColor, 'stroke-width': '0.3' }));
       svg.appendChild(makeNode('line', { x1: 0, y1: v, x2: 200, y2: v, stroke: baseStrokeColor, 'stroke-width': '0.3' }));
     }
-    // Diagonal accent
     svg.appendChild(makeNode('line', { x1: 0, y1: 0, x2: 200, y2: 200, stroke: baseStrokeColor, 'stroke-width': '0.6' }));
     svg.appendChild(makeNode('line', { x1: 200, y1: 0, x2: 0, y2: 200, stroke: baseStrokeColor, 'stroke-width': '0.6' }));
+  }
+  // --- Family 16: Ink Splatter — irregular ink dots with painterly varied radii ---
+  else if (family === 16) {
+    const drops = 60 + density * 6;
+    let s = seed;
+    for (let i = 0; i < drops; i++) {
+      s = (s * 9301 + 49297) % 233280;
+      const x = 6 + (s % 188);
+      s = (s * 9301 + 49297) % 233280;
+      const y = 6 + (s % 188);
+      s = (s * 9301 + 49297) % 233280;
+      const r = ((s % 1000) < 60) ? 4 + (s % 6) : 0.3 + ((s % 100) / 100) * 2.4;
+      const op = 0.30 + ((s >> 5) % 60) / 100;
+      svg.appendChild(makeNode('circle', {
+        cx: x.toFixed(1), cy: y.toFixed(1), r: r.toFixed(2),
+        fill: `rgba(255,255,255,${op.toFixed(2)})`,
+      }));
+    }
+    // A few satellite micro-drops near the largest splats for realism
+    s = seed * 7;
+    for (let i = 0; i < drops / 4; i++) {
+      s = (s * 9301 + 49297) % 233280;
+      const x = 6 + (s % 188), y = 6 + ((s >> 7) % 188);
+      svg.appendChild(makeNode('circle', { cx: x, cy: y, r: '0.4', fill: 'rgba(255,255,255,0.85)' }));
+    }
+  }
+  // --- Family 17: Glass Cracks — fracture lines from impact points ---
+  else if (family === 17) {
+    const impacts = 1 + (density % 3);
+    let s = seed;
+    for (let i = 0; i < impacts; i++) {
+      s = (s * 9301 + 49297) % 233280;
+      const cx2 = 30 + (s % 140);
+      s = (s * 9301 + 49297) % 233280;
+      const cy2 = 30 + (s % 140);
+      const cracks = 6 + ((s >> 4) % 7);
+      for (let j = 0; j < cracks; j++) {
+        s = (s * 9301 + 49297) % 233280;
+        const ang = (j / cracks) * 2 * Math.PI + ((s % 100) / 100) * 0.4;
+        const segs = 3 + ((s >> 5) % 4);
+        let x = cx2, y = cy2;
+        let path = 'M ' + x.toFixed(1) + ' ' + y.toFixed(1);
+        for (let k = 0; k < segs; k++) {
+          s = (s * 9301 + 49297) % 233280;
+          const len = 12 + ((s % 100) / 100) * 30;
+          const jitter = ((s >> 8) % 100) / 100 * 0.5 - 0.25;
+          x += Math.cos(ang + jitter * k) * len;
+          y += Math.sin(ang + jitter * k) * len;
+          path += ' L ' + x.toFixed(1) + ' ' + y.toFixed(1);
+        }
+        svg.appendChild(makeNode('path', {
+          d: path, fill: 'none', stroke: baseStrokeColor,
+          'stroke-width': (1.6 - (j / cracks)).toFixed(2),
+          'stroke-linecap': 'round',
+        }));
+      }
+      // Center impact point
+      svg.appendChild(makeNode('circle', { cx: cx2, cy: cy2, r: '2.2', fill: 'rgba(255,255,255,0.95)' }));
+    }
+  }
+  // --- Family 18: Topographic contours — overlapping closed loops ---
+  else if (family === 18) {
+    const rings = 8 + density;
+    let s = seed;
+    for (let i = 0; i < rings; i++) {
+      s = (s * 9301 + 49297) % 233280;
+      const cx2 = 40 + (s % 120);
+      s = (s * 9301 + 49297) % 233280;
+      const cy2 = 40 + (s % 120);
+      const baseR = 20 + ((s >> 4) % 60);
+      const wobble = 0.6 + ((s >> 7) % 100) / 200;
+      const phase = (s % 360) * Math.PI / 180;
+      const pts = [];
+      const steps = 48;
+      for (let k = 0; k <= steps; k++) {
+        const ang = (k / steps) * 2 * Math.PI;
+        const r = baseR * (1 + Math.sin(ang * 3 + phase) * 0.10) * (1 - 0.04 * Math.cos(ang * 5));
+        pts.push((cx2 + Math.cos(ang) * r).toFixed(1) + ',' + (cy2 + Math.sin(ang) * r).toFixed(1));
+      }
+      svg.appendChild(makeNode('polygon', {
+        points: pts.join(' '),
+        fill: 'none', stroke: baseStrokeColor,
+        'stroke-width': (0.4 + (i % 3) * 0.25).toFixed(2),
+      }));
+    }
+  }
+  // --- Family 19: Halftone — dot grid with size driven by radial distance ---
+  else if (family === 19) {
+    const step = 9;
+    for (let y = 6; y <= 194; y += step) {
+      for (let x = 6; x <= 194; x += step) {
+        const dx = x - 100, dy = y - 100;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const r = Math.max(0.4, 4.5 - dist * 0.04);
+        svg.appendChild(makeNode('circle', {
+          cx: x, cy: y, r: r.toFixed(2),
+          fill: baseStrokeColor,
+        }));
+      }
+    }
+  }
+  // --- Family 20: Chevron — repeating V-stripes ---
+  else if (family === 20) {
+    const spacing = 14;
+    const amp = 18;
+    for (let y = -20; y < 220; y += spacing) {
+      let d = '';
+      for (let x = 0; x <= 200; x += 12) {
+        const y2 = y + ((x / 12) % 2 === 0 ? 0 : amp);
+        d += (x === 0 ? 'M ' : ' L ') + x + ' ' + y2;
+      }
+      svg.appendChild(makeNode('path', {
+        d, fill: 'none', stroke: baseStrokeColor, 'stroke-width': '0.9',
+      }));
+    }
+  }
+  // --- Family 21: Brushstrokes — angled organic strokes ---
+  else if (family === 21) {
+    const strokes = 22 + density * 2;
+    let s = seed;
+    for (let i = 0; i < strokes; i++) {
+      s = (s * 9301 + 49297) % 233280;
+      const x = 10 + (s % 180);
+      s = (s * 9301 + 49297) % 233280;
+      const y = 10 + (s % 180);
+      s = (s * 9301 + 49297) % 233280;
+      const len = 25 + (s % 60);
+      s = (s * 9301 + 49297) % 233280;
+      const ang = (s % 360) * Math.PI / 180;
+      const x2 = x + Math.cos(ang) * len;
+      const y2 = y + Math.sin(ang) * len;
+      // Build a brush stroke as a tapered path via two control points
+      const cx1 = x + Math.cos(ang + 0.3) * (len * 0.3);
+      const cy1 = y + Math.sin(ang + 0.3) * (len * 0.3);
+      const path = 'M ' + x.toFixed(1) + ' ' + y.toFixed(1) +
+                   ' Q ' + cx1.toFixed(1) + ' ' + cy1.toFixed(1) +
+                   ' ' + x2.toFixed(1) + ' ' + y2.toFixed(1);
+      svg.appendChild(makeNode('path', {
+        d: path, fill: 'none', stroke: baseStrokeColor,
+        'stroke-width': (2.5 + (i % 3)).toFixed(2),
+        'stroke-linecap': 'round', opacity: (0.35 + (i % 4) * 0.18).toFixed(2),
+      }));
+    }
+  }
+  // --- Family 22: Particle Field — dense micro-dots, radial density falloff ---
+  else if (family === 22) {
+    const particles = 600 + density * 30;
+    let s = seed;
+    for (let i = 0; i < particles; i++) {
+      s = (s * 9301 + 49297) % 233280;
+      const x = (s % 200);
+      s = (s * 9301 + 49297) % 233280;
+      const y = (s % 200);
+      const dx = x - 100, dy = y - 100;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      // Higher density toward center (radial falloff)
+      if (dist > 90 && (s % 100) < 70) continue;
+      const r = (s & 3) === 0 ? 0.9 : 0.4;
+      svg.appendChild(makeNode('circle', {
+        cx: x.toFixed(1), cy: y.toFixed(1), r: r,
+        fill: baseStrokeColor, opacity: '0.85',
+      }));
+    }
+  }
+  // --- Family 23: Sunburst — converging rays from off-canvas origin ---
+  else if (family === 23) {
+    let s = seed;
+    s = (s * 9301 + 49297) % 233280;
+    const ox = 100 + (((s % 200) - 100) * 1.2);
+    s = (s * 9301 + 49297) % 233280;
+    const oy = 100 + (((s % 200) - 100) * 1.2);
+    const rays = 30 + density;
+    for (let i = 0; i < rays; i++) {
+      const ang = (i / rays) * 2 * Math.PI;
+      const x2 = ox + Math.cos(ang) * 300;
+      const y2 = oy + Math.sin(ang) * 300;
+      svg.appendChild(makeNode('line', {
+        x1: ox.toFixed(1), y1: oy.toFixed(1), x2: x2.toFixed(1), y2: y2.toFixed(1),
+        stroke: baseStrokeColor, 'stroke-width': i % 4 === 0 ? '1.4' : '0.4',
+        opacity: i % 4 === 0 ? '0.55' : '0.30',
+      }));
+    }
+  }
+  // --- Family 24: Marble Veining — flowing curved lines ---
+  else if (family === 24) {
+    const veins = 4 + (density % 4);
+    let s = seed;
+    for (let v = 0; v < veins; v++) {
+      s = (s * 9301 + 49297) % 233280;
+      const startY = (s % 200);
+      let d = 'M 0 ' + startY.toFixed(1);
+      let y = startY;
+      for (let x = 10; x <= 200; x += 10) {
+        s = (s * 9301 + 49297) % 233280;
+        y += ((s % 100) - 50) * 0.45;
+        y = Math.max(0, Math.min(200, y));
+        d += ' Q ' + (x - 5) + ' ' + (y + ((s >> 5) % 30) - 15).toFixed(1) + ' ' + x + ' ' + y.toFixed(1);
+      }
+      svg.appendChild(makeNode('path', {
+        d, fill: 'none', stroke: baseStrokeColor,
+        'stroke-width': (0.8 + (v % 3) * 0.5).toFixed(2),
+        'stroke-linecap': 'round', opacity: '0.6',
+      }));
+    }
+  }
+  // --- Family 25: Constellation — points connected by faint lines ---
+  else if (family === 25) {
+    let s = seed;
+    const stars = [];
+    const n = 18 + density;
+    for (let i = 0; i < n; i++) {
+      s = (s * 9301 + 49297) % 233280;
+      stars.push({ x: 14 + (s % 172), y: 14 + ((s >> 7) % 172), big: (s & 7) === 0 });
+    }
+    // Connect each star to its 2 nearest neighbors
+    for (let i = 0; i < stars.length; i++) {
+      const a = stars[i];
+      const dists = stars.map((b, j) => ({ j, d: Math.hypot(a.x - b.x, a.y - b.y) })).filter(o => o.j !== i).sort((p, q) => p.d - q.d);
+      for (let k = 0; k < 2; k++) {
+        const b = stars[dists[k].j];
+        svg.appendChild(makeNode('line', {
+          x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+          stroke: baseStrokeColor, 'stroke-width': '0.3', opacity: '0.45',
+        }));
+      }
+      svg.appendChild(makeNode('circle', {
+        cx: a.x, cy: a.y, r: a.big ? '1.8' : '0.9',
+        fill: 'rgba(255,255,255,0.92)',
+      }));
+    }
+  }
+  // --- Family 26: Hexagonal Mesh — overlapping hex outlines ---
+  else if (family === 26) {
+    const r = 12;
+    const dx = r * Math.sqrt(3);
+    const dy = r * 1.5;
+    for (let row = -1; row <= 14; row++) {
+      const offset = (row % 2) ? dx / 2 : 0;
+      for (let col = -1; col <= 14; col++) {
+        const cx2 = col * dx + offset;
+        const cy2 = row * dy;
+        if (cx2 < -r || cx2 > 200 + r || cy2 < -r || cy2 > 200 + r) continue;
+        const pts = [];
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * 2 * Math.PI + Math.PI / 6;
+          pts.push((cx2 + Math.cos(a) * r).toFixed(1) + ',' + (cy2 + Math.sin(a) * r).toFixed(1));
+        }
+        svg.appendChild(makeNode('polygon', {
+          points: pts.join(' '), fill: 'none', stroke: baseStrokeColor, 'stroke-width': '0.4',
+        }));
+      }
+    }
+  }
+  // --- Family 27: Bauhaus blocks — primary-color rectangles + circles + lines ---
+  else if (family === 27) {
+    let s = seed;
+    const blocks = 5 + (density % 4);
+    for (let i = 0; i < blocks; i++) {
+      s = (s * 9301 + 49297) % 233280;
+      const x = (s % 180), y = ((s >> 7) % 180);
+      const w = 20 + (s % 60), h = 20 + ((s >> 5) % 60);
+      svg.appendChild(makeNode('rect', {
+        x, y, width: w, height: h,
+        fill: 'none', stroke: baseStrokeColor, 'stroke-width': '1.4',
+      }));
+    }
+    // A few thick stripes
+    for (let i = 0; i < 3; i++) {
+      s = (s * 9301 + 49297) % 233280;
+      const y = (s % 200);
+      svg.appendChild(makeNode('line', { x1: 0, y1: y, x2: 200, y2: y, stroke: baseStrokeColor, 'stroke-width': '2.5' }));
+    }
+    // Circle accents
+    for (let i = 0; i < 2; i++) {
+      s = (s * 9301 + 49297) % 233280;
+      svg.appendChild(makeNode('circle', { cx: 10 + (s % 180), cy: 10 + ((s >> 7) % 180), r: 10 + (s % 12), fill: 'none', stroke: baseStrokeColor, 'stroke-width': '1.2' }));
+    }
+  }
+  // --- Family 28: Flow Field — curved arrows following a noise direction ---
+  else if (family === 28) {
+    const cols = 12;
+    const cell = 200 / cols;
+    let s = seed;
+    for (let j = 0; j <= cols; j++) {
+      for (let i = 0; i <= cols; i++) {
+        s = (s * 9301 + 49297) % 233280;
+        const ang = (Math.sin(i * 0.6 + (seed % 31) * 0.1) + Math.cos(j * 0.5 + (seed % 53) * 0.07)) * Math.PI;
+        const x = i * cell, y = j * cell;
+        const len = cell * 0.55;
+        const x2 = x + Math.cos(ang) * len, y2 = y + Math.sin(ang) * len;
+        svg.appendChild(makeNode('line', { x1: x.toFixed(1), y1: y.toFixed(1), x2: x2.toFixed(1), y2: y2.toFixed(1), stroke: baseStrokeColor, 'stroke-width': '0.6' }));
+      }
+    }
+  }
+  // --- Family 29: Plus / Cross Field — repeating "+" marks ---
+  else if (family === 29) {
+    const step = 18;
+    for (let y = step / 2; y < 200; y += step) {
+      for (let x = step / 2; x < 200; x += step) {
+        svg.appendChild(makeNode('line', { x1: x - 3, y1: y, x2: x + 3, y2: y, stroke: baseStrokeColor, 'stroke-width': '0.7' }));
+        svg.appendChild(makeNode('line', { x1: x, y1: y - 3, x2: x, y2: y + 3, stroke: baseStrokeColor, 'stroke-width': '0.7' }));
+      }
+    }
+  }
+  // --- Family 30: Concentric squares — institutional architecture ---
+  else if (family === 30) {
+    for (let i = 0; i < 12; i++) {
+      const inset = i * 8;
+      svg.appendChild(makeNode('rect', {
+        x: inset, y: inset, width: 200 - inset * 2, height: 200 - inset * 2,
+        fill: 'none', stroke: baseStrokeColor, 'stroke-width': i % 3 === 0 ? '1' : '0.4',
+      }));
+    }
+  }
+  // --- Family 31: Wave Lines — horizontal sine waves layered ---
+  else {
+    const waves = 8 + (density % 6);
+    for (let w = 0; w < waves; w++) {
+      const baseY = 12 + w * (180 / waves);
+      const amp = 4 + (w % 3) * 3;
+      const freq = 1.5 + (w * 0.4);
+      let d = 'M 0 ' + baseY.toFixed(1);
+      for (let x = 5; x <= 200; x += 5) {
+        const y = baseY + Math.sin((x / 200) * Math.PI * freq + w) * amp;
+        d += ' L ' + x + ' ' + y.toFixed(1);
+      }
+      svg.appendChild(makeNode('path', { d, fill: 'none', stroke: baseStrokeColor, 'stroke-width': '0.7' }));
+    }
   }
 
   // (Center anchor circle removed at user request — every pattern now ends with
@@ -15015,57 +15394,111 @@ document.querySelectorAll('.viz-anim-chip').forEach(chip => {
 // The result is COHERENT (font matches type, color contrasts the font color,
 // pattern + effect harmonize) rather than just random.
 // ============================================================
+// Counter that ticks once per AUTO click so back-to-back presses never collide
+// even if Date.now() returns the same millisecond.
+let _vizAutoTick = 0;
 function vizAutoDesign() {
   if (!state.current.visualizer) state.current.visualizer = defaultViz();
   const viz = state.current.visualizer;
   const c = state.current;
-  // Stable seed derived from CBIA hash + name + creator (deterministic per asset)
-  const creator = (c.fields && c.fields.creator && c.fields.creator.value) || (state.wallet && state.wallet.name) || 'Creator';
-  const seedStr = (c.cbiaHash || '') + '|' + (viz.assetName || '') + '|' + creator + '|' + (c.type || '');
-  let h = 0x9E3779B1;
-  for (let i = 0; i < seedStr.length; i++) {
-    h = ((h ^ seedStr.charCodeAt(i)) * 0x01000193) >>> 0;
+  // ============================================================
+  // FRESH RANDOM SEED on every click — guarantees a brand new design.
+  // ============================================================
+  // The old auto-design hashed the CBIA hash + name + creator + type, which
+  // is DETERMINISTIC: the same asset always produced the same design.
+  // Users wanted "keep clicking until I see one I love" — that needs a
+  // genuinely new seed each press. We combine crypto-quality randomness
+  // (when available) with Date.now() and a monotonically-increasing tick
+  // so even rapid double-clicks land in different family bins.
+  _vizAutoTick = (_vizAutoTick + 1) >>> 0;
+  let h;
+  try {
+    const arr = new Uint32Array(1);
+    (crypto || window.crypto).getRandomValues(arr);
+    h = (arr[0] ^ Date.now() ^ _vizAutoTick) >>> 0;
+  } catch (e) {
+    h = (Math.floor(Math.random() * 0xFFFFFFFF) ^ Date.now() ^ _vizAutoTick) >>> 0;
   }
+  // Avalanche the bits so consecutive ticks never produce neighbours.
+  h = ((h ^ (h >>> 16)) * 0x85ebca6b) >>> 0;
+  h = ((h ^ (h >>> 13)) * 0xc2b2ae35) >>> 0;
+  h = (h ^ (h >>> 16)) >>> 0;
+  // Pre-roll several bit fields for independent decisions below.
+  const bit  = (off, mask) => (h >>> off) & mask;
 
-  // ===== Color: pick a high-saturation hue derived from the hash =====
-  const hue = h % 360;
-  const sat = 70 + (h >> 8) % 22;        // 70-92%
-  const lig = 48 + (h >> 16) % 14;       // 48-62%
+  // ===== Color: high-saturation, high-quality hue ranges (curated) =====
+  // Avoid murky yellow-green (60-90deg) and burnt oranges; the curated
+  // palette keeps the surface looking "designed" instead of random.
+  const goodHueBuckets = [
+    [200, 260],   // electric blue → indigo
+    [260, 310],   // purple → magenta
+    [330, 360],   // crimson
+    [0,   25],    // rose → orange-red
+    [150, 195],   // teal → cyan
+    [40,  60],    // gold band
+    [110, 145],   // emerald
+  ];
+  const bucket = goodHueBuckets[bit(4, 0x07) % goodHueBuckets.length];
+  const hue = bucket[0] + (h % (bucket[1] - bucket[0]));
+  const sat = 76 + bit(8, 0x0F);      // 76-91%
+  const lig = 50 + bit(12, 0x0F) % 10;// 50-59%
   viz.color = hslToHex(hue, sat, lig);
 
-  // ===== Pattern: fresh seed + tasteful opacity =====
-  viz.seed = (h >> 4) & 0xFFFFFF;
+  // ===== Pattern: fresh seed across the expanded 32-family space =====
+  viz.seed = (h >>> 0) & 0x7FFFFFFF;
   viz.patternOff = false;
-  viz.patternOpacity = 70 + (h >> 7) % 30;   // 70-100%
-  viz.patternColor = (h >> 11) % 5 === 0 ? 'white' : 'default'; // mostly default
+  viz.patternOpacity = 78 + bit(20, 0x1F);   // 78-109% (clamped to 100)
+  if (viz.patternOpacity > 100) viz.patternOpacity = 100;
+  // ~80% default, 15% white, 5% black — keeps most renders bright.
+  const colorRoll = bit(24, 0x1F);
+  viz.patternColor = colorRoll < 4 ? 'white' : (colorRoll === 4 ? 'black' : 'default');
+  // Pattern scale + position drift so back-to-back designs feel different.
+  viz.patternScale = 0.85 + (bit(16, 0x0F) / 40);   // 0.85 .. 1.2
+  viz.patternX = ((bit(7,  0x1F) - 16) * 0.6);      // -10..+10 (centered)
+  viz.patternY = ((bit(11, 0x1F) - 16) * 0.6);
 
-  // ===== Font: pick a family that matches the asset type =====
-  const fontByType = {
-    copyright: ['serif', 'cinzel', 'cormorant', 'playfair', 'serif-italic'],
-    patent: ['mono', 'mono-jb', 'space-mono', 'inter', 'sans'],
-    trademark: ['futura', 'bebas', 'archivo', 'syncopate', 'oswald', 'anton'],
-    tradesecret: ['mono', 'orbitron', 'space-mono'],
+  // ===== Font: Montserrat as the DEFAULT, with curated alternates by type =====
+  // Montserrat reads as clean / institutional / brand-ready across nearly any
+  // asset type, so we use it 70% of the time and rotate other tasteful
+  // alternates the rest. The previous implementation defaulted to four
+  // different serifs depending on type — too varied across rapid clicks.
+  const altByType = {
+    copyright:  ['montserrat', 'montserrat', 'montserrat', 'playfair', 'cinzel', 'cormorant'],
+    patent:     ['montserrat', 'montserrat', 'montserrat', 'mono-jb', 'space-mono', 'inter'],
+    trademark:  ['montserrat', 'montserrat', 'montserrat', 'futura', 'bebas', 'oswald', 'archivo'],
+    tradesecret:['montserrat', 'montserrat', 'mono', 'orbitron', 'space-mono'],
   };
-  const candidates = fontByType[c.type] || ['montserrat', 'inter', 'futura', 'serif-italic'];
-  viz.fontFamily = candidates[h % candidates.length];
+  const fontPool = altByType[c.type] || ['montserrat', 'montserrat', 'montserrat', 'futura', 'inter', 'playfair'];
+  viz.fontFamily = fontPool[h % fontPool.length];
   ensureVizGoogleFont(viz.fontFamily);
-  viz.fontSize = ['s', 'm', 'l'][(h >> 13) % 3];
+  // Default text size is XL — large, confident, brand-mark presence.
+  // Occasionally drop to L for very long asset names so the title fits.
+  const nameLen = (viz.assetName || '').length;
+  viz.fontSize = nameLen > 22 ? 'l' : 'xl';
 
   // ===== Font color: pick the better contrast against the base color =====
   const hsl = hexToHSL(viz.color);
   viz.fontColor = hsl.l > 55 ? 'black' : 'white';
 
-  // ===== Date order: typically YMD, but rotate occasionally =====
-  viz.dateOrder = ['YMD', 'YMD', 'YMD', 'MDY', 'DMY'][h % 5];
+  // ===== Font position: rotate around the canvas =====
+  viz.fontPos = ['bottom', 'bottom', 'top', 'center', 'bottom'][bit(2, 0x07) % 5];
 
-  // ===== Animation: pick a subtle, looping motion that won't strobe =====
-  const safeAnims = ['none', 'float', 'pulse', 'glow-pulse', 'wobble', 'tilt', 'heartbeat'];
-  viz.animation = safeAnims[(h >> 17) % safeAnims.length];
+  // ===== Date order =====
+  viz.dateOrder = ['YMD', 'YMD', 'MDY', 'DMY'][h % 4];
+
+  // ===== Animation: gentle motion only — never strobe =====
+  const safeAnims = ['none', 'float', 'pulse', 'glow-pulse', 'wobble', 'tilt', 'heartbeat', 'hologram'];
+  viz.animation = safeAnims[(h >>> 17) % safeAnims.length];
   viz.animationTarget = 'image';
 
-  // ===== Effect: pick a tasteful treatment from the curated subset =====
-  const tasteFX = ['none', 'clarity', 'film', 'cinescope', 'sepia', 'noir', 'neon', 'dust', 'lightleak'];
-  viz.effect = tasteFX[(h >> 19) % tasteFX.length];
+  // ===== Effect: tasteful treatment =====
+  const tasteFX = ['none', 'clarity', 'film', 'cinescope', 'sepia', 'noir', 'neon', 'dust', 'lightleak', 'cyber'];
+  viz.effect = tasteFX[(h >>> 19) % tasteFX.length];
+
+  // ===== Logo size + position: pleasant defaults that don't overlap text =====
+  viz.logoScale = 60 + bit(15, 0x0F);  // 60-75%
+  viz.logoX = 0;
+  viz.logoY = -2 + bit(21, 0x07);      // -2..+5 (mostly centered, slight nudge)
 
   // ===== Aspect ratio: match uploaded asset's intrinsic dimensions if known =====
   if (viz.assetImageW && viz.assetImageH) {
@@ -15075,9 +15508,17 @@ function vizAutoDesign() {
     viz.aspect = '1:1';
   }
 
-  // ===== Audio: don't touch reactive state — that lives or dies with the audio file =====
+  // ===== Audio: don't touch reactive state — lives or dies with the audio =====
   refreshVizPreview();
-  if (typeof toast === 'function') toast('AUTO design applied · ' + viz.fontFamily.toUpperCase() + ' · ' + viz.color.toUpperCase() + ' · ' + (viz.effect || 'no fx') + ' · ' + (viz.animation || 'no anim'), 'ok', 4500);
+  if (typeof toast === 'function') {
+    const fam = (viz.seed & 0x1F);
+    const familyNames = ['Mandala','Spiral','Starburst','Rings','Grid','Triangles','Crosshatch','Dots',
+                         'Waves','Petals','Honeycomb','Lissajous','Arches','Diamonds','Voronoi','Lattice',
+                         'Splatter','Glass Cracks','Topographic','Halftone','Chevron','Brushstrokes','Particle Field',
+                         'Sunburst','Marble Veining','Constellation','Hexagonal Mesh','Bauhaus','Flow Field',
+                         'Plus Field','Concentric Squares','Wave Lines'];
+    toast('AUTO · ' + (familyNames[fam] || 'Pattern ' + fam) + ' · ' + viz.fontFamily.toUpperCase() + ' · ' + viz.color.toUpperCase() + ' · ' + viz.effect, 'ok', 3500);
+  }
 }
 
 const _vizAutoBtn = document.getElementById('viz-auto-btn');
@@ -25638,6 +26079,19 @@ function init() {
   try { if (state.settings && state.settings.sounds === 'off') window.SOUND_ENABLED = false; } catch (e) {}
 
   // ============================================================
+  // MOBILE NAV — collapse every group by default
+  // ============================================================
+  // On phones the sidebar drawer is a small overflow region; users want to
+  // see only the section titles until they pick one. The HTML ships with
+  // Tokenization + Preferences expanded; collapse them on mobile so all
+  // groups read as a clean list of headers.
+  try {
+    if (window.matchMedia && window.matchMedia('(max-width: 900px)').matches) {
+      document.querySelectorAll('nav.side .nav-group').forEach(g => g.classList.add('collapsed'));
+    }
+  } catch (e) {}
+
+  // ============================================================
   // VISUALIZER SECTION REORDER — Logo block right after Pattern Size
   // ============================================================
   // The asset visualizer's right-column settings ship in a specific HTML
@@ -25770,6 +26224,18 @@ function init() {
     SecureNode.setConnected(false);
     SecureNode.setVault(false);
     setTimeout(() => SecureNode.probe(), 400);
+  });
+  // ===== DEFAULT LANDING PAGE =====
+  // The "Plumbing of Intellectual Property Value" rail hero sits at the
+  // top of view-tokenize and is the canonical landing experience. Ensure
+  // view-tokenize is the active view AND the content area is scrolled to
+  // the very top so the hero is what the user sees on first load — not
+  // whatever scroll position the browser restored from a previous session.
+  _safe('default-landing', () => {
+    document.querySelectorAll('section.view').forEach(v => v.classList.toggle('active', v.id === 'view-tokenize'));
+    const ca = document.querySelector('.content-area');
+    if (ca) ca.scrollTop = 0;
+    try { window.scrollTo(0, 0); } catch (e) {}
   });
 }
 init();
