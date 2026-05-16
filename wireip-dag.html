@@ -6729,6 +6729,39 @@
     .vault-grid { grid-template-columns: 1fr !important; }
   }
 
+  /* ===== Pull-to-refresh ============================================
+     Adds a native-feeling pull-down gesture on touch devices. The
+     content-area scrolls normally; when the user is at scrollTop=0 and
+     starts dragging down with touch, a refresh affordance appears at the
+     top and the active view re-renders on release. */
+  .ptr-indicator {
+    position: fixed;
+    top: var(--topbar-h, 60px);
+    left: 50%;
+    width: 44px; height: 44px;
+    transform: translate(-50%, -100%) scale(0.85);
+    background: var(--panel);
+    border: 1px solid var(--gold-soft);
+    border-radius: 50%;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.30), 0 0 14px rgba(240,196,25,0.22);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--gold); font-size: 18px;
+    pointer-events: none; z-index: 99999;
+    transition: transform 0.15s ease-out, opacity 0.15s ease-out;
+    opacity: 0;
+  }
+  .ptr-indicator.visible { opacity: 1; }
+  .ptr-indicator.ready   { background: var(--gold); color: var(--bg); border-color: var(--gold); }
+  .ptr-indicator.spinning .ptr-icon {
+    display: inline-block;
+    animation: ptrSpin 0.7s linear infinite;
+  }
+  @keyframes ptrSpin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  body[data-reduce-motion="on"] .ptr-indicator.spinning .ptr-icon { animation: none; }
+
   /* ===== Submit-guidance pulse · highlights the step that needs attention ===== */
   @keyframes mintStepPulse {
     0%, 100% { box-shadow: 0 0 0 0 rgba(240,196,25,0.0), 0 0 0 0 rgba(240,196,25,0); }
@@ -10929,6 +10962,27 @@
         <div class="nfc-status-text" id="nfc-status-text">⌬ AWAITING NFC TAP · CHALLENGE: <span id="nfc-challenge"> ·</span></div>
         <div class="nfc-quick-result" id="nfc-quick-result"></div>
       </div>
+      <!-- ===== Paste-URL test path =====
+           iOS Safari can't actively scan NFC. This input lets the user
+           paste the URL they wrote to their physical prototype card, so
+           the system can verify the strict match WITHOUT requiring an
+           in-Safari tap. Same matching logic as a real tap. -->
+      <details id="nfc-paste-details" style="margin-top:14px;border-top:1px dashed var(--border);padding-top:10px;">
+        <summary style="cursor:pointer;font-size:11.5px;color:var(--gold);letter-spacing:0.04em;padding:8px 0;font-weight:700;">
+          ⌬ Test physical NFC tag (paste the URL you wrote to it)
+        </summary>
+        <div style="padding:8px 4px;">
+          <p style="font-size:10.5px;color:var(--text);line-height:1.55;margin:0 0 10px;">
+            <strong style="color:var(--gold);">Have a prototype tag?</strong> Paste the EXACT URL you wrote to it below. The system runs the same strict match as a real tap. Use this on iPhone (iOS Safari can't actively scan NFC inside the browser).
+          </p>
+          <input type="text" id="nfc-paste-url" placeholder="https://wireip-network.vercel.app/wireip-dag?card=…&sig=…" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--cyan);border-radius:6px;font-size:10.5px;color:var(--cyan);font-family:'IBM Plex Mono',ui-monospace,monospace;">
+          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+            <button id="nfc-paste-verify" type="button" style="flex:1;min-width:140px;min-height:44px;padding:10px 16px;background:var(--cyan);color:var(--bg);border:none;border-radius:6px;font-size:12px;font-weight:700;letter-spacing:0.06em;cursor:pointer;">⌬ VERIFY TAG URL</button>
+            <button id="nfc-paste-clipboard" type="button" style="flex:0 0 auto;min-height:44px;padding:10px 12px;background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:6px;font-size:11px;cursor:pointer;">📋 Paste</button>
+          </div>
+          <div id="nfc-paste-result" style="margin-top:8px;font-size:10.5px;font-family:'IBM Plex Mono',ui-monospace,monospace;line-height:1.55;"></div>
+        </div>
+      </details>
     </div>
     <div class="footer">
       <button data-close="modal-nfc">Cancel</button>
@@ -24593,6 +24647,145 @@ $('#btn-save-draft').addEventListener('click', () => {
 // ============================================================
 $('#btn-poa').addEventListener('click', () => openNFCScanner());
 
+// ============================================================
+// NFC PASTE-URL VERIFICATION · iPhone testing path
+// ============================================================
+// iOS Safari has zero Web NFC support · the user can't actively scan a
+// tag from within Safari. The supported iPhone workflow is to tap the
+// phone against the tag (with Safari closed or backgrounded) so iOS
+// auto-opens the URL. To let prototype testers verify their card without
+// that hoop, we accept a manually-pasted URL and run the same strict-
+// match logic as a live tap. If it matches, PoA is captured and the
+// modal flips to verified.
+function _wireNfcPasteVerify() {
+  const btn = document.getElementById('nfc-paste-verify');
+  const inp = document.getElementById('nfc-paste-url');
+  const out = document.getElementById('nfc-paste-result');
+  if (!btn || btn._pasteBound) return;
+  btn._pasteBound = true;
+  btn.addEventListener('click', () => {
+    if (!out || !inp) return;
+    const raw = (inp.value || '').trim();
+    if (!raw) {
+      out.innerHTML = '<span style="color:var(--warn);">⚠ Paste a URL first</span>';
+      return;
+    }
+    let parsed;
+    try { parsed = new URL(raw, location.href); }
+    catch (e) {
+      out.innerHTML = '<span style="color:var(--err);">✕ Not a valid URL</span>';
+      return;
+    }
+    const sp = parsed.searchParams;
+    // Accept any common param-name casing (NFC writers vary).
+    const tagCardId = sp.get('card') || sp.get('CARD') || sp.get('cardid') || sp.get('serial') || sp.get('uid') || '';
+    const tagSig    = sp.get('sig')  || sp.get('SIG')  || sp.get('nfc')    || sp.get('signature') || '';
+    if (!tagCardId || !tagSig) {
+      out.innerHTML =
+        '<span style="color:var(--err);">✕ URL has no <code>card</code> + <code>sig</code> params</span>' +
+        '<div style="margin-top:6px;color:var(--muted);">Expected format: …?card=WI-XXXX-XXXX-XXXX&amp;sig=ed25519:XXX…</div>';
+      return;
+    }
+    const expectedCardId    = state.settings && state.settings.secureCardId;
+    const expectedCardToken = state.settings && state.settings.secureCardToken;
+    // Show what was parsed so the user can compare bit by bit.
+    const cmp = (a, b) => '<span style="color:' + (a === b ? 'var(--green)' : 'var(--err)') + ';">' + _kycEscape(a || '(empty)') + '</span>';
+    if (!expectedCardId) {
+      // First-time provisioning · adopt
+      if (!state.settings) state.settings = {};
+      state.settings.secureCardId    = tagCardId;
+      state.settings.secureCardToken = tagSig;
+      state.settings.secureCardCreated = new Date().toISOString();
+      state.settings.secureCardProgrammed = true;
+      state.settings.secureCardAdopted = true;
+      try { saveSettings && saveSettings(); } catch (e) {}
+      out.innerHTML =
+        '<span style="color:var(--green);">✓ TAG ADOPTED</span><br>' +
+        '<div style="margin-top:4px;color:var(--muted);">card: ' + _kycEscape(tagCardId) + '</div>' +
+        '<div style="color:var(--muted);">sig:  ' + _kycEscape(tagSig.slice(0, 32)) + '…</div>' +
+        '<div style="margin-top:4px;color:var(--green);">This tag is now registered to this device.</div>';
+      try { soundVerify && soundVerify(); } catch (e) {}
+      setTimeout(() => { try { completeNFC(true, tagSig); } catch (e) {} }, 400);
+      return;
+    }
+    const idMatch    = (tagCardId === expectedCardId);
+    const tokenMatch = (tagSig === expectedCardToken);
+    if (idMatch && tokenMatch) {
+      out.innerHTML =
+        '<span style="color:var(--green);">✓ MATCH · verified</span><br>' +
+        '<div style="margin-top:4px;">tag card: ' + cmp(tagCardId, expectedCardId) + '</div>' +
+        '<div>reg card: <span style="color:var(--green);">' + _kycEscape(expectedCardId) + '</span></div>';
+      try { soundVerify && soundVerify(); } catch (e) {}
+      setTimeout(() => { try { completeNFC(true, tagSig); } catch (e) {} }, 400);
+    } else {
+      out.innerHTML =
+        '<span style="color:var(--err);">✕ MISMATCH</span><br>' +
+        '<div style="margin-top:4px;">tag card:  ' + cmp(tagCardId, expectedCardId) + '</div>' +
+        '<div>reg card:  <span style="color:var(--gold);">' + _kycEscape(expectedCardId) + '</span></div>' +
+        '<div style="margin-top:4px;">tag sig:   ' + cmp(tagSig.slice(0, 32), (expectedCardToken || '').slice(0, 32)) + '…</div>' +
+        '<div>reg sig:   <span style="color:var(--gold);">' + _kycEscape((expectedCardToken || '').slice(0, 32)) + '…</span></div>' +
+        '<div style="margin-top:6px;color:var(--muted);">' +
+          (!idMatch && !tokenMatch ? 'Both card serial and signature are different · this tag is not your registered SecureCard.' :
+           !idMatch ? 'Card serial doesn\'t match · this is a different tag.' :
+           'Signature doesn\'t match · same card serial but the sig token is wrong (corrupted write, or older URL format).') +
+        '</div>' +
+        '<div style="margin-top:6px;color:var(--gold);">→ Copy the current Tap URL from this modal and re-program the tag with NFC Tools to fix.</div>';
+      try { soundDeny && soundDeny(); } catch (e) {}
+    }
+  });
+  // Allow Enter key in the input to fire the verify.
+  if (inp && !inp._pasteBound) {
+    inp._pasteBound = true;
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); btn.click(); }
+    });
+  }
+  // Paste-from-clipboard button (saves the user from long-press → Paste)
+  const pasteBtn = document.getElementById('nfc-paste-clipboard');
+  if (pasteBtn && !pasteBtn._pasteBound) {
+    pasteBtn._pasteBound = true;
+    pasteBtn.addEventListener('click', async () => {
+      try {
+        if (navigator.clipboard && navigator.clipboard.readText) {
+          const text = await navigator.clipboard.readText();
+          if (text && inp) {
+            inp.value = text.trim();
+            // Auto-verify after a brief moment so the user can see the paste land.
+            setTimeout(() => btn.click(), 250);
+          }
+        } else {
+          inp.focus();
+          toast && toast('Long-press the input field and tap Paste', 'info', 3500);
+        }
+      } catch (e) {
+        inp && inp.focus();
+        toast && toast('Long-press the input field and tap Paste', 'info', 3500);
+      }
+    });
+  }
+}
+// Re-wire whenever the NFC modal becomes visible (the modal's innerHTML
+// may have been replaced by the iOS-fallback renderer). Also auto-expand
+// the paste-URL <details> on iOS where active scanning is impossible.
+const _origOpenNfc = openNFCScanner;
+openNFCScanner = function() {
+  try { _origOpenNfc(); } catch (e) {}
+  setTimeout(() => {
+    _wireNfcPasteVerify();
+    try {
+      const ua = navigator.userAgent || '';
+      const isIOS = /iPhone|iPad|iPod/.test(ua);
+      const noWebNFC = (typeof window.NDEFReader === 'undefined');
+      if (isIOS || noWebNFC) {
+        const details = document.getElementById('nfc-paste-details');
+        if (details && !details.hasAttribute('open')) details.setAttribute('open', '');
+      }
+    } catch (e) {}
+  }, 100);
+};
+// Wire once now too in case the modal is opened by another path.
+_wireNfcPasteVerify();
+
 // Active Web-NFC AbortController so closing the modal can stop the scan.
 let _webNfcAbort = null;
 function openNFCScanner() {
@@ -30790,6 +30983,121 @@ try { purgeNavBackdropOnDesktop(); } catch (e) {}
       try { updateMobileTopbarHeight && updateMobileTopbarHeight(); } catch (e) {}
     });
   } catch (e) {}
+})();
+
+// ============================================================
+// PULL-TO-REFRESH · native-feeling refresh gesture on each view
+// ============================================================
+// Drags down from the top of the content area trigger a re-render of the
+// active view. Mirrors how iOS/Android native apps handle pull-to-refresh.
+// Only fires when the content-area scrollTop is 0 (so it doesn't fight
+// with normal scrolling). Threshold is 70px before commit.
+(function initPullToRefresh() {
+  try {
+    const indicator = document.createElement('div');
+    indicator.className = 'ptr-indicator';
+    indicator.innerHTML = '<span class="ptr-icon">↻</span>';
+    document.body.appendChild(indicator);
+    let startY = 0;
+    let pulling = false;
+    let pullDistance = 0;
+    const THRESHOLD = 70;
+    const MAX_PULL  = 140;
+    function scrollContainer() {
+      return document.querySelector('.content-area') || document.documentElement;
+    }
+    function onTouchStart(e) {
+      const c = scrollContainer();
+      if (!c) return;
+      // Only allow PTR when at the very top of the scroll container.
+      if (c.scrollTop > 2) { pulling = false; return; }
+      const t = e.touches[0];
+      if (!t) return;
+      startY = t.clientY;
+      pulling = true;
+      pullDistance = 0;
+    }
+    function onTouchMove(e) {
+      if (!pulling) return;
+      const t = e.touches[0];
+      if (!t) return;
+      const dy = t.clientY - startY;
+      if (dy <= 0) {
+        // User scrolled back up · cancel
+        if (pullDistance > 0) hideIndicator();
+        pullDistance = 0;
+        return;
+      }
+      pullDistance = Math.min(dy * 0.55, MAX_PULL);
+      const reached = pullDistance >= THRESHOLD;
+      indicator.classList.add('visible');
+      indicator.classList.toggle('ready', reached);
+      indicator.style.transform = 'translate(-50%, ' + (pullDistance - 44) + 'px) scale(' + (0.85 + Math.min(0.25, pullDistance / 400)).toFixed(2) + ')';
+      // Block native overscroll bounce when actively pulling so the gesture feels owned by us.
+      if (pullDistance > 6) e.preventDefault();
+    }
+    function onTouchEnd() {
+      if (!pulling) return;
+      pulling = false;
+      if (pullDistance >= THRESHOLD) {
+        triggerRefresh();
+      } else {
+        hideIndicator();
+      }
+      pullDistance = 0;
+    }
+    function hideIndicator() {
+      indicator.classList.remove('visible', 'ready');
+      indicator.style.transform = 'translate(-50%, -100%) scale(0.85)';
+    }
+    function triggerRefresh() {
+      indicator.classList.add('spinning', 'ready', 'visible');
+      indicator.style.transform = 'translate(-50%, ' + (THRESHOLD - 22) + 'px) scale(1)';
+      // Re-render the active view. We resolve which view is active from
+      // the body's .view.active element. Then re-call showView() to fire
+      // its renderer. Minimum spin time is 480ms so the gesture feels
+      // intentional and the spinner doesn't snap-blink off.
+      const minSpinUntil = Date.now() + 480;
+      let activeId = null;
+      try {
+        const active = document.querySelector('.view.active');
+        if (active && active.id) activeId = active.id;
+      } catch (e) {}
+      try {
+        if (activeId && typeof showView === 'function') {
+          showView(activeId);
+        }
+      } catch (e) { console.warn('PTR re-render failed:', e); }
+      // Haptic + sound feedback
+      try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) {}
+      try { soundClick && soundClick(); } catch (e) {}
+      const remaining = Math.max(0, minSpinUntil - Date.now());
+      setTimeout(() => {
+        indicator.classList.remove('spinning');
+        hideIndicator();
+        try { toast && toast('View refreshed', 'ok', 1800); } catch (e) {}
+      }, remaining);
+    }
+    // Bind to both the content-area AND the document (covers cases where
+    // the content-area is itself the body on certain views).
+    const bindOn = (target) => {
+      target.addEventListener('touchstart', onTouchStart, { passive: true });
+      target.addEventListener('touchmove',  onTouchMove,  { passive: false });
+      target.addEventListener('touchend',   onTouchEnd,   { passive: true });
+      target.addEventListener('touchcancel',onTouchEnd,   { passive: true });
+    };
+    const wire = () => {
+      const c = scrollContainer();
+      if (c && !c._ptrBound) { c._ptrBound = true; bindOn(c); }
+      if (!document.body._ptrBound) {
+        document.body._ptrBound = true;
+        bindOn(document.body);
+      }
+    };
+    wire();
+    window.addEventListener('DOMContentLoaded', wire);
+    window.addEventListener('load',             wire);
+  } catch (e) { console.warn('PTR init failed:', e); }
 })();
 
 // ===== Live topbar height tracker · keeps the mobile nav drawer aligned =====
