@@ -21,7 +21,24 @@
 <!-- WIREIP_BUILD_ID is updated every time we ship a change · users can
      compare the footer chip to the latest build to verify their device
      has the fresh code. -->
-<script>window.WIREIP_BUILD_ID = '2026-05-16-20:15';</script>
+<script>window.WIREIP_BUILD_ID = '2026-05-16-20:30';</script>
+<!-- ===== Default landing guard · runs BEFORE init =====
+     Belt-and-suspenders pinning view-home as the active section the
+     moment the DOM is ready, before any other script can flip it. Also
+     stamps the nav-item active state in case the HTML or CSS gets out
+     of sync. Idempotent · runs once at DOMContentLoaded. -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  try {
+    document.querySelectorAll('section.view').forEach(function(v) {
+      v.classList.toggle('active', v.id === 'view-home');
+    });
+    document.querySelectorAll('nav.side .nav-item').forEach(function(n) {
+      n.classList.toggle('active', n.dataset && n.dataset.view === 'view-home');
+    });
+  } catch (e) {}
+}, { once: true });
+</script>
 <title>WireIP Network™  · IP Tokenization Vault · Institutional Edition v4.1</title>
 <!-- OTW logo references removed at user request. -->
 
