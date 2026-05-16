@@ -21,7 +21,7 @@
 <!-- WIREIP_BUILD_ID is updated every time we ship a change · users can
      compare the footer chip to the latest build to verify their device
      has the fresh code. -->
-<script>window.WIREIP_BUILD_ID = '2026-05-16-19:15';</script>
+<script>window.WIREIP_BUILD_ID = '2026-05-16-19:45';</script>
 <title>WireIP Network™  · IP Tokenization Vault · Institutional Edition v4.1</title>
 <!-- OTW logo references removed at user request. -->
 
@@ -7227,7 +7227,8 @@
     <nav class="side" id="side-nav">
       <div class="nav-group">
         <h4 data-nav-group>Tokenization<span class="chev">▾</span></h4>
-        <div class="nav-item active" data-view="view-tokenize"><span class="icon">▲</span><span>New Asset</span></div>
+        <div class="nav-item active" data-view="view-home"><span class="icon">⌂</span><span>Home</span></div>
+        <div class="nav-item" data-view="view-tokenize"><span class="icon">▲</span><span>New Asset</span></div>
         <div class="nav-item" data-view="view-vault"><span class="icon">◆</span><span>My Vault</span><span class="badge" id="nav-vault-count">0</span></div>
         <div class="nav-item" data-view="view-treasury"><span class="icon">$</span><span>Treasury / Value</span><span class="badge" id="nav-treasury-value">$0</span></div>
         <div class="nav-item" data-view="view-registry"><span class="icon">⚜</span><span>Submissions</span><span class="badge" id="nav-reg-count">0</span></div>
@@ -7275,8 +7276,8 @@
 
     <div class="content-area">
 
-      <!-- ===== VIEW: TOKENIZE ===== -->
-      <section class="view active" id="view-tokenize">
+      <!-- ===== VIEW: HOME · Landing page with hero + Tokenize button ===== -->
+      <section class="view active" id="view-home">
         <!-- Payment-rail hero -->
         <div class="rail-hero">
           <div class="rh-lede">⌬ WireIP Network™ · Settlement Rail v4.1</div>
@@ -7308,11 +7309,6 @@
           <span class="tb-chip cert"><span class="tb-dot"></span>SOC 2 TYPE II</span>
         </div>
 
-        <h1>Issue a CBIA™ Digital Deed</h1>
-        <div class="lede">
-          Issue and settle a CBIA™ Digital Deed for your IP on the WireIP DAG. The file is hashed locally, encrypted (AES-256), anchored to your SecureNode™ SSD vault, and routed through stablecoin settlement rails  · clearing in ~4–8 seconds (soft final) and finalizing in ~12–20 seconds (hard final). Per protocol, all issuance requires Proof of Agency™ via NFC tap. After mint, deploy to vault only or have AI Sentinel agents settle the deed with selected national IP offices.
-        </div>
-
         <!-- 1/1 Master Token + NOT AN NFT banner -->
         <div class="master-banner" role="note" aria-label="1/1 Master Token notice">
           <div class="mb-badge">
@@ -7328,6 +7324,31 @@
               Every mint issues a single, sovereign <strong>1/1 Master Token</strong>  · the original, irreproducible Digital Deed of your intellectual property. Fractional royalty tokens (when enabled below) are derivatives  · they reference the Master, they do not replace it. These are <strong>Tokenized IP Assets with Real-World Value</strong>, court-recognizable, leverage-eligible, and backed by hard treasury reserves  · not collectibles, not JPEGs, not speculation.
             </div>
           </div>
+        </div>
+
+        <!-- ===== Primary CTA · big Tokenize button =====
+             Single-tap entry into the full 6-step minting flow. Routes to
+             view-tokenize and auto-opens the upload-asset path so the
+             user lands directly on Step 1 with the dropzone glowing. -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0 8px;">
+          <button id="btn-home-tokenize" type="button" style="cursor:pointer;padding:24px 22px;background:linear-gradient(135deg,rgba(240,196,25,0.18),rgba(240,196,25,0.04)),var(--panel);border:2px solid var(--gold);border-radius:var(--radius);text-align:left;color:var(--text);font-family:inherit;box-shadow:0 0 24px rgba(240,196,25,0.30);transition:transform 0.15s ease, box-shadow 0.15s ease;">
+            <div style="font-size:10px;letter-spacing:0.14em;color:var(--gold-soft);text-transform:uppercase;margin-bottom:6px;">⚜ Begin · 6-step flow</div>
+            <div style="font-size:20px;font-weight:800;color:var(--gold);letter-spacing:0.06em;margin-bottom:6px;text-transform:uppercase;">⚜ Tokenize Now →</div>
+            <div style="font-size:11px;color:var(--text);line-height:1.55;">Drop a file, pick the asset type (Copyright · Patent · Trademark · Trade Secret), fill required fields, sign with your SecureCard™, and mint a CBIA™ Digital Deed on the WireIP DAG · clearing in ~4–8 seconds.</div>
+          </button>
+          <button id="btn-home-vault" type="button" style="cursor:pointer;padding:24px 22px;background:var(--panel);border:1.5px solid var(--cyan);border-radius:var(--radius);text-align:left;color:var(--text);font-family:inherit;transition:transform 0.15s ease;">
+            <div style="font-size:10px;letter-spacing:0.14em;color:var(--cyan);text-transform:uppercase;margin-bottom:6px;">◆ My Portfolio</div>
+            <div style="font-size:20px;font-weight:800;color:var(--cyan);letter-spacing:0.06em;margin-bottom:6px;text-transform:uppercase;">Open My Vault →</div>
+            <div style="font-size:11px;color:var(--text);line-height:1.55;">View every CBIA™ deed you've minted · drafts in progress · royalty splits · real-time portfolio value · deed certificates · jurisdictional filing status.</div>
+          </button>
+        </div>
+      </section>
+
+      <!-- ===== VIEW: TOKENIZE ===== -->
+      <section class="view" id="view-tokenize">
+        <h1>Issue a CBIA™ Digital Deed</h1>
+        <div class="lede">
+          Issue and settle a CBIA™ Digital Deed for your IP on the WireIP DAG. The file is hashed locally, encrypted (AES-256), anchored to your SecureNode™ SSD vault, and routed through stablecoin settlement rails  · clearing in ~4–8 seconds (soft final) and finalizing in ~12–20 seconds (hard final). Per protocol, all issuance requires Proof of Agency™ via NFC tap. After mint, deploy to vault only or have AI Sentinel agents settle the deed with selected national IP offices.
         </div>
 
         <!-- ===== UPLOAD AND CONNECT  · its own subtitle section ===== -->
@@ -8279,9 +8300,15 @@
 
       <!-- ===== VIEW: VAULT ===== -->
       <section class="view" id="view-vault">
-        <h1>My Vault</h1>
-        <div class="lede">
-          Tokenized assets registered to your wallet. Each card is a CBIA™ Digital Deed anchored on the WireIP DAG.
+        <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:6px;">
+          <div style="flex:1;min-width:0;">
+            <h1 style="margin-bottom:6px;">My Vault</h1>
+            <div class="lede" style="margin:0;">
+              Tokenized assets registered to your wallet. Each card is a CBIA™ Digital Deed anchored on the WireIP DAG.
+            </div>
+          </div>
+          <!-- Prominent Tokenize entry · jumps straight to Step 1 of the flow -->
+          <button id="btn-vault-tokenize" type="button" style="flex-shrink:0;min-height:50px;padding:12px 22px;background:linear-gradient(135deg,rgba(240,196,25,0.20),rgba(240,196,25,0.06)),var(--panel);border:2px solid var(--gold);color:var(--gold);border-radius:var(--radius);font-size:12px;font-weight:800;letter-spacing:0.10em;text-transform:uppercase;cursor:pointer;box-shadow:0 0 18px rgba(240,196,25,0.25);font-family:inherit;">⚜ Tokenize New Asset →</button>
         </div>
         <div class="vault-filters">
           <div class="filter-chip active" data-filter="all">All</div>
@@ -13144,6 +13171,7 @@ function showView(id) {
     }
   }
 
+  if (id === 'view-home')          safe('view-home',          () => { refreshRailHero(); });
   if (id === 'view-tokenize')      safe('view-tokenize',      () => {
     refreshRailHero();
     // Keep the tokenization step flow open if the user has already started a draft.
@@ -32278,6 +32306,45 @@ document.addEventListener('click', (e) => {
   }
 });
 
+// ============================================================
+// HOME PAGE BUTTONS · Tokenize + Open Vault
+// ============================================================
+// The Home view's two big primary CTAs route to the actual flows.
+// "Tokenize Now" jumps to view-tokenize + auto-opens the upload-asset
+// path so the user lands directly on Step 1. "Open Vault" jumps to
+// view-vault for portfolio review.
+(function wireHomeButtons() {
+  document.addEventListener('click', (e) => {
+    const t = e.target && e.target.closest && e.target.closest('button');
+    if (!t) return;
+    if (t.id === 'btn-home-tokenize') {
+      try { showView && showView('view-tokenize'); } catch (er) {}
+      // Auto-open the upload flow so they land on Step 1
+      setTimeout(() => {
+        try {
+          const upload = document.getElementById('btn-open-upload-flow');
+          if (upload && upload.click) upload.click();
+          // Scroll to the dropzone
+          const dz = document.getElementById('dropzone');
+          if (dz) dz.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } catch (er) {}
+      }, 220);
+    } else if (t.id === 'btn-home-vault') {
+      try { showView && showView('view-vault'); } catch (er) {}
+    } else if (t.id === 'btn-vault-tokenize') {
+      try { showView && showView('view-tokenize'); } catch (er) {}
+      setTimeout(() => {
+        try {
+          const upload = document.getElementById('btn-open-upload-flow');
+          if (upload && upload.click) upload.click();
+          const dz = document.getElementById('dropzone');
+          if (dz) dz.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } catch (er) {}
+      }, 220);
+    }
+  });
+})();
+
 // ===== Mobile search toggle =====
 // On mobile, the search input is hidden by default and revealed when the
 // user taps the magnifier icon (injected into .top-tools). Keeps the
@@ -36646,23 +36713,22 @@ function init() {
       } // close: if (verificationStatus !== 'unverified')
     }
   } catch (e) { console.warn('NFC URL parser failed:', e); }
-  // CRITICAL DEFENSIVE GUARANTEE: force the visible-on-load tokenize content
-  // to be present even if any downstream init step throws. Without this, a
-  // single render failure left the user staring at an empty middle area
-  // ("blank box covers the screen").
+  // CRITICAL DEFENSIVE GUARANTEE: ensure the HOME view is the active
+  // landing on first paint · even if downstream init steps throw, the
+  // hero + Tokenize button are guaranteed visible. The user can then
+  // click Tokenize to enter the actual mint flow.
   try {
     const entry = document.getElementById('asset-entry-row');
     const flow  = document.getElementById('tokenization-flow');
     if (entry) entry.style.display = 'grid';
     if (flow)  flow.style.display  = 'none';
-    // Make view-tokenize the active view via the CLASS ONLY. Never set an
-    // inline style.display  · a stale inline display:block here was making
-    // view-tokenize stay visible and overlap whatever view you navigated to
-    // (its gray dropzone = the "gray box covering the screen"). CSS
-    // (.view / .view.active) is the single source of truth for visibility.
     document.querySelectorAll('.view').forEach(v => {
-      v.classList.toggle('active', v.id === 'view-tokenize');
+      v.classList.toggle('active', v.id === 'view-home');
       v.style.removeProperty('display');
+    });
+    // Sync nav highlight to Home on boot
+    document.querySelectorAll('.nav-item').forEach(n => {
+      n.classList.toggle('active', n.dataset.view === 'view-home');
     });
   } catch (_) {}
   load();
