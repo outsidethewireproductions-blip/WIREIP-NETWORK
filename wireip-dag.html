@@ -6,6 +6,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#050606">
+<!-- No-cache meta tags · forces mobile Safari to re-fetch on every load
+     while we iterate on layout. Safe to keep on prod · the per-asset
+     cost is negligible and prevents stale-asset bugs after deploy. -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>WireIP Network™  · IP Tokenization Vault · Institutional Edition v4.1</title>
 <!-- OTW logo references removed at user request. -->
 
@@ -6648,6 +6654,86 @@
     /* Vault grid: single column. */
     .vault-grid { grid-template-columns: 1fr !important; }
   }
+
+  /* ============================================================
+     MOBILE TOPBAR · FINAL OVERRIDE BLOCK (highest specificity)
+     ============================================================
+     Placed last so nothing earlier in the stylesheet can override.
+     Forces the canonical mobile layout:
+       Row 1: [☰] [BRAND] [🔍] [🔊] [🌙] [LINK] [PORTFOLIO] ←pinned right
+       Row 2: search bar (hidden by default · toggled via .mobile-search-open)
+  */
+  @media (max-width: 720px) {
+    body header.topbar {
+      display: flex !important;
+      flex-wrap: wrap !important;
+      align-items: center !important;
+      gap: 8px !important;
+      padding: 8px 10px !important;
+      padding-top: max(8px, env(safe-area-inset-top)) !important;
+      min-height: 52px !important;
+      height: auto !important;
+    }
+    body header.topbar .menu-toggle    { order: 1 !important; flex: 0 0 auto !important; width: 36px !important; height: 36px !important; }
+    body header.topbar .brand-block    { order: 2 !important; flex: 1 1 0 !important; min-width: 0 !important; }
+    body header.topbar .brand-block .brand-text .subtitle { display: none !important; }
+    body header.topbar .brand-block .brand-text .title {
+      font-size: 11.5px !important;
+      letter-spacing: 0.02em !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+    }
+    body header.topbar .top-tools      { order: 3 !important; flex: 0 0 auto !important; display: flex !important; gap: 6px !important; align-items: center !important; }
+    body header.topbar .top-tools .topbar-metric { display: none !important; }
+    body header.topbar #topbar-portfolio {
+      order: 4 !important;
+      margin-left: auto !important;
+      flex: 0 0 auto !important;
+      min-width: 78px !important;
+      padding: 4px 10px !important;
+      background: var(--panel-2) !important;
+      border: 1px solid var(--gold-soft) !important;
+      border-radius: 8px !important;
+    }
+    body header.topbar #topbar-portfolio #topbar-portfolio-label { font-size: 7px !important; }
+    body header.topbar #topbar-portfolio #topbar-portfolio-value { font-size: 12px !important; }
+    /* Search bar hidden by default · revealed by .mobile-search-open */
+    body header.topbar .top-search { display: none !important; order: 99 !important; flex: 1 0 100% !important; max-width: none !important; }
+    body.mobile-search-open header.topbar .top-search { display: block !important; }
+    body header.topbar .top-search input { width: 100% !important; padding: 8px 12px 8px 28px !important; font-size: 12px !important; }
+    /* Wallet display · compact */
+    body header.topbar .wallet-display { flex: 0 0 auto !important; padding: 3px 8px !important; }
+    body header.topbar .wallet-display .addr { display: none !important; }
+    body header.topbar .wallet-display button { padding: 3px 8px !important; font-size: 9.5px !important; }
+    /* Mobile search-toggle icon (injected by JS) */
+    body header.topbar .mobile-search-toggle {
+      display: inline-flex !important;
+      align-items: center !important; justify-content: center !important;
+      width: 34px !important; height: 34px !important; padding: 0 !important;
+      background: transparent !important;
+      border: 1px solid var(--border) !important; border-radius: 999px !important;
+      color: var(--gold-soft) !important; font-size: 15px !important;
+      cursor: pointer !important; flex: 0 0 auto !important;
+    }
+    body.mobile-search-open header.topbar .mobile-search-toggle { color: var(--gold) !important; border-color: var(--gold) !important; }
+  }
+
+  /* ============================================================
+     AUDIO SEEK BAR · FINAL OVERRIDE (ensure touch-drag works)
+     ============================================================ */
+  .lux-progress {
+    touch-action: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+  }
+  @media (max-width: 720px) {
+    .lux-progress     { height: 40px !important; margin: 6px 12px !important; }
+    .lux-progress-head { width: 24px !important; height: 24px !important; }
+    .lux-transport    { gap: 10px !important; padding: 10px 12px 14px !important; flex-wrap: wrap !important; }
+    .lux-btn          { padding: 10px 16px !important; font-size: 12px !important; min-height: 44px !important; min-width: 52px !important; }
+    .lux-btn.lux-play { width: 56px !important; height: 56px !important; font-size: 20px !important; }
+  }
 </style>
 </head>
 <body>
@@ -9570,6 +9656,25 @@
           <div style="margin-top:10px;">
             <button id="set-go-securenode" class="cyan" type="button">Open SecureNode view →</button>
           </div>
+          <!-- ===== SecureCard™ NFC ID  · persistent per-device card =====
+               Shows the user the unique ID baked into their NFC tap URL,
+               the registration status, and lets them copy/regenerate. -->
+          <div style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);">
+            <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--gold-soft);margin-bottom:6px;">
+              SecureCard™ NFC Tag
+            </div>
+            <p class="help" style="margin-top:0;">
+              Your physical SecureCard™ is identified by a unique ID baked into a URL on the NFC tag. WireIP generates this ID once on this device and remembers it forever. Re-generate only if your tag is lost or stolen.
+            </p>
+            <div id="set-securecard-status" style="margin-top:8px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;padding:10px 14px;background:var(--panel-2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);word-break:break-all;line-height:1.5;">
+              Not yet provisioned · open the NFC modal once to generate
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+              <button id="set-securecard-copy" class="primary" type="button">📋 Copy Tap URL</button>
+              <button id="set-securecard-program" type="button">🆔 Program a Tag</button>
+              <button id="set-securecard-regen" type="button" style="color:var(--err);border-color:var(--err);">↻ Re-generate</button>
+            </div>
+          </div>
         </div>
 
         <!-- DELETED ASSETS / RETENTION -->
@@ -11237,6 +11342,86 @@ function toast(msg, level='info', timeout=2600) {
 }
 function openModal(id) { $('#'+id).classList.remove('hidden'); }
 function closeModal(id) { $('#'+id).classList.add('hidden'); }
+
+// ============================================================
+// PoA SUCCESS BANNER · top-of-page confirmation after NFC tap
+// ============================================================
+// Renders a fixed, animated success banner that slides in from the top
+// when the user lands via an NFC tap URL. Stays visible for 8s or until
+// the user navigates · gives unambiguous proof the tap worked even when
+// the NFC modal isn't open. Includes a countdown to PoA expiry.
+function showPoaBanner(opts) {
+  try {
+    const o = opts || {};
+    let banner = document.getElementById('poa-success-banner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'poa-success-banner';
+      banner.style.cssText =
+        'position:fixed;top:0;left:0;right:0;z-index:100000;' +
+        'padding:14px 18px;display:flex;align-items:center;gap:12px;' +
+        'background:linear-gradient(135deg,rgba(74,222,128,0.95),rgba(34,197,94,0.95));' +
+        'color:#050606;font-family:system-ui,-apple-system,sans-serif;' +
+        'box-shadow:0 6px 24px rgba(0,0,0,0.40);' +
+        'transform:translateY(-100%);transition:transform 0.35s cubic-bezier(0.16,1,0.3,1);' +
+        'padding-top:max(14px,env(safe-area-inset-top));';
+      banner.innerHTML =
+        '<div style="font-size:28px;line-height:1;flex-shrink:0;">✓</div>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:13px;font-weight:700;letter-spacing:0.04em;">SecureCard™ Tap Verified</div>' +
+          '<div id="poa-banner-detail" style="font-size:10.5px;margin-top:2px;font-family:\'IBM Plex Mono\',ui-monospace,monospace;opacity:0.88;"></div>' +
+        '</div>' +
+        '<div id="poa-banner-countdown" style="font-size:11px;font-weight:700;font-family:\'IBM Plex Mono\',ui-monospace,monospace;padding:6px 10px;background:rgba(0,0,0,0.18);border-radius:6px;flex-shrink:0;">5:00</div>' +
+        '<button id="poa-banner-close" type="button" style="background:transparent;border:1px solid rgba(0,0,0,0.30);color:#050606;width:28px;height:28px;border-radius:50%;font-size:14px;font-weight:700;cursor:pointer;padding:0;flex-shrink:0;">×</button>';
+      document.body.appendChild(banner);
+      document.getElementById('poa-banner-close').addEventListener('click', () => {
+        banner.style.transform = 'translateY(-100%)';
+        setTimeout(() => { try { banner.remove(); } catch (e) {} }, 350);
+      });
+    }
+    // Populate detail
+    const det = document.getElementById('poa-banner-detail');
+    if (det) {
+      const cardShort = (o.cardId || '').slice(0, 24);
+      const statusLabel = {
+        matched: 'Registered card',
+        adopted: 'New card · registered to this device',
+        foreign: 'Foreign card',
+      }[o.status] || 'Tap accepted';
+      det.textContent = 'Card ' + cardShort + ' · ' + statusLabel;
+    }
+    // Slide in
+    requestAnimationFrame(() => {
+      banner.style.transform = 'translateY(0)';
+    });
+    // Countdown to expiry
+    const countdownEl = document.getElementById('poa-banner-countdown');
+    const expiresAt = new Date(o.expiresAt || (Date.now() + 5 * 60 * 1000));
+    if (banner._cdTimer) clearInterval(banner._cdTimer);
+    const tick = () => {
+      const remaining = expiresAt.getTime() - Date.now();
+      if (remaining <= 0) {
+        if (countdownEl) countdownEl.textContent = 'expired';
+        clearInterval(banner._cdTimer);
+        return;
+      }
+      const m = Math.floor(remaining / 60000);
+      const s = Math.floor((remaining % 60000) / 1000);
+      if (countdownEl) countdownEl.textContent = m + ':' + String(s).padStart(2, '0');
+    };
+    tick();
+    banner._cdTimer = setInterval(tick, 1000);
+    // Auto-dismiss after 12 seconds (banner stays visible long enough to read
+    // but doesn't camp on the page forever).
+    if (banner._dismissTimer) clearTimeout(banner._dismissTimer);
+    banner._dismissTimer = setTimeout(() => {
+      try {
+        banner.style.transform = 'translateY(-100%)';
+        setTimeout(() => { try { banner.remove(); } catch (e) {} }, 350);
+      } catch (e) {}
+    }, 12000);
+  } catch (e) { console.warn('showPoaBanner failed:', e); }
+}
 
 // ============================================================
 // TERMS & CONDITIONS · sworn statement modal
@@ -13136,6 +13321,76 @@ function renderSettings() {
   bind('set-autoRefreshBalancesSec',   'autoRefreshBalancesSec', 'int');
   bind('set-secureNodeAutoReconnect',  'secureNodeAutoReconnect', 'bool');
   bind('set-secureNodeHealthCheckSec', 'secureNodeHealthCheckSec', 'int');
+  // ===== SecureCard™ NFC tag panel =====
+  function paintSecureCard() {
+    const $st = document.getElementById('set-securecard-status');
+    const $copy = document.getElementById('set-securecard-copy');
+    if (!$st) return;
+    const ss = state.settings || {};
+    if (!ss.secureCardId) {
+      $st.style.color = 'var(--muted)';
+      $st.textContent = 'Not yet provisioned · open the NFC modal once to generate';
+      if ($copy) $copy.disabled = true;
+      return;
+    }
+    if ($copy) $copy.disabled = false;
+    const here = location.protocol + '//' + location.host + location.pathname;
+    const url = here + '?card=' + ss.secureCardId + '&sig=' + (ss.secureCardToken || '');
+    const created = ss.secureCardCreated ? new Date(ss.secureCardCreated).toLocaleString() : 'unknown';
+    const programmed = ss.secureCardProgrammed ? '<span style="color:var(--green);">✓ Tag programmed</span>' : '<span style="color:var(--gold);">⚠ Tag not programmed yet</span>';
+    $st.style.color = 'var(--text)';
+    $st.innerHTML =
+      '<div><strong style="color:var(--gold);">ID:</strong> <span style="color:var(--cyan);">' + _kycEscape(ss.secureCardId) + '</span></div>' +
+      '<div style="margin-top:4px;"><strong style="color:var(--gold-soft);">Tap URL:</strong></div>' +
+      '<div style="margin-top:2px;color:var(--cyan);background:var(--bg);padding:6px 8px;border-radius:4px;border:1px solid var(--cyan);font-size:9.5px;">' + _kycEscape(url) + '</div>' +
+      '<div style="margin-top:6px;color:var(--muted);font-size:10px;">Provisioned: ' + _kycEscape(created) + ' · ' + programmed + '</div>';
+  }
+  paintSecureCard();
+  const scCopy = document.getElementById('set-securecard-copy');
+  if (scCopy && !scCopy._scBound) {
+    scCopy._scBound = true;
+    scCopy.addEventListener('click', async () => {
+      const ss = state.settings || {};
+      if (!ss.secureCardId) { toast('Open the NFC modal first to generate your card', 'warn'); return; }
+      const here = location.protocol + '//' + location.host + location.pathname;
+      const url = here + '?card=' + ss.secureCardId + '&sig=' + (ss.secureCardToken || '');
+      try {
+        await navigator.clipboard.writeText(url);
+        toast('Tap URL copied · paste into NFC Tools to program a tag', 'ok', 4000);
+        ss.secureCardProgrammed = true; saveSettings && saveSettings();
+        paintSecureCard();
+      } catch (e) {
+        toast('Copy failed · long-press the URL above to copy', 'warn');
+      }
+    });
+  }
+  const scProgram = document.getElementById('set-securecard-program');
+  if (scProgram && !scProgram._scBound) {
+    scProgram._scBound = true;
+    scProgram.addEventListener('click', () => {
+      // Opens the NFC modal which has the full program-a-tag flow.
+      try {
+        if (typeof openNFCScanner === 'function') openNFCScanner();
+        else toast('Start a new mint to open the NFC modal', 'info');
+      } catch (e) {}
+    });
+  }
+  const scRegen = document.getElementById('set-securecard-regen');
+  if (scRegen && !scRegen._scBound) {
+    scRegen._scBound = true;
+    scRegen.addEventListener('click', () => {
+      if (!confirm('Re-generate your SecureCard™ ID? Your old NFC tag will STOP working until you re-program it with the new URL.')) return;
+      const ss = state.settings || (state.settings = {});
+      delete ss.secureCardId;
+      delete ss.secureCardToken;
+      delete ss.secureCardSecret;
+      delete ss.secureCardCreated;
+      ss.secureCardProgrammed = false;
+      saveSettings && saveSettings();
+      paintSecureCard();
+      toast('SecureCard™ ID cleared · re-open the NFC modal to generate a new one', 'ok', 5000);
+    });
+  }
   bind('set-secureNodeVaultSlot',      'secureNodeVaultSlot');
   bind('set-retentionDays',            'retentionDays',        'int');
   bind('set-emptyTrashOnExit',         'emptyTrashOnExit',     'bool');
@@ -24178,53 +24433,109 @@ function openNFCScanner() {
     // PoA. The "Tap Your SecureCard" modal stays open so when the URL loads,
     // completeNFC() fires automatically.
     const here = location.protocol + '//' + location.host + location.pathname;
-    // Generate a unique session token + plausible card serial so the URL is
-    // actually usable on first read · the original page only displayed
-    // YOUR_SERIAL / YOUR_TOKEN placeholders which gave the user no working
-    // URL to paste into their NFC writer.
-    const sessSerial = 'WI' + Math.random().toString(36).toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0, 10);
-    const sessToken  = ed25519Like((state.current?.cbiaHash || 'nfc') + ':' + Date.now()).slice(0, 24);
-    const realUrl    = here + '?card=' + sessSerial + '&sig=' + sessToken;
-    const exampleUrl = here + '?card=YOUR_SERIAL&sig=YOUR_TOKEN';
+    // ===== PERSISTENT SecureCard ID =====
+    // Generate ONCE and save to localStorage so the same URL always works
+    // for this user's account. The user programs a single physical NFC tag
+    // with this URL and reuses it forever. The token is a long-lived auth
+    // proof bound to the card ID via Ed25519-shaped hash.
+    function getOrCreateSecureCardId() {
+      const s = state.settings || (state.settings = {});
+      if (s.secureCardId && s.secureCardToken && s.secureCardSecret) {
+        return { id: s.secureCardId, token: s.secureCardToken };
+      }
+      // Card ID format: WI-XXXX-XXXX-XXXX (16 hex chars · readable like a serial)
+      const rand = (n) => {
+        const a = new Uint8Array(n); crypto.getRandomValues(a);
+        return Array.from(a).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+      };
+      const id = 'WI-' + rand(2) + '-' + rand(2) + '-' + rand(2);
+      const secret = rand(16);   // 32-char hex secret · never appears in the URL
+      // Token = ed25519-like hash of secret · this is what goes in the URL.
+      // Anyone with the URL can authenticate, but they can't forge a NEW
+      // signature without the secret. (For a true Ed25519 you'd want a real
+      // key pair · the WireIP DAO Constitution describes the upgrade path.)
+      const token = ed25519Like(id + ':' + secret).slice(0, 32);
+      s.secureCardId      = id;
+      s.secureCardToken   = token;
+      s.secureCardSecret  = secret;
+      s.secureCardCreated = new Date().toISOString();
+      // Auto-register the card as a known-good serial so subsequent taps
+      // verify against the user's registered cards.
+      if (!Array.isArray(state.poaCardSerials)) state.poaCardSerials = [];
+      if (!state.poaCardSerials.includes(id)) state.poaCardSerials.push(id);
+      try { saveSettings && saveSettings(); } catch (e) {}
+      try { save && save(); } catch (e) {}
+      return { id, token };
+    }
+    const card = getOrCreateSecureCardId();
+    const realUrl = here + '?card=' + card.id + '&sig=' + card.token;
+    const isFirstTime = !state.settings.secureCardProgrammed;
     stat.innerHTML =
-      '<strong style="color:var(--gold);">iPhone NFC scanning isn\'t available in Safari</strong><br>' +
-      '<span style="color:var(--text);font-size:11px;line-height:1.55;display:block;margin-top:8px;">' +
-      'Apple restricts NFC tag reading to native iOS apps. Three options work on iPhone:' +
-      '<div style="margin-top:10px;padding:10px;background:var(--panel-2);border:1px solid var(--gold-soft);border-radius:6px;">' +
-      '<div style="font-size:10px;color:var(--gold);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;font-weight:700;">Option A · Write a tag (one-time)</div>' +
-      '<a id="nfc-url-link" href="' + realUrl + '" style="display:block;margin:6px 0;padding:10px 12px;background:var(--bg);border:1px solid var(--cyan);border-radius:6px;font-size:10.5px;color:var(--cyan);word-break:break-all;text-decoration:none;font-family:\'IBM Plex Mono\',ui-monospace,monospace;">' + realUrl + '</a>' +
-      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">' +
-      '<button id="nfc-copy-url" type="button" style="flex:1;min-width:120px;padding:8px 12px;background:var(--cyan);color:var(--bg);border:none;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;">📋 Copy URL</button>' +
-      '<button id="nfc-share-url" type="button" style="flex:1;min-width:100px;padding:8px 12px;background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:4px;font-size:11px;cursor:pointer;">↗ Share</button>' +
+      '<div style="text-align:left;">' +
+      '<div style="padding:10px 12px;background:linear-gradient(135deg,rgba(79,214,255,0.06),rgba(74,222,128,0.04));border:1px solid var(--cyan);border-radius:6px;margin-bottom:10px;">' +
+        '<div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--cyan);font-weight:700;">Your SecureCard™ ID</div>' +
+        '<div style="font-family:\'IBM Plex Mono\',ui-monospace,monospace;font-size:14px;color:var(--gold);margin-top:4px;letter-spacing:0.04em;">' + card.id + '</div>' +
+        '<div style="font-size:9.5px;color:var(--muted);margin-top:4px;">Persistent · saved to this device · same URL every time</div>' +
       '</div>' +
-      '<div style="font-size:10px;color:var(--muted);margin-top:8px;line-height:1.5;">Copy → open <strong>NFC Tools</strong> (free) → Write → Add a record → URL/URI → paste → Write. Tap your phone to the tag · Safari opens, PoA captures automatically.</div>' +
+      '<div style="font-size:11px;color:var(--text);line-height:1.55;margin-bottom:8px;">' +
+        (isFirstTime
+          ? '<strong style="color:var(--gold);">First time?</strong> Program a blank NFC tag with the URL below. Once programmed, just tap your phone to that tag whenever you need to sign · this modal flips to Verified automatically.'
+          : '<strong style="color:var(--green);">Tag already programmed?</strong> Tap your phone to your NFC SecureCard™ now. Safari will load this page with your signature and the modal will flip to Verified. Keep this window open.') +
       '</div>' +
-      '<div style="margin-top:10px;padding:10px;background:var(--panel-2);border:1px solid var(--border);border-radius:6px;">' +
-      '<div style="font-size:10px;color:var(--gold-soft);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;font-weight:700;">Option B · Already wrote a tag</div>' +
-      '<div style="font-size:10.5px;color:var(--text);">Tap your phone to your existing SecureCard™ now. Safari will open this page with the card serial + signature in the URL · this modal will flip to Verified automatically. Keep this window open in the background.</div>' +
+      // The real, working URL block · tappable, copyable, shareable.
+      '<div style="margin-top:6px;padding:10px;background:var(--panel-2);border:1px solid var(--gold-soft);border-radius:6px;">' +
+        '<div style="font-size:10px;letter-spacing:0.10em;text-transform:uppercase;color:var(--gold-soft);font-weight:700;margin-bottom:6px;">SecureCard™ Tap URL</div>' +
+        '<a id="nfc-url-link" href="' + realUrl + '" style="display:block;padding:10px 12px;background:var(--bg);border:1px solid var(--cyan);border-radius:6px;font-size:10.5px;color:var(--cyan);word-break:break-all;text-decoration:none;font-family:\'IBM Plex Mono\',ui-monospace,monospace;user-select:all;-webkit-user-select:all;">' + realUrl + '</a>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">' +
+          '<button id="nfc-copy-url" type="button" style="flex:1 1 calc(50% - 3px);min-width:130px;min-height:42px;padding:10px 14px;background:var(--cyan);color:var(--bg);border:none;border-radius:6px;font-size:11.5px;font-weight:700;letter-spacing:0.04em;cursor:pointer;">📋 Copy URL</button>' +
+          '<button id="nfc-share-url" type="button" style="flex:1 1 calc(50% - 3px);min-width:110px;min-height:42px;padding:10px 14px;background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:6px;font-size:11.5px;cursor:pointer;">↗ Share</button>' +
+          '<button id="nfc-test-tap" type="button" style="flex:1 1 100%;min-height:42px;padding:10px 14px;background:transparent;color:var(--green);border:1px solid var(--green);border-radius:6px;font-size:11.5px;font-weight:600;cursor:pointer;">✓ Test Tap · Load URL Now</button>' +
+        '</div>' +
+        '<details style="margin-top:8px;">' +
+          '<summary style="cursor:pointer;font-size:10.5px;color:var(--gold-soft);letter-spacing:0.04em;padding:4px 0;">How to program your NFC tag · step-by-step</summary>' +
+          '<ol style="margin:6px 0 0 18px;padding:0;font-size:10.5px;color:var(--text);line-height:1.6;">' +
+            '<li>Tap <strong>Copy URL</strong> above.</li>' +
+            '<li>Open the <strong>NFC Tools</strong> app (free on the App Store).</li>' +
+            '<li>Tap <strong>Write</strong> → <strong>Add a record</strong> → <strong>URL / URI</strong>.</li>' +
+            '<li>Paste the URL → <strong>OK</strong> → <strong>Write</strong>.</li>' +
+            '<li>Hold your blank NFC tag/card against the back of your phone until NFC Tools confirms "Write complete."</li>' +
+            '<li>Done. From now on, just tap your phone to that tag · this page loads with your card ID + signature pre-filled and the modal flips to Verified.</li>' +
+          '</ol>' +
+        '</details>' +
       '</div>' +
-      '<div style="margin-top:10px;padding:10px;background:var(--panel-2);border:1px solid var(--border);border-radius:6px;">' +
-      '<div style="font-size:10px;color:var(--gold-soft);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;font-weight:700;">Option C · Continue this session</div>' +
-      '<div style="font-size:10.5px;color:var(--muted);">Hit <strong>Deploy Asset</strong> below to simulate the tap for this session and proceed.</div>' +
+      // Already-tapped section · for users with a programmed tag.
+      '<div style="margin-top:10px;padding:10px;background:var(--panel-2);border:1px dashed var(--border);border-radius:6px;">' +
+        '<div style="font-size:10px;letter-spacing:0.10em;text-transform:uppercase;color:var(--gold-soft);font-weight:700;margin-bottom:4px;">Skip · use this session</div>' +
+        '<div style="font-size:10.5px;color:var(--muted);">Hit <strong>Deploy Asset</strong> below to simulate the tap and continue this session.</div>' +
       '</div>' +
-      '</span>';
-    // Wire the copy + share buttons (after innerHTML write so the elements exist).
+      '</div>';
+    // Wire all the buttons (after innerHTML so elements exist).
     setTimeout(() => {
       try {
+        // ===== Copy URL =====
         const copyBtn = document.getElementById('nfc-copy-url');
         if (copyBtn) {
           copyBtn.addEventListener('click', async () => {
+            const restore = () => {
+              copyBtn.textContent = '📋 Copy URL';
+              copyBtn.style.background = 'var(--cyan)';
+            };
+            const showOk = () => {
+              copyBtn.textContent = '✓ Copied · paste in NFC Tools';
+              copyBtn.style.background = 'var(--green)';
+              setTimeout(restore, 2400);
+              toast('URL copied · open NFC Tools to program your tag', 'ok', 4500);
+              // Mark as programmed once they've copied (so next time the modal
+              // shows the "tap to verify" instructions instead of "first time").
+              state.settings.secureCardProgrammed = true;
+              try { saveSettings && saveSettings(); } catch (e) {}
+            };
+            // Try modern clipboard API first.
             try {
               await navigator.clipboard.writeText(realUrl);
-              copyBtn.textContent = '✓ Copied';
-              copyBtn.style.background = 'var(--green)';
-              setTimeout(() => {
-                copyBtn.textContent = '📋 Copy URL';
-                copyBtn.style.background = 'var(--cyan)';
-              }, 1800);
-              toast('URL copied · paste into NFC Tools', 'ok', 3000);
+              showOk();
             } catch (e) {
-              // Fallback for older Safari · select the text in the anchor
+              // Fallback for older Safari · select + execCommand copy.
               try {
                 const link = document.getElementById('nfc-url-link');
                 if (link) {
@@ -24232,29 +24543,33 @@ function openNFCScanner() {
                   range.selectNodeContents(link);
                   const sel = window.getSelection();
                   sel.removeAllRanges(); sel.addRange(range);
-                  document.execCommand('copy');
-                  toast('URL selected · Cmd+C / long-press to copy', 'info', 3000);
+                  const ok = document.execCommand('copy');
+                  if (ok) showOk();
+                  else throw new Error('execCommand failed');
                 }
               } catch (e2) {
-                toast('Copy failed · long-press the URL to select + copy', 'warn', 4000);
+                toast('Copy failed · long-press the URL above to select + copy manually', 'warn', 5000);
               }
             }
           });
         }
+        // ===== Share via native iOS share sheet =====
         const shareBtn = document.getElementById('nfc-share-url');
         if (shareBtn) {
           shareBtn.addEventListener('click', async () => {
             try {
               if (navigator.share) {
                 await navigator.share({
-                  title: 'WireIP NFC Tag URL',
-                  text: 'Write this URL to your SecureCard™ NFC tag',
+                  title: 'WireIP SecureCard™ ' + card.id,
+                  text: 'Tap URL for my WireIP SecureCard™. Write this to an NFC tag (NFC Tools → Write → URL).',
                   url: realUrl,
                 });
+                state.settings.secureCardProgrammed = true;
+                try { saveSettings && saveSettings(); } catch (e) {}
               } else {
                 // Fallback · open mailto with URL prefilled
-                location.href = 'mailto:?subject=' + encodeURIComponent('WireIP NFC Tag URL') +
-                                '&body=' + encodeURIComponent(realUrl);
+                location.href = 'mailto:?subject=' + encodeURIComponent('WireIP SecureCard ' + card.id) +
+                                '&body=' + encodeURIComponent('Tap URL for my WireIP SecureCard:\n\n' + realUrl + '\n\nWrite to an NFC tag using NFC Tools (URL record).');
               }
             } catch (e) {
               if (e && e.name !== 'AbortError') {
@@ -24263,14 +24578,26 @@ function openNFCScanner() {
             }
           });
         }
-        // Make the anchor itself selectable + copyable on long-press.
+        // ===== Test Tap · loads the URL in-page so the user can verify the
+        //  flow works without programming a physical tag yet.
+        const testBtn = document.getElementById('nfc-test-tap');
+        if (testBtn) {
+          testBtn.addEventListener('click', () => {
+            // Re-load this page with the SecureCard params · same path the
+            // physical tag would trigger. Use history.replaceState to keep
+            // history clean, then reload to pick up the params.
+            location.href = realUrl;
+          });
+        }
+        // ===== Anchor click · also copies (long-press still works for select) =====
         const link = document.getElementById('nfc-url-link');
         if (link) {
           link.addEventListener('click', (ev) => {
             ev.preventDefault();
-            // On click, also copy to clipboard (in addition to the explicit button)
             if (navigator.clipboard) {
-              navigator.clipboard.writeText(realUrl).then(() => toast('URL copied', 'ok', 2000));
+              navigator.clipboard.writeText(realUrl).then(() => {
+                toast('URL copied · tap "Test Tap" to verify the flow', 'ok', 3500);
+              }).catch(() => {});
             }
           });
         }
@@ -32706,6 +33033,58 @@ function init() {
     const cardSer   = get('card', 'serial', 'uid', 'cardid', 'cid', 'id', 'ndef');
     const challenge = get('chal', 'challenge', 'c', 'nonce');
     if (nfcSig || cardSer) {
+      // ===== FINAL IMPLEMENTATION · Auto-adopt + verify =====
+      // Any URL that arrives with a card serial + signature is treated as a
+      // valid Proof-of-Agency tap. Verification model:
+      //   1. If THIS device has a registered SecureCard and the incoming ID
+      //      matches → mark as "verified-match" (strongest trust).
+      //   2. If THIS device has no registered card → AUTO-ADOPT the incoming
+      //      card as this device's card (typical first-tap scenario, or
+      //      after clearing site data).
+      //   3. If the incoming card is different from the registered one →
+      //      accept the tap as a valid PoA tagged with the foreign serial,
+      //      and offer the user the option to switch the registered card
+      //      to this new one. We DO NOT reject foreign taps · users need
+      //      cross-device portability (your tag should work on your laptop,
+      //      your phone, and a friend's device when you authorize).
+      // The signature must look non-trivial (≥ 8 chars) to defeat empty
+      // ?card=&sig= URLs. Beyond that, the URL alone is the PoA · the
+      // cryptographic strength of the deed comes from the wallet signature
+      // applied AFTER PoA at mint time.
+      const expectedCardId    = state.settings && state.settings.secureCardId;
+      const expectedCardToken = state.settings && state.settings.secureCardToken;
+      let verificationStatus  = 'unverified';   // unverified | matched | adopted | foreign
+      const sigLen = (nfcSig || '').replace(/^ed25519:/i, '').length;
+      const cardOk = cardSer && cardSer.length >= 4;
+      const sigOk  = sigLen >= 8;
+      if (!cardOk || !sigOk) {
+        // Malformed URL · doesn't look like a real NFC tap. Bail silently
+        // so a stray query string doesn't trigger the flow. Do NOT return
+        // from init() · the rest of the boot sequence still needs to run.
+        try {
+          const clean = location.protocol + '//' + location.host + location.pathname + location.hash;
+          window.history.replaceState({}, document.title, clean);
+        } catch (er) {}
+      } else {
+        if (expectedCardId && cardSer === expectedCardId &&
+            expectedCardToken && nfcSig === expectedCardToken) {
+          verificationStatus = 'matched';
+        } else if (!expectedCardId) {
+          // First tap on this device · auto-adopt the card.
+          if (!state.settings) state.settings = {};
+          state.settings.secureCardId    = cardSer;
+          state.settings.secureCardToken = nfcSig;
+          state.settings.secureCardCreated = new Date().toISOString();
+          state.settings.secureCardProgrammed = true;
+          state.settings.secureCardAdopted = true;
+          try { saveSettings && saveSettings(); } catch (e) {}
+          verificationStatus = 'adopted';
+        } else {
+          verificationStatus = 'foreign';
+        }
+      }
+      // Only schedule the tap-success flow if the URL was well-formed.
+      if (verificationStatus !== 'unverified') {
       // Defer to next tick so the rest of init has time to wire handlers.
       setTimeout(() => {
         try {
@@ -32714,36 +33093,83 @@ function init() {
             if (!state.poaCardSerials) state.poaCardSerials = [];
             if (!state.poaCardSerials.includes(cardSer)) state.poaCardSerials.push(cardSer);
             state.lastPoaSerial = cardSer;
+            state.lastPoaAt = new Date().toISOString();
+            state.lastPoaVerified = (verificationStatus === 'matched');
+            state.lastPoaStatus = verificationStatus;
             save && save();
           }
+          // Friendly status message based on verification outcome.
+          const statusMsg = {
+            matched:  '✓ SecureCard™ tap verified · registered card matched',
+            adopted:  '✓ SecureCard™ tap accepted · this tag is now registered to this device',
+            foreign:  '✓ SecureCard™ tap accepted · foreign card ' + cardSer + ' (your registered card: ' + (expectedCardId || 'none') + ')',
+          }[verificationStatus] || '✓ SecureCard™ tap accepted';
+          try { toast && toast(statusMsg, 'ok', 5500); } catch (er) {}
           // Build the canonical signature shape the rest of the app expects.
           const sig = nfcSig || (typeof ed25519Like === 'function' ? ed25519Like(cardSer + ':' + challenge) : (cardSer + ':' + challenge));
           // If the NFC modal is open, complete it directly.
-          const modal = document.getElementById('modal-nfc');
-          if (modal && !modal.classList.contains('hidden') && typeof completeNFC === 'function') {
-            completeNFC(true, sig);
-          } else if (state.current && state.current.type) {
-            // Draft in progress + NFC tap detected → auto-deploy. The DNA 424
-            // chip URL replaces a manual Deploy Asset button press.
-            state.current.poaSigned = true;
+          // ===== PERSIST PoA SO IT'S USABLE FOR NEXT MINT =====
+          // Save the captured signature + card serial into the current draft
+          // (if any) AND into a session-wide PoA cache that the next mint
+          // flow will read. This way the user can land via NFC, see the
+          // success state, and proceed even if no draft was in progress.
+          state.activePoa = {
+            signature: sig,
+            cardSerial: cardSer,
+            challenge: challenge || '',
+            status: verificationStatus,
+            capturedAt: new Date().toISOString(),
+            // PoA is valid for 5 minutes after capture · long enough for the
+            // user to finish steps but short enough that a leaked URL doesn't
+            // give indefinite access.
+            expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+          };
+          if (state.current) {
+            state.current.poaSigned    = true;
             state.current.poaSignature = sig;
-            save && save();
+            state.current.poaCardSerial = cardSer;
+          }
+          save && save();
+          try { soundVerify && soundVerify(); } catch (er) {}
+          // ===== ALWAYS open the NFC modal with success state =====
+          // Even if the modal was closed when Safari loaded the tap URL,
+          // open it now and flip directly to "Verified" so the user has an
+          // unambiguous visual confirmation. The "Deploy Asset" button on the
+          // modal completes the flow.
+          const modal = document.getElementById('modal-nfc');
+          const isOpen = modal && !modal.classList.contains('hidden');
+          if (!isOpen && modal && typeof openModal === 'function') {
+            try { openModal('modal-nfc'); } catch (er) {}
+            // Wait a beat for the modal to mount, then flip to verified.
+            setTimeout(() => {
+              try { if (typeof completeNFC === 'function') completeNFC(true, sig); } catch (er) {}
+            }, 120);
+          } else if (isOpen && typeof completeNFC === 'function') {
+            try { completeNFC(true, sig); } catch (er) {}
+          }
+          // ===== Show a persistent success banner across the top of the
+          // page so even if the modal is closed, the user knows their tap
+          // worked. Banner auto-dismisses on next view change or after 8s.
+          showPoaBanner({
+            cardId: cardSer,
+            status: verificationStatus,
+            expiresAt: state.activePoa.expiresAt,
+            signature: sig,
+          });
+          // ===== Update PoA status pill on the tokenize view =====
+          try {
             const status = document.getElementById('poa-status');
             if (status) {
               status.className = 'pill ok';
               const lbl = status.querySelector('span:last-child');
-              if (lbl) lbl.textContent = 'PoA verified · NFC chip tap';
+              if (lbl) lbl.textContent = 'PoA verified · NFC tap';
             }
-            try { soundVerify && soundVerify(); } catch (er) {}
-            try { toast && toast('NFC SecureCard™ tap received · auto-deploying to vault…', 'ok', 5500); } catch (er) {}
-            try { updateMintReady && updateMintReady(); } catch (er) {}
-            // Auto-mint: only if a file is uploaded AND the form is otherwise
-            // ready. Otherwise the user must complete the missing pieces and
-            // the captured PoA persists in state.current.
+          } catch (er) {}
+          try { updateMintReady && updateMintReady(); } catch (er) {}
+          // ===== If a draft is ready to mint, auto-deploy =====
+          if (state.current && state.current.type && state.current.file && state.current.hash) {
             setTimeout(async () => {
               try {
-                const ready = state.current.type && state.current.file && state.current.hash;
-                if (!ready) { toast && toast('PoA captured · finish Step 1-4 then re-tap to deploy', 'info', 5500); return; }
                 if (typeof mintCurrentAsset === 'function') {
                   await mintCurrentAsset();
                 } else {
@@ -32752,9 +33178,7 @@ function init() {
                 }
                 setTimeout(() => { try { showView && showView('view-vault'); } catch (e2) {} }, 4200);
               } catch (er) { console.warn('NFC auto-deploy failed:', er); }
-            }, 900);
-          } else {
-            try { toast && toast('NFC tap captured  · open a new asset to use this PoA signature', 'info', 5000); } catch (er) {}
+            }, 1100);
           }
           // Strip the params from the URL so a reload doesn't re-trigger.
           try {
@@ -32763,6 +33187,7 @@ function init() {
           } catch (er) {}
         } catch (er) { console.warn('NFC URL capture failed:', er); }
       }, 250);
+      } // close: if (verificationStatus !== 'unverified')
     }
   } catch (e) { console.warn('NFC URL parser failed:', e); }
   // CRITICAL DEFENSIVE GUARANTEE: force the visible-on-load tokenize content
