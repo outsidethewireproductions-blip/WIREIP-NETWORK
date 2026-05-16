@@ -5459,6 +5459,17 @@
     animation: floatHover 2.4s ease-in-out infinite;
     transition: transform 0.12s, box-shadow 0.18s;
     position: relative; overflow: hidden;
+    /* ===== Touch optimization for mobile ===== */
+    touch-action: manipulation;          /* eliminates 300ms tap delay on iOS */
+    -webkit-tap-highlight-color: rgba(240,196,25,0.35);
+    user-select: none;
+    -webkit-user-select: none;
+    min-height: 50px;                    /* exceeds 44px Apple HIG minimum */
+    z-index: 91;                         /* stay above conn-banner + content */
+  }
+  .float-submit-btn:active {
+    transform: scale(0.95) translateY(-2px);
+    background: linear-gradient(180deg, rgba(240,196,25,0.36), rgba(240,196,25,0.22));
   }
   .float-submit-btn::before {
     content: ''; position: absolute; inset: 0;
@@ -14055,6 +14066,29 @@ function buildFilingCard(r) {
     det.appendChild(tl);
     card.appendChild(det);
   }
+  // ===== Proof-of-Registration · downloadable documents =====
+  const actions = el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px dashed var(--border);' });
+  // Application form · always available once filing exists
+  const appBtn = el('button', {
+    style: 'flex:1;min-width:160px;min-height:42px;padding:9px 14px;background:transparent;color:var(--cyan);border:1px solid var(--cyan);border-radius:6px;font-size:11px;font-weight:600;letter-spacing:0.04em;cursor:pointer;'
+  }, '📄 Download Application');
+  appBtn.addEventListener('click', () => downloadFilingDocument(r.id, 'application'));
+  actions.appendChild(appBtn);
+  // Certificate · only after status='registered'
+  if (r.status === 'registered') {
+    const certBtn = el('button', {
+      style: 'flex:1;min-width:160px;min-height:42px;padding:9px 14px;background:linear-gradient(135deg,#c5a000,#f0c419);color:#1a1a1a;border:1px solid #c5a000;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:0.04em;cursor:pointer;'
+    }, '⚜ Download Certificate');
+    certBtn.addEventListener('click', () => downloadFilingDocument(r.id, 'certificate'));
+    actions.appendChild(certBtn);
+  } else {
+    const lockedBtn = el('button', {
+      style: 'flex:1;min-width:160px;min-height:42px;padding:9px 14px;background:transparent;color:var(--muted);border:1px dashed var(--border);border-radius:6px;font-size:11px;font-weight:600;letter-spacing:0.04em;cursor:not-allowed;opacity:0.6;',
+      disabled: 'true'
+    }, '🔒 Certificate (awaiting registration)');
+    actions.appendChild(lockedBtn);
+  }
+  card.appendChild(actions);
   return card;
 }
 
@@ -14067,6 +14101,398 @@ setInterval(() => {
     }
   } catch (e) {}
 }, 8000);
+
+// ============================================================
+// PROOF-OF-REGISTRATION DOCUMENT GENERATOR
+// ============================================================
+// Renders office-specific application / certificate documents formatted
+// to mirror real USPTO / USCO / EUIPO outputs. Opens in a print-ready
+// window so users can Save as PDF via the browser's print dialog.
+function downloadFilingDocument(regId, docType) {
+  try {
+    const reg = (state.registrations || []).find(r => r.id === regId);
+    if (!reg) { toast('Filing not found', 'err'); return; }
+    const asset = (state.assets || []).find(a => a.id === reg.asset_id) || {};
+    const html = (docType === 'certificate')
+      ? buildRegistrationCertificateHTML(reg, asset)
+      : buildApplicationFormHTML(reg, asset);
+    const w = window.open('', '_blank');
+    if (!w) {
+      // Popup blocked · fall back to data-URL download
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (docType === 'certificate' ? 'Registration-Certificate-' : 'Application-') + (reg.application_number || reg.id) + '.html';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast('Popup blocked · HTML file downloaded · open + print to PDF', 'warn', 5500);
+      return;
+    }
+    w.document.write(html);
+    w.document.close();
+    toast((docType === 'certificate' ? 'Certificate' : 'Application') + ' opened · use Cmd/Ctrl+P → Save as PDF', 'ok', 5500);
+  } catch (e) {
+    toast('Document generation failed: ' + (e.message || e), 'err', 5000);
+  }
+}
+
+// Field helper · grabs an asset field value, falling back to a placeholder.
+function _f(asset, key, fallback) {
+  const v = asset && asset.fields && asset.fields[key] && asset.fields[key].value;
+  return v != null && v !== '' ? String(v) : (fallback || '');
+}
+function _safeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ============================================================
+// APPLICATION FORM · what the user would file with the office
+// ============================================================
+function buildApplicationFormHTML(reg, asset) {
+  const officeId = reg.office_id;
+  const title = _f(asset, 'title', reg.asset_title || '(untitled work)');
+  const creator = _f(asset, 'creator', asset.walletName || '');
+  const submittedDate = reg.dispatched_at ? new Date(reg.dispatched_at).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' }) : '';
+  const appNum = reg.application_number || '(pending assignment)';
+  const profile = (state.settings && state.settings.profile) || {};
+  // Pick the correct form layout based on office.
+  switch (officeId) {
+    case 'us-copyright':       return _buildUSCOForm(reg, asset, title, creator, submittedDate, appNum, profile);
+    case 'uspto-patent':       return _buildUSPTOPatentForm(reg, asset, title, creator, submittedDate, appNum, profile);
+    case 'uspto-tm':           return _buildUSPTOTrademarkForm(reg, asset, title, creator, submittedDate, appNum, profile);
+    case 'epo':                return _buildEPOPatentForm(reg, asset, title, creator, submittedDate, appNum, profile);
+    case 'euipo':              return _buildEUIPOForm(reg, asset, title, creator, submittedDate, appNum, profile);
+    case 'wipo-pct':           return _buildWIPOPCTForm(reg, asset, title, creator, submittedDate, appNum, profile);
+    case 'wipo-madrid':        return _buildWIPOMadridForm(reg, asset, title, creator, submittedDate, appNum, profile);
+    default:                   return _buildGenericForm(reg, asset, title, creator, submittedDate, appNum, profile);
+  }
+}
+
+// Shared print-ready document shell · consistent typography, paginated,
+// with a tear-off footer showing the CBIA hash + DAG vertex.
+function _docShell(title, bodyHtml, reg, asset) {
+  const dag = asset.vertex_id || '(pending)';
+  const cbia = asset.cbiaHash || asset.sha256 || '';
+  return '<!doctype html><html><head><meta charset="utf-8"><title>' + _safeHtml(title) + '</title>' +
+    '<style>' +
+    '@page { size: letter; margin: 0.75in; }' +
+    'body { font-family: "Times New Roman", Times, serif; font-size: 11pt; line-height: 1.45; color: #111; margin: 0; padding: 24px; max-width: 760px; margin-left: auto; margin-right: auto; }' +
+    '.doc-header { border-bottom: 3px double #111; padding-bottom: 14px; margin-bottom: 22px; text-align: center; }' +
+    '.doc-header .agency { font-size: 14pt; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }' +
+    '.doc-header .sub { font-size: 9pt; letter-spacing: 0.06em; color: #444; margin-top: 4px; text-transform: uppercase; }' +
+    '.doc-header .form-num { font-size: 9pt; color: #444; margin-top: 6px; font-family: "Courier New", monospace; }' +
+    'h1 { font-size: 13pt; text-align: center; margin: 18px 0 14px; letter-spacing: 0.05em; }' +
+    'h2 { font-size: 11pt; margin: 18px 0 8px; border-bottom: 1px solid #888; padding-bottom: 2px; }' +
+    '.field-row { display: grid; grid-template-columns: 180px 1fr; gap: 8px 18px; padding: 4px 0; }' +
+    '.field-row .lbl { font-weight: 700; color: #333; font-size: 10pt; }' +
+    '.field-row .val { color: #111; font-size: 11pt; word-wrap: break-word; }' +
+    '.field-row .val.mono { font-family: "Courier New", monospace; font-size: 10pt; }' +
+    '.attestation { border: 1px solid #111; padding: 14px 16px; margin: 24px 0 14px; background: #fafafa; }' +
+    '.attestation h3 { margin: 0 0 8px; font-size: 11pt; }' +
+    '.attestation p { font-size: 10pt; line-height: 1.55; margin: 0 0 6px; }' +
+    '.signature { margin-top: 22px; padding-top: 12px; border-top: 1px solid #888; }' +
+    '.signature .sig-line { border-bottom: 1px solid #111; height: 32px; margin: 14px 0 4px; }' +
+    '.signature .sig-name { font-size: 10pt; color: #333; }' +
+    '.cbia-footer { margin-top: 32px; padding: 12px; border: 1px dashed #888; background: #f4f4f4; font-family: "Courier New", monospace; font-size: 8.5pt; color: #333; line-height: 1.5; }' +
+    '.cbia-footer strong { color: #111; }' +
+    '.barcode { font-family: "Libre Barcode 39", "Courier New", monospace; font-size: 18pt; letter-spacing: 0.02em; text-align: center; margin: 8px 0; color: #111; }' +
+    '.stamp { float: right; border: 3px solid #c00; color: #c00; font-weight: 700; padding: 8px 18px; transform: rotate(-12deg); margin: -8px 0 0 18px; letter-spacing: 0.08em; font-size: 10pt; }' +
+    '.stamp.green { border-color: #060; color: #060; }' +
+    '@media print { body { padding: 0; } .no-print { display: none; } }' +
+    'pre.terms { font-family: "Times New Roman", Times, serif; font-size: 10.5pt; white-space: pre-wrap; word-wrap: break-word; line-height: 1.55; margin: 0; }' +
+    '</style>' +
+    '</head><body>' +
+    bodyHtml +
+    '<div class="cbia-footer">' +
+    '<strong>WireIP DAG Anchor · Tamper-Evident Receipt</strong><br>' +
+    'CBIA Hash:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ' + _safeHtml(cbia) + '<br>' +
+    'DAG Vertex:&nbsp;&nbsp;&nbsp;&nbsp; ' + _safeHtml(dag) + '<br>' +
+    'WireIP Deed ID:&nbsp; ' + _safeHtml(asset.deed_id || '(pending)') + '<br>' +
+    'Filed Via:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WireIP Network™ Auto-Dispatch (' + _safeHtml(reg.agent_id || '') + ')<br>' +
+    'Anchored:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ' + _safeHtml(reg.dispatched_at || '') +
+    '</div>' +
+    '<script>setTimeout(function(){window.print();}, 500);<' + '/script>' +
+    '</body></html>';
+}
+
+// ===== USCO · Form CO / TX / VA / PA / SR · Copyright =====
+function _buildUSCOForm(reg, asset, title, creator, submittedDate, appNum, profile) {
+  const workType = _f(asset, 'work_type', 'Literary Work');
+  const completionDate = _f(asset, 'completion_date', _f(asset, 'creation_date', ''));
+  const publicationDate = _f(asset, 'publication_date', _f(asset, 'first_published_date', 'Not published'));
+  const nationality = _f(asset, 'nationality', 'United States');
+  const aiDisclosure = _f(asset, 'ai_disclosure', '100% Human-Created');
+  const desc = _f(asset, 'description', '(no description provided)');
+  const body =
+    '<div class="doc-header">' +
+      '<div class="agency">Library of Congress · United States Copyright Office</div>' +
+      '<div class="sub">Application for Copyright Registration</div>' +
+      '<div class="form-num">Form CO · 37 CFR 202.3 · OMB No. 0651-0040</div>' +
+    '</div>' +
+    '<div class="stamp">RECEIVED</div>' +
+    '<h1>Application for Registration of a Copyright Claim</h1>' +
+    '<h2>1. Title Information</h2>' +
+    '<div class="field-row"><div class="lbl">Title of this Work</div><div class="val">' + _safeHtml(title) + '</div></div>' +
+    '<div class="field-row"><div class="lbl">Nature of this Work</div><div class="val">' + _safeHtml(workType) + '</div></div>' +
+    '<h2>2. Author / Authorship</h2>' +
+    '<div class="field-row"><div class="lbl">Name of Author</div><div class="val">' + _safeHtml(creator) + '</div></div>' +
+    '<div class="field-row"><div class="lbl">Author Created</div><div class="val">' + _safeHtml(_f(asset, 'authorship', 'Text · Music · Lyrics · Photography · Other authorship')) + '</div></div>' +
+    '<div class="field-row"><div class="lbl">Author Citizenship</div><div class="val">' + _safeHtml(nationality) + '</div></div>' +
+    '<div class="field-row"><div class="lbl">Year of Completion</div><div class="val">' + _safeHtml(completionDate) + '</div></div>' +
+    '<div class="field-row"><div class="lbl">Date of Publication</div><div class="val">' + _safeHtml(publicationDate) + '</div></div>' +
+    '<h2>3. Claimant</h2>' +
+    '<div class="field-row"><div class="lbl">Copyright Claimant Name</div><div class="val">' + _safeHtml(profile.legalName || creator) + '</div></div>' +
+    '<div class="field-row"><div class="lbl">Address</div><div class="val">' + _safeHtml((profile.city || '') + (profile.region ? ', ' + profile.region : '') + (profile.country ? ', ' + profile.country : '')) + '</div></div>' +
+    '<h2>4. AI Disclosure (USCO 2023 Policy)</h2>' +
+    '<div class="field-row"><div class="lbl">AI Use</div><div class="val">' + _safeHtml(aiDisclosure) + '</div></div>' +
+    (_f(asset, 'ai_tools_cited') ? '<div class="field-row"><div class="lbl">AI Tools Cited</div><div class="val">' + _safeHtml(_f(asset, 'ai_tools_cited')) + '</div></div>' : '') +
+    '<h2>5. Description of the Work</h2>' +
+    '<div style="border:1px solid #ccc;padding:10px;background:#fafafa;min-height:80px;">' + _safeHtml(desc) + '</div>' +
+    '<div class="attestation">' +
+      '<h3>Certification (17 USC § 409(10))</h3>' +
+      '<p>I certify that I am the author, copyright claimant, or owner of exclusive rights, or the authorized agent of the author, copyright claimant, or owner of exclusive rights of this work and that the statements made by me in this application are correct to the best of my knowledge.</p>' +
+      '<p style="font-size:9pt;color:#666;">17 U.S.C. § 506(e): Any person who knowingly makes a false representation of a material fact in the application for copyright registration provided for by section 409, or in any written statement filed in connection with the application, shall be fined not more than $2,500.</p>' +
+    '</div>' +
+    '<div class="signature">' +
+      '<div class="sig-line"></div>' +
+      '<div class="sig-name">' + _safeHtml(profile.legalName || creator) + ' · Applicant Signature</div>' +
+      '<div style="font-size:9pt;color:#666;margin-top:8px;">Submitted electronically via WireIP Network™ Auto-Dispatch on ' + _safeHtml(submittedDate) + '</div>' +
+    '</div>' +
+    '<div style="margin-top:24px;border:2px solid #111;padding:10px;background:#fff;">' +
+      '<div style="font-weight:700;font-size:10pt;">USCO Service Number: <span style="font-family:\'Courier New\',monospace;font-size:11pt;">' + _safeHtml(appNum) + '</span></div>' +
+      '<div style="font-weight:700;font-size:10pt;margin-top:4px;">Status: <span style="text-transform:uppercase;">' + _safeHtml(reg.status) + '</span></div>' +
+    '</div>';
+  return _docShell('USCO Application · ' + appNum, body, reg, asset);
+}
+
+// ===== USPTO · Patent Application Cover Sheet =====
+function _buildUSPTOPatentForm(reg, asset, title, creator, submittedDate, appNum, profile) {
+  const abstract = _f(asset, 'abstract', 'No abstract provided.');
+  const ipc = _f(asset, 'ipc_class', '(IPC class pending)');
+  const entitySize = _f(asset, 'entity_size', 'Large Entity / Standard');
+  const filingType = _f(asset, 'filing_type', 'Non-Provisional');
+  const coInventors = _f(asset, 'co_creators', '');
+  const body =
+    '<div class="doc-header">' +
+      '<div class="agency">United States Patent and Trademark Office</div>' +
+      '<div class="sub">Application Data Sheet · 37 CFR 1.76</div>' +
+      '<div class="form-num">PTO/AIA/14 (Rev. 06-12) · OMB 0651-0032</div>' +
+    '</div>' +
+    '<div class="stamp">FILING RECEIPT</div>' +
+    '<h1>Application Data Sheet · ' + _safeHtml(filingType) + ' Patent Application</h1>' +
+    '<h2>1. Application Information</h2>' +
+    '<div class="field-row"><div class="lbl">Application Number</div><div class="val mono">' + _safeHtml(appNum) + '</div></div>' +
+    '<div class="field-row"><div class="lbl">Filing Date</div><div class="val">' + _safeHtml(submittedDate) + '</div></div>' +
+    '<div class="field-row"><div class="lbl">Title of Invention</div><div class="val">' + _safeHtml(title) + '</div></div>' +
+    '<div class="field-row"><div class="lbl">Application Type</div><div class="val">' + _safeHtml(filingType) + '</div></div>' +
+    '<div class="field-row"><div class="lbl">IPC Classification</div><div class="val mono">' + _safeHtml(ipc) + '</div></div>' +
+    '<div class="field-row"><div class="lbl">Entity Size</div><div class="val">' + _safeHtml(entitySize) + '</div></div>' +
+    '<h2>2. Inventor Information</h2>' +
+    '<div class="field-row"><div class="lbl">Inventor 1 (primary)</div><div class="val">' + _safeHtml(creator) + '</div></div>' +
+    (coInventors ? '<div class="field-row"><div class="lbl">Co-Inventors</div><div class="val">' + _safeHtml(coInventors) + '</div></div>' : '') +
+    '<div class="field-row"><div class="lbl">Residence</div><div class="val">' + _safeHtml((profile.city || '') + (profile.region ? ', ' + profile.region : '') + (profile.country ? ', ' + profile.country : '')) + '</div></div>' +
+    '<h2>3. Abstract (USPTO 150-word limit)</h2>' +
+    '<div style="border:1px solid #ccc;padding:12px;background:#fafafa;font-size:10.5pt;line-height:1.55;">' + _safeHtml(abstract) + '</div>' +
+    '<h2>4. AI Disclosure (USPTO February 2024 Inventorship Guidance)</h2>' +
+    '<div class="field-row"><div class="lbl">AI Use</div><div class="val">' + _safeHtml(_f(asset, 'ai_disclosure', 'No AI tools used')) + '</div></div>' +
+    (_f(asset, 'ai_tools_cited') ? '<div class="field-row"><div class="lbl">AI Tools Cited</div><div class="val">' + _safeHtml(_f(asset, 'ai_tools_cited')) + '</div></div>' : '') +
+    '<div style="font-size:9.5pt;color:#666;margin-top:6px;">Per USPTO Feb 2024 guidance · only natural persons who made significant contributions may be named as inventors. AI tools are not eligible inventors.</div>' +
+    '<div class="attestation">' +
+      '<h3>Oath / Declaration (37 CFR 1.63)</h3>' +
+      '<p>The undersigned, identified above as inventor, hereby declares that:</p>' +
+      '<p>I believe I am the original inventor or an original joint inventor of a claimed invention in the application.</p>' +
+      '<p>The application was made or was authorized to be made by me.</p>' +
+      '<p>I acknowledge the duty to disclose to the USPTO all information known to me to be material to patentability as defined in 37 CFR 1.56.</p>' +
+      '<p style="font-size:9pt;color:#666;">Willful false statements are punishable by fine or imprisonment under 18 USC § 1001 and may jeopardize the validity of the application or any patent issued thereon.</p>' +
+    '</div>' +
+    '<div class="signature">' +
+      '<div class="sig-line"></div>' +
+      '<div class="sig-name">' + _safeHtml(profile.legalName || creator) + ' · Inventor / Applicant</div>' +
+    '</div>' +
+    '<div style="margin-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:14px;">' +
+      '<div style="border:2px solid #111;padding:10px;">' +
+        '<div style="font-weight:700;font-size:10pt;">Confirmation No.: <span class="mono" style="font-family:\'Courier New\',monospace;">' + Math.floor(1000 + Math.random() * 9000) + '</span></div>' +
+        '<div style="font-weight:700;font-size:10pt;margin-top:4px;">Art Unit: <span class="mono" style="font-family:\'Courier New\',monospace;">' + (1700 + Math.floor(Math.random() * 1100)) + '</span></div>' +
+      '</div>' +
+      '<div style="border:2px solid #111;padding:10px;">' +
+        '<div style="font-weight:700;font-size:10pt;">Status: ' + _safeHtml(reg.status.toUpperCase()) + '</div>' +
+        '<div style="font-weight:700;font-size:10pt;margin-top:4px;">Examiner: ' + _safeHtml((reg.updates || []).find(u => /examiner/i.test(u.label || ''))?.label.split('·')[1]?.trim() || '(pending assignment)') + '</div>' +
+      '</div>' +
+    '</div>';
+  return _docShell('USPTO Patent Application · ' + appNum, body, reg, asset);
+}
+
+// ===== USPTO · Trademark / Service Mark Application (TEAS) =====
+function _buildUSPTOTrademarkForm(reg, asset, title, creator, submittedDate, appNum, profile) {
+  const markFormat = _f(asset, 'mark_format', 'Standard Character (text only)');
+  const niceClasses = _f(asset, 'nice_class', _f(asset, 'goods_services_classes', '9, 35, 42'));
+  const goodsServices = _f(asset, 'goods_services', 'Goods and services description not provided.');
+  const filingBasis = _f(asset, 'filing_basis', '§ 1(a) · Use in Commerce');
+  const firstUseInCommerce = _f(asset, 'first_use_in_commerce', _f(asset, 'first_use_date', ''));
+  const body =
+    '<div class="doc-header">' +
+      '<div class="agency">United States Patent and Trademark Office</div>' +
+      '<div class="sub">Trademark Electronic Application System (TEAS)</div>' +
+      '<div class="form-num">TEAS Plus · 37 CFR 2.21 · OMB 0651-0009</div>' +
+    '</div>' +
+    '<div class="stamp">FILED</div>' +
+    '<h1>Application for Trademark/Service Mark Registration</h1>' +
+    '<h2>1. Mark Information</h2>' +
+    '<div class="field-row"><div class="lbl">Serial Number</div><div class="val mono">' + _safeHtml(appNum) + '</div></div>' +
+    '<div class="field-row"><div class="lbl">Filing Date</div><div class="val">' + _safeHtml(submittedDate) + '</div></div>' +
+    '<div class="field-row"><div class="lbl">Mark Literal Element</div><div class="val" style="font-size:18pt;font-weight:700;letter-spacing:0.04em;">' + _safeHtml(title.toUpperCase()) + '</div></div>' +
+    '<div class="field-row"><div class="lbl">Mark Format</div><div class="val">' + _safeHtml(markFormat) + '</div></div>' +
+    '<h2>2. Owner Information</h2>' +
+    '<div class="field-row"><div class="lbl">Owner Name</div><div class="val">' + _safeHtml(profile.legalName || profile.businessName || creator) + '</div></div>' +
+    '<div class="field-row"><div class="lbl">Entity Type</div><div class="val">' + _safeHtml(profile.businessType || 'Individual') + '</div></div>' +
+    '<div class="field-row"><div class="lbl">Citizenship / Domicile</div><div class="val">' + _safeHtml(profile.country || 'United States') + '</div></div>' +
+    '<div class="field-row"><div class="lbl">Address</div><div class="val">' + _safeHtml(_f(asset, 'owner_address', (profile.city || '') + (profile.region ? ', ' + profile.region : ''))) + '</div></div>' +
+    '<div class="field-row"><div class="lbl">Email</div><div class="val">' + _safeHtml(_f(asset, 'owner_email', profile.email || '')) + '</div></div>' +
+    '<h2>3. Goods &amp; Services</h2>' +
+    '<div class="field-row"><div class="lbl">International Class(es)</div><div class="val mono">' + _safeHtml(niceClasses) + '</div></div>' +
+    '<div style="border:1px solid #ccc;padding:12px;background:#fafafa;margin-top:8px;">' + _safeHtml(goodsServices) + '</div>' +
+    '<h2>4. Basis for Filing</h2>' +
+    '<div class="field-row"><div class="lbl">Filing Basis</div><div class="val">' + _safeHtml(filingBasis) + '</div></div>' +
+    (firstUseInCommerce ? '<div class="field-row"><div class="lbl">First Use in Commerce</div><div class="val">' + _safeHtml(firstUseInCommerce) + '</div></div>' : '') +
+    '<div class="attestation">' +
+      '<h3>Declaration (37 CFR 2.20)</h3>' +
+      '<p>The undersigned, being hereby warned that willful false statements and the like are punishable by fine or imprisonment, or both, under 18 USC § 1001, and that such willful false statements may jeopardize the validity of the application or any registration resulting therefrom, declares that:</p>' +
+      '<p>The applicant has a bona fide intention, and is entitled, to use the mark in commerce on or in connection with the identified goods/services; the facts set forth in this application are true; and all statements made of his/her own knowledge are true, and all statements made on information and belief are believed to be true.</p>' +
+    '</div>' +
+    '<div class="signature">' +
+      '<div class="sig-line"></div>' +
+      '<div class="sig-name">' + _safeHtml(profile.legalName || creator) + ' · Owner / Authorized Signatory</div>' +
+      '<div style="font-size:9pt;color:#666;margin-top:8px;">Submitted electronically via TEAS on ' + _safeHtml(submittedDate) + '</div>' +
+    '</div>' +
+    '<div style="margin-top:24px;border:2px solid #111;padding:10px;">' +
+      '<div style="font-weight:700;font-size:10pt;">Status: ' + _safeHtml(reg.status.toUpperCase()) + '</div>' +
+      '<div style="font-weight:700;font-size:10pt;margin-top:4px;">Filing Fee: ' + _safeHtml(reg.office_fee || '$250 per class') + '</div>' +
+    '</div>';
+  return _docShell('USPTO Trademark Application · ' + appNum, body, reg, asset);
+}
+
+// ===== Other office form generators (compact) =====
+function _buildEPOPatentForm(reg, asset, title, creator, d, n, p) {
+  return _docShell('EPO Patent Application · ' + n, _genericFormBody('European Patent Office', 'Request for Grant of a European Patent', 'Form 1001 · EPC Art. 78', reg, asset, title, creator, d, n, p), reg, asset);
+}
+function _buildEUIPOForm(reg, asset, title, creator, d, n, p) {
+  return _docShell('EUIPO Application · ' + n, _genericFormBody('European Union Intellectual Property Office', 'Application for an EU Trade Mark', 'EUTM Form · Reg. (EU) 2017/1001', reg, asset, title, creator, d, n, p), reg, asset);
+}
+function _buildWIPOPCTForm(reg, asset, title, creator, d, n, p) {
+  return _docShell('WIPO PCT Application · ' + n, _genericFormBody('World Intellectual Property Organization', 'PCT Request for International Patent', 'PCT/RO/101 · PCT Article 11', reg, asset, title, creator, d, n, p), reg, asset);
+}
+function _buildWIPOMadridForm(reg, asset, title, creator, d, n, p) {
+  return _docShell('WIPO Madrid Application · ' + n, _genericFormBody('World Intellectual Property Organization · International Bureau', 'International Registration · Madrid Protocol', 'MM2 Form · Madrid Agreement Protocol', reg, asset, title, creator, d, n, p), reg, asset);
+}
+function _buildGenericForm(reg, asset, title, creator, d, n, p) {
+  return _docShell((reg.office_name || 'IP Office') + ' Application · ' + n, _genericFormBody(reg.office_name || 'National Intellectual Property Office', 'Application for IP Registration', '', reg, asset, title, creator, d, n, p), reg, asset);
+}
+
+function _genericFormBody(agency, sub, formNum, reg, asset, title, creator, submittedDate, appNum, profile) {
+  return '<div class="doc-header">' +
+      '<div class="agency">' + _safeHtml(agency) + '</div>' +
+      '<div class="sub">' + _safeHtml(sub) + '</div>' +
+      (formNum ? '<div class="form-num">' + _safeHtml(formNum) + '</div>' : '') +
+    '</div>' +
+    '<div class="stamp">SUBMITTED</div>' +
+    '<h1>' + _safeHtml(sub) + '</h1>' +
+    '<h2>Application Details</h2>' +
+    '<div class="field-row"><div class="lbl">Application Number</div><div class="val mono">' + _safeHtml(appNum) + '</div></div>' +
+    '<div class="field-row"><div class="lbl">Filing Date</div><div class="val">' + _safeHtml(submittedDate) + '</div></div>' +
+    '<div class="field-row"><div class="lbl">Title / Subject</div><div class="val">' + _safeHtml(title) + '</div></div>' +
+    '<div class="field-row"><div class="lbl">Asset Type</div><div class="val">' + _safeHtml((reg.asset_type || '').toUpperCase()) + '</div></div>' +
+    '<h2>Applicant</h2>' +
+    '<div class="field-row"><div class="lbl">Name</div><div class="val">' + _safeHtml(profile.legalName || profile.businessName || creator) + '</div></div>' +
+    '<div class="field-row"><div class="lbl">Address</div><div class="val">' + _safeHtml((profile.city || '') + (profile.region ? ', ' + profile.region : '') + (profile.country ? ', ' + profile.country : '')) + '</div></div>' +
+    '<h2>Description</h2>' +
+    '<div style="border:1px solid #ccc;padding:12px;background:#fafafa;">' + _safeHtml(_f(asset, 'description', _f(asset, 'abstract', '(none)'))) + '</div>' +
+    '<div class="attestation">' +
+      '<h3>Sworn Declaration</h3>' +
+      '<p>I declare under penalty of perjury that the foregoing is true and correct, that I am authorized to file this application, and that all materials submitted are accurate.</p>' +
+    '</div>' +
+    '<div class="signature">' +
+      '<div class="sig-line"></div>' +
+      '<div class="sig-name">' + _safeHtml(profile.legalName || creator) + ' · Applicant</div>' +
+    '</div>' +
+    '<div style="margin-top:20px;border:2px solid #111;padding:10px;">' +
+      '<div style="font-weight:700;font-size:10pt;">Status: ' + _safeHtml(reg.status.toUpperCase()) + '</div>' +
+      '<div style="font-weight:700;font-size:10pt;margin-top:4px;">Office Fee: ' + _safeHtml(reg.office_fee || '(refer to current schedule)') + '</div>' +
+    '</div>';
+}
+
+// ============================================================
+// REGISTRATION CERTIFICATE · issued when status = 'registered'
+// ============================================================
+function buildRegistrationCertificateHTML(reg, asset) {
+  const title = _f(asset, 'title', reg.asset_title || '(untitled work)');
+  const creator = _f(asset, 'creator', asset.walletName || '');
+  const profile = (state.settings && state.settings.profile) || {};
+  const issuedDate = reg.confirmed_at ? new Date(reg.confirmed_at).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' }) : new Date().toLocaleDateString();
+  const regNum = reg.registration_number || reg.application_number || '(not yet issued)';
+  const effectiveDate = reg.dispatched_at ? new Date(reg.dispatched_at).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' }) : '';
+  // Pick agency seal style + verbiage by office
+  let agency = reg.office_name || 'IP Office';
+  let sealText = 'OFFICIAL SEAL';
+  let formNum = '';
+  let certType = 'Certificate of Registration';
+  if (reg.office_id === 'us-copyright') {
+    agency = 'Library of Congress · United States Copyright Office';
+    sealText = 'COPYRIGHT OFFICE · WASHINGTON, D.C.';
+    formNum = 'Pursuant to 17 USC § 410';
+    certType = 'Certificate of Registration';
+  } else if (reg.office_id === 'uspto-patent') {
+    agency = 'United States Patent and Trademark Office';
+    sealText = 'USPTO · UNITED STATES OF AMERICA';
+    formNum = 'Issued under 35 USC § 151';
+    certType = 'Letters Patent';
+  } else if (reg.office_id === 'uspto-tm') {
+    agency = 'United States Patent and Trademark Office';
+    sealText = 'USPTO · PRINCIPAL REGISTER';
+    formNum = 'Issued under 15 USC § 1057(a)';
+    certType = 'Certificate of Registration';
+  }
+  const body =
+    '<div class="doc-header" style="border-bottom-color:#c5a000;border-bottom-style:solid;border-bottom-width:6px;">' +
+      '<div class="agency" style="color:#1a1a1a;">' + _safeHtml(agency) + '</div>' +
+      '<div class="sub" style="color:#666;">' + _safeHtml(sealText) + '</div>' +
+      (formNum ? '<div class="form-num">' + _safeHtml(formNum) + '</div>' : '') +
+    '</div>' +
+    '<div class="stamp green">✓ REGISTERED</div>' +
+    '<div style="text-align:center;margin:24px 0;">' +
+      '<div style="font-size:9pt;letter-spacing:0.20em;color:#666;text-transform:uppercase;">This is to certify that</div>' +
+      '<h1 style="font-size:18pt;margin:14px 0;letter-spacing:0.04em;">' + _safeHtml(certType) + '</h1>' +
+      '<div style="font-size:9pt;letter-spacing:0.20em;color:#666;text-transform:uppercase;">has been duly issued for the following work</div>' +
+    '</div>' +
+    '<div style="text-align:center;border-top:1px solid #c5a000;border-bottom:1px solid #c5a000;padding:18px 12px;margin:18px 0;">' +
+      '<div style="font-size:9pt;color:#666;letter-spacing:0.10em;text-transform:uppercase;">Title of Work</div>' +
+      '<div style="font-size:18pt;font-weight:700;margin-top:6px;letter-spacing:0.02em;">' + _safeHtml(title) + '</div>' +
+      '<div style="font-size:11pt;color:#444;margin-top:8px;font-style:italic;">' + _safeHtml((reg.asset_type || '').replace(/^./, c => c.toUpperCase())) + ' Registration</div>' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin:24px 0;">' +
+      '<div><div style="font-size:8.5pt;color:#666;letter-spacing:0.10em;text-transform:uppercase;">Registered Owner</div><div style="font-size:12pt;font-weight:600;margin-top:2px;">' + _safeHtml(profile.legalName || profile.businessName || creator) + '</div></div>' +
+      '<div><div style="font-size:8.5pt;color:#666;letter-spacing:0.10em;text-transform:uppercase;">Registration Number</div><div style="font-size:14pt;font-weight:700;font-family:\'Courier New\',monospace;margin-top:2px;">' + _safeHtml(regNum) + '</div></div>' +
+      '<div><div style="font-size:8.5pt;color:#666;letter-spacing:0.10em;text-transform:uppercase;">Effective Date of Registration</div><div style="font-size:12pt;font-weight:600;margin-top:2px;">' + _safeHtml(effectiveDate) + '</div></div>' +
+      '<div><div style="font-size:8.5pt;color:#666;letter-spacing:0.10em;text-transform:uppercase;">Certificate Issued</div><div style="font-size:12pt;font-weight:600;margin-top:2px;">' + _safeHtml(issuedDate) + '</div></div>' +
+    '</div>' +
+    // Seal mock-up
+    '<div style="text-align:center;margin:28px 0;">' +
+      '<div style="display:inline-block;width:130px;height:130px;border:5px double #c5a000;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#c5a000;font-size:9pt;text-align:center;line-height:1.3;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">' +
+        sealText.split('·').join('<br>') +
+      '</div>' +
+    '</div>' +
+    '<div class="attestation" style="border-color:#c5a000;background:#fffdf2;">' +
+      '<h3 style="color:#1a1a1a;">Statutory Effect</h3>' +
+      '<p>This certificate constitutes prima facie evidence of the validity of the registration and of the facts stated in the certificate. The information on this certificate has been made a part of the records of the issuing office.</p>' +
+    '</div>' +
+    '<div class="signature">' +
+      '<div style="font-size:9pt;color:#666;margin-bottom:8px;letter-spacing:0.10em;text-transform:uppercase;">By the authority of the</div>' +
+      '<div style="font-weight:700;font-size:12pt;">Register of ' + _safeHtml(reg.asset_type === 'copyright' ? 'Copyrights' : reg.asset_type === 'patent' ? 'Patents' : 'Trademarks') + '</div>' +
+      '<div class="sig-line" style="border-color:#c5a000;"></div>' +
+      '<div class="sig-name" style="font-style:italic;">Issued under official seal · ' + _safeHtml(issuedDate) + '</div>' +
+    '</div>';
+  return _docShell(certType + ' · ' + regNum, body, reg, asset);
+}
 function renderTrash() {
   purgeOldTrash();
   updateTrashBadge();
@@ -25361,7 +25787,15 @@ function hideFloatingSubmit() {
 // this button feel "dead" if any required step was incomplete. Now we check
 // the prerequisites ourselves and surface the exact missing piece so the
 // user knows what to fix instead of staring at an unresponsive button.
-$('#float-submit-btn').addEventListener('click', () => {
+// ===== Float-submit click handler · also bound to touchend for iOS =====
+// iOS Safari occasionally drops the synthetic click on rapid taps. Adding
+// a touchend handler that fires the same flow makes Submit reliable on
+// mobile. Guard with a debounce so a tap doesn't fire both events.
+function _onFloatSubmitTap(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  if (window._floatSubmitInflight) return;
+  window._floatSubmitInflight = true;
+  setTimeout(() => { window._floatSubmitInflight = false; }, 400);
   const btn = $('#btn-mint');
   const c = state.current || {};
   // ===== HELPFUL prerequisite guidance · not "errors" =====
@@ -25448,14 +25882,36 @@ $('#float-submit-btn').addEventListener('click', () => {
     if (typeof openTOSModal === 'function') openTOSModal('mint');
     return toast('Please accept the WireIP Terms of Use + sworn statements before minting', 'warn', 6500);
   }
-  if (!c.poaSigned)                         return toast('Tap SecureCard™ for PoA™ first', 'warn', 4000);
+  // ===== PoA gate · use saved activePoa if still valid =====
+  // If the user captured PoA via NFC tap earlier (state.activePoa) and the
+  // 5-minute window hasn't expired, automatically apply that signature to
+  // the current draft so they don't have to tap again.
+  if (!c.poaSigned && state.activePoa) {
+    const exp = state.activePoa.expiresAt ? new Date(state.activePoa.expiresAt).getTime() : 0;
+    if (exp > Date.now()) {
+      c.poaSigned = true;
+      c.poaSignature = state.activePoa.signature;
+      c.poaCardSerial = state.activePoa.cardSerial;
+      try { toast && toast('✓ PoA carried over from NFC tap · auto-applied', 'ok', 2500); } catch (e) {}
+    }
+  }
+  if (!c.poaSigned) return toast('Tap SecureCard™ for PoA™ first', 'warn', 4000);
   // All prerequisites met  · force-enable the underlying mint button (in case
   // it was stuck disabled by a stale validation pass) and fire the click.
   if (btn) {
     btn.disabled = false;
     btn.click();
   }
-});
+}
+// Bind to BOTH click and touchend so the button is bulletproof on iOS
+// where Safari occasionally drops the synthetic click event on rapid taps.
+(function bindFloatSubmit() {
+  const fb = document.getElementById('float-submit-btn');
+  if (!fb || fb._floatBound) return;
+  fb._floatBound = true;
+  fb.addEventListener('click',    _onFloatSubmitTap);
+  fb.addEventListener('touchend', _onFloatSubmitTap, { passive: false });
+})();
 
 // ============================================================
 // MINT FLOW
