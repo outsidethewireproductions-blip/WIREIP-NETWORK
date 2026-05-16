@@ -4738,11 +4738,43 @@
     nav.side {
       top: var(--topbar-h, 140px);
       bottom: env(safe-area-inset-bottom);
-      width: 240px; max-width: 78vw;
+      width: 260px; max-width: 82vw;
+      z-index: 100002;
     }
     .nav-backdrop {
       top: var(--topbar-h, 140px);
       bottom: env(safe-area-inset-bottom);
+      z-index: 100001;
+    }
+    /* ===== Mobile-friendly nav-group titles · tap target ≥ 48px =====
+       The desktop styling used 9px font with no vertical padding · way too
+       small to tap reliably on iPhone. Mobile gets proper button-sized
+       headers with chevron + active-press feedback. */
+    nav.side .nav-group h4[data-nav-group] {
+      min-height: 48px !important;
+      padding: 12px 16px !important;
+      font-size: 11px !important;
+      letter-spacing: 0.12em !important;
+      color: var(--text) !important;
+      cursor: pointer !important;
+      -webkit-tap-highlight-color: rgba(240,196,25,0.18) !important;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      background: var(--panel);
+      transition: background 0.12s, color 0.12s;
+    }
+    nav.side .nav-group h4[data-nav-group]:active {
+      background: rgba(240,196,25,0.10) !important;
+      color: var(--gold) !important;
+    }
+    nav.side .nav-group h4[data-nav-group] .chev {
+      font-size: 14px !important;
+      color: var(--gold-soft) !important;
+      flex-shrink: 0;
+    }
+    nav.side .nav-item {
+      padding: 12px 18px !important;
+      font-size: 12.5px !important;
+      min-height: 44px;
     }
     /* Views: tighter padding + room at bottom for floating bar */
     .view { padding: 12px 10px 96px; }
@@ -30557,20 +30589,18 @@ try {
 // class from #side-nav, slamming the mobile drawer shut every time the
 // user tried to expand a section. The drawer must stay open while the
 // user navigates section titles  · it only closes when they pick an item.
-document.addEventListener('click', (e) => {
-  const h4 = e.target.closest('h4[data-nav-group]');
-  if (!h4) return;
-  e.stopPropagation();        // never bubble to any document-level "tap outside" handler
-  const group = h4.parentElement;
+// ===== Nav-group title click handler ·  bound BOTH directly and via
+// delegation so capture-phase listeners earlier in the page can't swallow
+// the tap. On mobile we also bind 'touchend' as a belt-and-suspenders
+// since some iOS Safari versions can lose 'click' on rapidly-tapped
+// elements. ============================================================
+function _toggleNavGroup(h4) {
+  const group = h4 && h4.parentElement;
   if (!group) return;
-  // On MOBILE: tap a title → expand it AND collapse the others (accordion).
-  //   Repeated taps on the SAME title do nothing (no collapse-then-tap-again
-  //   dance) so the user can always see the sub-items once a title is open.
-  //   The drawer + group only close when the user actually picks a sub-item.
-  // On DESKTOP: full toggle behavior preserved · click again to collapse.
   const isMobile = window.matchMedia('(max-width: 900px)').matches;
   if (isMobile) {
-    // Collapse every OTHER group, then guarantee this one is open.
+    // Accordion behavior: collapse every OTHER group, then guarantee this
+    // one is open so the user can always see the sub-items.
     document.querySelectorAll('nav.side .nav-group').forEach(g => {
       if (g !== group) g.classList.add('collapsed');
     });
@@ -30578,7 +30608,41 @@ document.addEventListener('click', (e) => {
   } else {
     group.classList.toggle('collapsed');
   }
-});
+}
+// Attach handlers DIRECTLY to every h4[data-nav-group] · most reliable
+// approach on iOS Safari where document-level capture listeners can
+// inadvertently swallow the tap.
+function _wireNavGroupTitles() {
+  try {
+    document.querySelectorAll('nav.side h4[data-nav-group]').forEach(h4 => {
+      if (h4._navBound) return;
+      h4._navBound = true;
+      const handler = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        _toggleNavGroup(h4);
+      };
+      h4.addEventListener('click', handler);
+      // iOS reliability backup
+      h4.addEventListener('touchend', handler, { passive: false });
+    });
+  } catch (e) {}
+}
+_wireNavGroupTitles();
+// Re-run after DOMContentLoaded in case the nav is rendered late.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _wireNavGroupTitles);
+}
+window.addEventListener('load', _wireNavGroupTitles);
+// Belt-and-suspenders: document-level delegated fallback. Runs in capture
+// phase so it fires BEFORE any other document-level click handlers that
+// might call stopImmediatePropagation.
+document.addEventListener('click', (e) => {
+  const h4 = e.target.closest('h4[data-nav-group]');
+  if (!h4) return;
+  e.stopPropagation();
+  _toggleNavGroup(h4);
+}, true);
 
 // ============================================================
 // HARDWARE & SOFTWARE STORE  · order SecureCard / buy SecureNode
