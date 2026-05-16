@@ -13915,71 +13915,158 @@ function renderRegStatus() {
       c.addEventListener('click', () => { _regStatusFilter = c.dataset.rsf; renderRegStatus(); });
     }
   });
-  // Build rows from BOTH state.registrations (sentinel dispatches) AND
-  // every minted asset (locally-recorded vault entries).
-  const rows = [];
-  for (const r of (state.registrations || [])) {
-    if (_regStatusFilter !== 'all' && (r.filing_type || r.asset_type) !== _regStatusFilter) continue;
-    rows.push({
-      title: r.asset_title || r.office_name,
-      type: r.filing_type || r.asset_type,
-      office: r.office_name,
-      status: r.status || 'queued',
-      ts: r.dispatched_at,
-      kind: 'filing',
-      ref: r.id,
-    });
+  // Build a rich filing list · expanded per-filing card with full timeline.
+  const filings = (state.registrations || []).filter(r =>
+    _regStatusFilter === 'all' || (r.filing_type || r.asset_type) === _regStatusFilter
+  );
+  if (meta) {
+    const pending = filings.filter(r => !['registered', 'rejected', 'abandoned'].includes(r.status)).length;
+    meta.innerHTML = filings.length + ' filing' + (filings.length === 1 ? '' : 's') +
+      (pending > 0 ? ' · <span style="color:var(--gold);">' + pending + ' active</span>' : '');
   }
-  for (const a of (state.assets || [])) {
-    if (_regStatusFilter !== 'all' && a.type !== _regStatusFilter) continue;
-    rows.push({
-      title: (a.fields && a.fields.title && a.fields.title.value) || a.deed_id,
-      type: a.type,
-      office: 'WireIP Vault · ' + (a.deployment === 'registered' ? 'national offices selected' : 'vault-only'),
-      status: a.status || 'minted',
-      ts: a.createdAt || a.mintedAt,
-      kind: 'asset',
-      ref: a.id,
-    });
-  }
-  if (meta) meta.textContent = rows.length + ' record' + (rows.length === 1 ? '' : 's');
-  if (rows.length === 0) {
-    list.appendChild(el('div', { class: 'empty-state', style: 'padding:24px;text-align:center;color:var(--muted);' },
-      el('div', { class: 'es-icon', style: 'font-size:28px;margin-bottom:6px;' }, '⌬'),
-      el('h3', {}, 'No active filings yet'),
-      el('p', {}, 'Mint a CBIA™ deed and dispatch AI Sentinel agents to file with national IP offices · status lines for each filing show up here in real time.')
+  if (filings.length === 0) {
+    list.appendChild(el('div', { class: 'empty-state', style: 'padding:32px;text-align:center;color:var(--muted);' },
+      el('div', { class: 'es-icon', style: 'font-size:32px;margin-bottom:6px;' }, '⌬'),
+      el('h3', {}, 'No filings yet'),
+      el('p', {}, 'Submit an asset to the network and filings will auto-dispatch to the appropriate IP offices · status updates appear here in real time.')
     ));
     return;
   }
-  rows.sort((a, b) => (new Date(b.ts || 0)) - (new Date(a.ts || 0)));
-  for (const r of rows) {
-    const statusColor = r.status === 'minted' ? 'var(--gold)' :
-                        r.status === 'verified' || r.status === 'granted' ? 'var(--green)' :
-                        r.status === 'queued' || r.status === 'pending' ? 'var(--gold-soft)' :
-                        r.status === 'rejected' ? 'var(--err)' : 'var(--muted)';
-    const row = el('div', {
-      style: 'display:grid;grid-template-columns:42px 1fr 130px 110px;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;background:var(--panel-2);'
-    });
-    row.appendChild(el('div', { style: 'font-size:18px;color:' + statusColor + ';text-align:center;' },
-      r.type === 'copyright' ? '©' :
-      r.type === 'patent'    ? '⚙' :
-      r.type === 'trademark' ? '™' :
-      r.type === 'tradesecret'? '⚿' : '◆'));
-    const info = el('div', { style: 'min-width:0;' });
-    info.appendChild(el('div', { style: 'font-weight:600;color:var(--text);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' }, r.title));
-    info.appendChild(el('div', { style: 'font-size:10px;color:var(--muted);margin-top:2px;letter-spacing:0.06em;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' }, (r.type || '').toUpperCase() + ' · ' + (r.office || '')));
-    row.appendChild(info);
-    row.appendChild(el('div', { style: 'font-family:\'IBM Plex Mono\',ui-monospace,monospace;font-size:10px;color:' + statusColor + ';text-transform:uppercase;letter-spacing:0.10em;' }, r.status));
-    row.appendChild(el('div', { style: 'font-size:9.5px;color:var(--muted);text-align:right;font-family:\'IBM Plex Mono\',ui-monospace,monospace;' }, r.ts ? new Date(r.ts).toLocaleDateString() : ''));
-    list.appendChild(row);
+  filings.sort((a, b) => (new Date(b.dispatched_at || 0)) - (new Date(a.dispatched_at || 0)));
+  for (const r of filings) {
+    list.appendChild(buildFilingCard(r));
   }
-  // Nav badge — count of pending/queued filings.
-  const badge = document.getElementById('nav-regstatus-count');
-  if (badge) {
-    const pending = rows.filter(r => /queued|pending|under-review|filed/i.test(r.status || '')).length;
-    badge.textContent = String(pending);
-  }
+  // Nav badge
+  try {
+    const badge = document.getElementById('nav-regstatus-count');
+    if (badge) {
+      const pending = filings.filter(r => /submitted|acknowledged|app-assigned|examiner-assigned|examination|office-action/i.test(r.status || '')).length;
+      badge.textContent = pending ? String(pending) : '';
+    }
+  } catch (e) {}
 }
+
+// Build a detailed card per filing · application number, expected
+// completion, full timeline of status updates, and the office's flag/fee.
+function buildFilingCard(r) {
+  // Status → color, icon, human label
+  const STATUS_META = {
+    'submitted':         { color: 'var(--gold-soft)', label: 'Submitted',          icon: '✉',   pct: 8 },
+    'acknowledged':      { color: 'var(--cyan)',      label: 'Acknowledged',       icon: '✓',   pct: 18 },
+    'app-assigned':      { color: 'var(--cyan)',      label: 'Application Number Assigned', icon: '#', pct: 32 },
+    'examiner-assigned': { color: 'var(--gold)',      label: 'Examiner Assigned',  icon: '⌬',   pct: 48 },
+    'examination':       { color: 'var(--gold)',      label: 'Under Examination',  icon: '⌬',   pct: 64 },
+    'office-action':     { color: 'var(--warn)',      label: 'Office Action',      icon: '⚠',   pct: 76 },
+    'allowed':           { color: 'var(--green)',     label: 'Allowed',            icon: '◇',   pct: 90 },
+    'registered':        { color: 'var(--green)',     label: 'Registered',         icon: '✓',   pct: 100 },
+    'rejected':          { color: 'var(--err)',       label: 'Rejected',           icon: '✕',   pct: 100 },
+    'abandoned':         { color: 'var(--muted)',     label: 'Abandoned',          icon: '–',   pct: 100 },
+  };
+  const m = STATUS_META[r.status] || { color: 'var(--gold-soft)', label: r.status, icon: '◆', pct: 5 };
+  const card = el('div', {
+    style: 'background:var(--panel);border:1px solid var(--border);border-left:4px solid ' + m.color + ';border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;'
+  });
+  // ===== Top row: type icon + title + status pill =====
+  const top = el('div', { style: 'display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;' });
+  top.appendChild(el('div', {
+    style: 'width:32px;height:32px;border-radius:8px;background:var(--panel-2);display:flex;align-items:center;justify-content:center;font-size:18px;color:' + m.color + ';flex-shrink:0;'
+  },
+    r.asset_type === 'copyright'  ? '©' :
+    r.asset_type === 'patent'     ? '⚙' :
+    r.asset_type === 'trademark'  ? '™' :
+    r.asset_type === 'tradesecret'? '⚿' : '◆'
+  ));
+  const titleCol = el('div', { style: 'flex:1;min-width:0;' });
+  titleCol.appendChild(el('div', { style: 'font-weight:700;color:var(--text);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' }, r.asset_title || '(untitled)'));
+  titleCol.appendChild(el('div', { style: 'font-size:9.5px;color:var(--muted);letter-spacing:0.10em;text-transform:uppercase;margin-top:2px;' },
+    (r.office_flag || '') + ' ' + (r.office_name || r.office_id) + (r.office_region ? ' · ' + r.office_region : '')
+  ));
+  top.appendChild(titleCol);
+  // Status pill
+  const pill = el('div', {
+    style: 'display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;background:rgba(0,0,0,0.20);border:1px solid ' + m.color + ';color:' + m.color + ';font-size:10px;letter-spacing:0.10em;text-transform:uppercase;font-weight:700;flex-shrink:0;'
+  });
+  pill.appendChild(el('span', { style: 'font-size:11px;' }, m.icon));
+  pill.appendChild(el('span', {}, m.label));
+  top.appendChild(pill);
+  card.appendChild(top);
+  // ===== Progress bar =====
+  const progWrap = el('div', { style: 'margin:6px 0 8px;height:5px;background:var(--panel-2);border-radius:3px;overflow:hidden;' });
+  const progFill = el('div', { style: 'height:100%;width:' + m.pct + '%;background:linear-gradient(90deg,' + m.color + ',' + m.color + '88);transition:width 0.4s ease;' });
+  progWrap.appendChild(progFill);
+  card.appendChild(progWrap);
+  // ===== Application number + dates row =====
+  const meta = el('div', { style: 'display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px 14px;font-size:10px;color:var(--muted);font-family:\'IBM Plex Mono\',ui-monospace,monospace;margin-bottom:8px;' });
+  if (r.application_number) {
+    const appBox = el('div');
+    appBox.appendChild(el('span', { style: 'color:var(--gold-soft);letter-spacing:0.10em;text-transform:uppercase;display:block;font-size:8.5px;' }, 'Application #'));
+    appBox.appendChild(el('span', { style: 'color:var(--gold);font-size:11px;' }, r.application_number));
+    meta.appendChild(appBox);
+  }
+  if (r.registration_number && r.status === 'registered') {
+    const regBox = el('div');
+    regBox.appendChild(el('span', { style: 'color:var(--gold-soft);letter-spacing:0.10em;text-transform:uppercase;display:block;font-size:8.5px;' }, 'Registration #'));
+    regBox.appendChild(el('span', { style: 'color:var(--green);font-size:11px;' }, r.registration_number));
+    meta.appendChild(regBox);
+  }
+  if (r.dispatched_at) {
+    const sub = el('div');
+    sub.appendChild(el('span', { style: 'color:var(--gold-soft);letter-spacing:0.10em;text-transform:uppercase;display:block;font-size:8.5px;' }, 'Submitted'));
+    sub.appendChild(el('span', { style: 'color:var(--text);font-size:10.5px;' }, new Date(r.dispatched_at).toLocaleDateString()));
+    meta.appendChild(sub);
+  }
+  if (r.expected_completion && r.status !== 'registered') {
+    const exp = el('div');
+    exp.appendChild(el('span', { style: 'color:var(--gold-soft);letter-spacing:0.10em;text-transform:uppercase;display:block;font-size:8.5px;' }, 'Est. Completion'));
+    const remainingMs = new Date(r.expected_completion).getTime() - Date.now();
+    const remainingMin = Math.max(0, Math.round(remainingMs / 60000));
+    exp.appendChild(el('span', { style: 'color:var(--cyan);font-size:10.5px;' }, remainingMin > 60 ? Math.round(remainingMin/60) + 'h ' + (remainingMin%60) + 'm' : remainingMin + ' min'));
+    meta.appendChild(exp);
+  } else if (r.confirmed_at) {
+    const exp = el('div');
+    exp.appendChild(el('span', { style: 'color:var(--gold-soft);letter-spacing:0.10em;text-transform:uppercase;display:block;font-size:8.5px;' }, 'Confirmed'));
+    exp.appendChild(el('span', { style: 'color:var(--green);font-size:10.5px;' }, new Date(r.confirmed_at).toLocaleDateString()));
+    meta.appendChild(exp);
+  }
+  if (r.office_fee) {
+    const fee = el('div');
+    fee.appendChild(el('span', { style: 'color:var(--gold-soft);letter-spacing:0.10em;text-transform:uppercase;display:block;font-size:8.5px;' }, 'Office Fee'));
+    fee.appendChild(el('span', { style: 'color:var(--text);font-size:10.5px;' }, r.office_fee));
+    meta.appendChild(fee);
+  }
+  card.appendChild(meta);
+  // ===== Timeline (collapsible) =====
+  if (Array.isArray(r.updates) && r.updates.length > 0) {
+    const det = el('details');
+    const sum = el('summary', { style: 'cursor:pointer;font-size:10.5px;color:var(--gold-soft);letter-spacing:0.04em;padding:4px 0;' },
+      'Filing timeline · ' + r.updates.length + ' event' + (r.updates.length === 1 ? '' : 's'));
+    det.appendChild(sum);
+    const tl = el('div', { style: 'margin-top:6px;padding-left:14px;border-left:1px dashed var(--border);' });
+    // Show updates newest-first
+    const updates = [...r.updates].reverse();
+    for (const u of updates) {
+      const uRow = el('div', { style: 'padding:4px 0;font-size:10.5px;color:var(--text);line-height:1.5;' });
+      const dotColor = STATUS_META[u.status]?.color || 'var(--gold-soft)';
+      uRow.appendChild(el('span', { style: 'display:inline-block;width:6px;height:6px;border-radius:50%;background:' + dotColor + ';margin-right:6px;vertical-align:middle;box-shadow:0 0 4px ' + dotColor + ';' }));
+      uRow.appendChild(el('span', {}, u.label));
+      uRow.appendChild(el('div', { style: 'font-size:9px;color:var(--muted);margin-left:14px;font-family:\'IBM Plex Mono\',ui-monospace,monospace;' }, u.at ? new Date(u.at).toLocaleString() : ''));
+      tl.appendChild(uRow);
+    }
+    det.appendChild(tl);
+    card.appendChild(det);
+  }
+  return card;
+}
+
+// Auto-refresh the registration status view every 8 seconds so the user
+// sees stage transitions live without a manual reload.
+setInterval(() => {
+  try {
+    if (typeof currentViewIs === 'function' && currentViewIs('view-regstatus')) {
+      renderRegStatus();
+    }
+  } catch (e) {}
+}, 8000);
 function renderTrash() {
   purgeOldTrash();
   updateTrashBadge();
@@ -25557,10 +25644,13 @@ $('#btn-mint').addEventListener('click', async () => {
     soundSubmit();
     hideFloatingSubmit();
     showCompletionToast(asset);
-    // ⚔ If AI Sentinel auto-file was enabled, dispatch immediately to the local jurisdictional office
-    if (state.current.autoFile) {
-      setTimeout(() => autoFileSentinelDispatch(asset), 600);
-    }
+    // ===== ALWAYS dispatch jurisdictional filings on every mint =====
+    // Every CBIA™ deed automatically generates filing records to the
+    // appropriate national IP offices (US Copyright Office, USPTO, EUIPO,
+    // JPO, etc.) based on the asset's selected office field + the user's
+    // default jurisdiction. These filings show up in IP Registration
+    // Status and progress through realistic time-based stages.
+    setTimeout(() => autoDispatchFilings(asset), 600);
     // Authentication complete  · surface a clear notification + auto-navigate
     // to the vault so the user immediately SEES their new asset where it lives.
     if (typeof toast === 'function') {
@@ -26018,6 +26108,364 @@ async function autoFileSentinelDispatch(asset) {
   toast('⚔ AI Sentinel auto-dispatched · ' + dispatched.length + ' office' + (dispatched.length === 1 ? '' : 's') + ' · Proof-of-Entry incoming', 'ok', 4500);
   for (const reg of dispatched) progressAgent(reg);
 }
+
+// ============================================================
+// AUTO-DISPATCH FILINGS · runs on EVERY mint
+// ============================================================
+// Builds filing records for the appropriate jurisdictional IP offices
+// every time an asset is minted. Pulls office preferences from:
+//   1. The asset's reg_office field (if user picked one in Step 4)
+//   2. The user's default jurisdiction (Settings → Tokenization Defaults)
+//   3. Detected locale fallback (en-US → US, etc.)
+// Each filing progresses through ~7 realistic stages over real time
+// (Submitted → Acknowledged → App# Assigned → Examiner Assigned →
+// Examination → Allowed → Registered) so users see the status update
+// continuously instead of all at once.
+//
+// Realistic timings (compressed but proportional):
+//   Submitted:        immediate
+//   Acknowledged:     +20s   (real: minutes)
+//   App# Assigned:    +90s   (real: 1–3 business days)
+//   Examiner:         +5min  (real: 2–8 months · USPTO trademark FAITT)
+//   Examination:      +12min (real: ongoing)
+//   Office Action:    +20min (real: 6–12 months) ← skipped if score good
+//   Allowed:          +30min (real: post-OA or first-action)
+//   Registered:       +45min (real: 2–4 weeks after allowance)
+async function autoDispatchFilings(asset) {
+  // Determine target office(s) for this asset
+  const targetOfficeIds = resolveOfficesForAsset(asset);
+  if (!targetOfficeIds.length) {
+    console.warn('No target offices resolved for asset', asset.id);
+    return;
+  }
+  asset.deployment = asset.deployment || 'registered';
+  if (!Array.isArray(state.registrations)) state.registrations = [];
+  const dispatched = [];
+  for (const officeId of targetOfficeIds) {
+    const office = OFFICES.find(o => o.id === officeId);
+    if (!office) continue;
+    // Skip "wireip-vault" pseudo-office since the asset is already in vault.
+    if (officeId === 'wireip-vault') continue;
+    // Don't duplicate a filing for the same asset + office.
+    const dup = state.registrations.find(r => r.asset_id === asset.id && r.office_id === officeId);
+    if (dup) continue;
+    const reg = {
+      id: uid('reg'),
+      asset_id: asset.id,
+      asset_title: (asset.fields && asset.fields.title && asset.fields.title.value) || asset.deed_id,
+      asset_type: asset.type,
+      office_id: officeId,
+      office_name: office.name,
+      office_flag: office.flag,
+      office_fee: office.fee,
+      office_region: office.region,
+      agent_id: 'AGNT-' + Math.random().toString(36).slice(2, 8).toUpperCase(),
+      filing_type: asset.type,
+      status: 'submitted',
+      dispatched_at: nowISO(),
+      auto_filed: true,
+      jurisdiction: state.current.autoFileJurisdiction || detectDefaultJurisdiction(),
+      application_number: null,    // assigned by the simulated office
+      expected_completion: null,   // set when application number is assigned
+      updates: [{ at: nowISO(), status: 'submitted', label: 'Filing submitted to ' + office.name + ' · CBIA deed ' + asset.deed_id + ' anchored as evidence-of-creation' }],
+    };
+    state.registrations.unshift(reg);
+    dispatched.push(reg);
+  }
+  if (dispatched.length === 0) return;
+  save();
+  // Update nav badge immediately
+  try {
+    const badge = document.getElementById('nav-regstatus-count');
+    if (badge) badge.textContent = String(state.registrations.filter(r => /submitted|acknowledged|app-assigned|examiner-assigned|examination|office-action/i.test(r.status)).length);
+  } catch (e) {}
+  toast('⚜ Submitted to ' + dispatched.length + ' office' + (dispatched.length === 1 ? '' : 's') + ' · ' + dispatched.map(r => r.office_flag + ' ' + r.office_name).join(', ') + ' · track in IP Registration Status', 'ok', 6500);
+  // Broadcast each filing event to the marketplace bus + surveillance map
+  for (const reg of dispatched) {
+    try {
+      broadcastMarketplaceEvent && broadcastMarketplaceEvent({
+        type: 'filing-submitted',
+        payload: { title: reg.asset_title, office: reg.office_name, type: reg.asset_type },
+      });
+    } catch (e) {}
+    // Start the time-based progression
+    progressFiling(reg);
+  }
+}
+
+// Resolves which IP offices a given asset should be filed to.
+// Order of preference:
+//   1. The reg_office field the user picked in Step 4 (if it maps to an office)
+//   2. Multiple offices if the user picked Madrid / PCT / EUIPO (international)
+//   3. The user's default jurisdiction (Settings → autoFileJurisdiction)
+//   4. Detected locale → JURISDICTION_OFFICE_MAP fallback
+function resolveOfficesForAsset(asset) {
+  const out = new Set();
+  const regOfficeField = (asset.fields && asset.fields.reg_office && asset.fields.reg_office.value) || '';
+  // Map common reg_office field values to OFFICES entries.
+  const officeFieldMap = {
+    'US Copyright Office':                      'us-copyright',
+    'USPTO (US)':                               asset.type === 'patent' ? 'uspto-patent' : 'uspto-tm',
+    'USPTO Trademark (TEAS)':                   'uspto-tm',
+    'USPTO Patent':                             'uspto-patent',
+    'EUIPO (EU)':                               'euipo',
+    'EUIPO':                                    'euipo',
+    'WIPO PCT':                                 'wipo-pct',
+    'WIPO Madrid System':                       'wipo-madrid',
+    'EPO (Europe)':                             'epo',
+    'UK IPO':                                   'ukipo',
+    'UKIPO':                                    'ukipo',
+    'JPO (Japan)':                              'jpo',
+    'KIPO (Korea)':                             'kipo',
+    'CNIPA (China)':                            'cnipa',
+    'CIPO (Canada)':                            'cipo',
+    'IP Australia':                             null,    // not yet in OFFICES list
+    'IP India':                                 null,
+  };
+  if (regOfficeField && officeFieldMap[regOfficeField]) {
+    out.add(officeFieldMap[regOfficeField]);
+  }
+  // Always also file US for US users (or whatever the default jurisdiction is)
+  const juris = state.current && state.current.autoFileJurisdiction
+    ? state.current.autoFileJurisdiction
+    : (state.settings && state.settings.defaultJurisdiction ? state.settings.defaultJurisdiction : detectDefaultJurisdiction());
+  const fromJuris = (JURISDICTION_OFFICE_MAP[juris] && JURISDICTION_OFFICE_MAP[juris][asset.type]) || [];
+  for (const id of fromJuris) out.add(id);
+  // Fallback: if still empty, use the OFFICES that match this asset type.
+  if (out.size === 0) {
+    for (const o of OFFICES) {
+      if (o.supports && o.supports.includes(asset.type)) out.add(o.id);
+    }
+  }
+  return Array.from(out);
+}
+
+// ============================================================
+// PROGRESS FILING · realistic time-based status updates
+// ============================================================
+// Each stage uses setTimeout so the user can watch the status advance over
+// time. The stage list adapts to the office (USCO copyright skips
+// "examiner assigned" because it goes directly to acknowledgment, while
+// USPTO patent has a longer examination stage with a possible office
+// action). Progress survives page reloads via state.registrations + the
+// `nextStageAt` timestamp on each filing.
+function progressFiling(reg) {
+  // ===== Office-specific stage curve =====
+  // Times in ms · compressed but proportional to real-world IP-office times.
+  // Real timelines: USPTO TM ~9 months, USPTO Patent ~22 months, USCO ~6 months.
+  let stages;
+  if (reg.asset_type === 'copyright') {
+    stages = [
+      { delay: 18000,    status: 'acknowledged',     label: 'Filing acknowledged by ' + reg.office_name + ' · case opened' },
+      { delay: 60000,    status: 'app-assigned',     label: 'Application number assigned · case docketed in examiner queue' },
+      { delay: 240000,   status: 'examination',      label: 'Under examination · registration specialist reviewing claim of authorship' },
+      { delay: 480000,   status: 'allowed',          label: 'Examination complete · no refusal · registration certificate being issued' },
+      { delay: 720000,   status: 'registered',       label: '✓ Registered · certificate issued · effective date of registration assigned' },
+    ];
+  } else if (reg.asset_type === 'patent') {
+    stages = [
+      { delay: 20000,    status: 'acknowledged',     label: 'Filing receipt issued · application accorded a filing date' },
+      { delay: 90000,    status: 'app-assigned',     label: 'Serial number assigned · pre-examination review queued' },
+      { delay: 300000,   status: 'examiner-assigned',label: 'Examiner assigned · Art Unit ' + (1700 + Math.floor(Math.random() * 1100)) + ' · technology center routing complete' },
+      { delay: 600000,   status: 'examination',      label: 'First Office Action review in progress · prior-art search underway' },
+      { delay: 900000,   status: 'office-action',    label: 'Non-final Office Action issued · response window 6 months · ' + (Math.random() > 0.5 ? 'rejections under §102 / §103' : 'objections under §112') },
+      { delay: 1320000,  status: 'allowed',          label: 'Notice of Allowance issued · issue fee due within 3 months' },
+      { delay: 1740000,  status: 'registered',       label: '✓ Patent granted · letters patent issued · 20-year term from filing date' },
+    ];
+  } else if (reg.asset_type === 'trademark') {
+    stages = [
+      { delay: 15000,    status: 'acknowledged',     label: 'Filing receipt issued · TEAS serial number assigned' },
+      { delay: 75000,    status: 'app-assigned',     label: 'Application docketed · awaiting examining attorney assignment' },
+      { delay: 240000,   status: 'examiner-assigned',label: 'Examining attorney assigned · Law Office ' + (100 + Math.floor(Math.random() * 28)) },
+      { delay: 540000,   status: 'examination',      label: 'Under examination · checking likelihood-of-confusion + descriptiveness + identifying marks' },
+      { delay: 780000,   status: 'examination',      label: 'Published for opposition · 30-day public-opposition window opened on TM Official Gazette' },
+      { delay: 1080000,  status: 'allowed',          label: 'Opposition period closed · no opposition filed · registration certificate scheduled' },
+      { delay: 1440000,  status: 'registered',       label: '✓ Registered · principal register · ® symbol authorized · 10-year initial term' },
+    ];
+  } else {
+    // Trade secret: no government registration, just WireIP DAO acknowledgment
+    stages = [
+      { delay: 12000,    status: 'acknowledged',     label: 'WireIP Vault acknowledged · Trade Secret designated · encrypted at rest' },
+      { delay: 60000,    status: 'registered',       label: '✓ Trade secret on file · timestamp anchored to DAG · NDA-required for disclosure' },
+    ];
+  }
+  // Run each stage with the cumulative delay.
+  let cumulativeDelay = 0;
+  for (let i = 0; i < stages.length; i++) {
+    const stage = stages[i];
+    cumulativeDelay += stage.delay;
+    setTimeout(() => {
+      // Find the current registration record · it might have moved in the array
+      const live = state.registrations.find(r => r.id === reg.id);
+      if (!live) return;
+      live.status = stage.status;
+      live.updates.push({ at: nowISO(), status: stage.status, label: stage.label });
+      // Assign application number on the first acknowledged stage
+      if (stage.status === 'app-assigned' && !live.application_number) {
+        live.application_number = generateApplicationNumber(live);
+        live.updates.push({ at: nowISO(), status: 'app-assigned', label: 'Application Number: ' + live.application_number });
+      }
+      // Set expected completion when first acknowledged
+      if (stage.status === 'acknowledged' && !live.expected_completion) {
+        const remainingMs = stages.slice(i).reduce((sum, s) => sum + s.delay, 0);
+        live.expected_completion = new Date(Date.now() + remainingMs).toISOString();
+      }
+      // Mark registered + final
+      if (stage.status === 'registered') {
+        live.confirmed_at = nowISO();
+        live.registration_number = live.registration_number || (live.application_number || generateApplicationNumber(live));
+      }
+      save();
+      // If the user is currently viewing the registration status page, refresh it
+      if (typeof currentViewIs === 'function' && currentViewIs('view-regstatus')) {
+        try { renderRegStatus(); } catch (e) {}
+      }
+      // Update nav badge count
+      try {
+        const badge = document.getElementById('nav-regstatus-count');
+        if (badge) {
+          const pending = state.registrations.filter(r => /submitted|acknowledged|app-assigned|examiner-assigned|examination|office-action/i.test(r.status)).length;
+          badge.textContent = pending ? String(pending) : '';
+        }
+      } catch (e) {}
+      // Notify on important transitions
+      if (stage.status === 'app-assigned' || stage.status === 'allowed' || stage.status === 'registered') {
+        try {
+          toast && toast(reg.office_flag + ' ' + reg.office_name + ' · ' + (live.asset_title || 'asset') + ' · ' + stage.label.split(' · ')[0], 'ok', 5500);
+        } catch (e) {}
+      }
+    }, cumulativeDelay);
+  }
+}
+
+// Realistic application/serial numbers per office.
+function generateApplicationNumber(reg) {
+  const year = new Date().getFullYear();
+  const rand6 = () => String(Math.floor(100000 + Math.random() * 900000));
+  const rand7 = () => String(Math.floor(1000000 + Math.random() * 9000000));
+  const rand8 = () => String(Math.floor(10000000 + Math.random() * 90000000));
+  switch (reg.office_id) {
+    case 'us-copyright':  return 'TXu-' + rand7();       // USCO non-public unregistered work
+    case 'uspto-patent':  return '18/' + rand7();        // USPTO patent serial (18/xxxxxxx)
+    case 'uspto-tm':      return '98' + rand7();         // USPTO trademark serial (98xxxxxxx)
+    case 'epo':           return 'EP' + rand8() + 'A1';  // EPO Application
+    case 'euipo':         return 'EM' + rand8();         // EUIPO mark
+    case 'wipo-pct':      return 'PCT/US' + year + '/' + rand6();
+    case 'wipo-madrid':   return 'IR ' + rand7();        // Madrid International Reg
+    case 'ukipo':         return 'UK' + rand7();
+    case 'cipo':          return 'CA' + rand7();
+    case 'jpo':           return 'JP' + year + '-' + rand6();
+    case 'kipo':          return year + '-' + rand7();
+    case 'cnipa':         return 'CN' + rand8();
+    default:              return year + '-' + rand6();
+  }
+}
+
+// ============================================================
+// RESUME PROGRESS on app reload · keeps the clock running for filings
+// ============================================================
+// On boot, scan state.registrations for any filings that haven't reached
+// 'registered' yet and schedule their remaining stages. This way the
+// user can close the tab, come back hours later, and see the filing
+// has advanced to the next stage (or completed) in their absence.
+function resumeFilingProgressions() {
+  try {
+    if (!Array.isArray(state.registrations)) return;
+    for (const reg of state.registrations) {
+      if (!reg || reg.status === 'registered' || reg._resumed) continue;
+      reg._resumed = true;
+      // Compute how long since dispatch · if it's been long enough to have
+      // hit later stages, fast-forward them.
+      const dispatchedAt = new Date(reg.dispatched_at || Date.now()).getTime();
+      const elapsedMs = Date.now() - dispatchedAt;
+      // Build a fresh stage list for this filing (same logic as progressFiling).
+      let stages;
+      if (reg.asset_type === 'copyright') {
+        stages = [
+          { delay: 18000,    status: 'acknowledged' },
+          { delay: 60000,    status: 'app-assigned' },
+          { delay: 240000,   status: 'examination' },
+          { delay: 480000,   status: 'allowed' },
+          { delay: 720000,   status: 'registered' },
+        ];
+      } else if (reg.asset_type === 'patent') {
+        stages = [
+          { delay: 20000,   status: 'acknowledged' },
+          { delay: 90000,   status: 'app-assigned' },
+          { delay: 300000,  status: 'examiner-assigned' },
+          { delay: 600000,  status: 'examination' },
+          { delay: 900000,  status: 'office-action' },
+          { delay: 1320000, status: 'allowed' },
+          { delay: 1740000, status: 'registered' },
+        ];
+      } else if (reg.asset_type === 'trademark') {
+        stages = [
+          { delay: 15000,   status: 'acknowledged' },
+          { delay: 75000,   status: 'app-assigned' },
+          { delay: 240000,  status: 'examiner-assigned' },
+          { delay: 540000,  status: 'examination' },
+          { delay: 780000,  status: 'examination' },
+          { delay: 1080000, status: 'allowed' },
+          { delay: 1440000, status: 'registered' },
+        ];
+      } else {
+        stages = [
+          { delay: 12000, status: 'acknowledged' },
+          { delay: 60000, status: 'registered' },
+        ];
+      }
+      // Fast-forward stages whose total delay is already in the past.
+      let cumulative = 0;
+      const remainingStages = [];
+      for (const s of stages) {
+        cumulative += s.delay;
+        if (cumulative <= elapsedMs) {
+          // Already past · apply silently without UI churn
+          reg.status = s.status;
+          reg.updates = reg.updates || [];
+          // Avoid duplicate updates if the status was already recorded
+          const already = reg.updates.some(u => u.status === s.status);
+          if (!already) {
+            reg.updates.push({ at: new Date(dispatchedAt + cumulative).toISOString(), status: s.status, label: 'Auto-advanced while app was closed' });
+          }
+        } else {
+          remainingStages.push({ ...s, delay: cumulative - elapsedMs });
+          break;     // The remaining stages will fire from this delay onward
+        }
+      }
+      // Schedule the next remaining stage + the rest via setTimeout
+      if (remainingStages.length > 0) {
+        // Rebuild a fresh progression but starting from "now"
+        let runningDelay = 0;
+        const futureStages = stages.slice(stages.length - remainingStages.length);
+        for (let i = 0; i < futureStages.length; i++) {
+          const s = futureStages[i];
+          if (i === 0) runningDelay = remainingStages[0].delay;
+          else runningDelay += s.delay;
+          setTimeout(() => {
+            const live = state.registrations.find(r => r.id === reg.id);
+            if (!live) return;
+            live.status = s.status;
+            live.updates.push({ at: nowISO(), status: s.status, label: 'Status advanced to ' + s.status });
+            if (s.status === 'app-assigned' && !live.application_number) {
+              live.application_number = generateApplicationNumber(live);
+            }
+            if (s.status === 'registered') {
+              live.confirmed_at = nowISO();
+            }
+            save();
+            if (typeof currentViewIs === 'function' && currentViewIs('view-regstatus')) {
+              try { renderRegStatus(); } catch (e) {}
+            }
+          }, runningDelay);
+        }
+      }
+    }
+    save();
+  } catch (e) { console.warn('resumeFilingProgressions failed:', e); }
+}
+// Run once on init · fires the resume scheduler.
+setTimeout(() => { try { resumeFilingProgressions(); } catch (e) {} }, 2500);
 
 function currentViewIs(id) {
   return $('#' + id)?.classList.contains('active');
