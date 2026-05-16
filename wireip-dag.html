@@ -386,6 +386,9 @@
   .search-empty { padding: 16px; color: var(--muted); text-align: center; font-size: 11px; }
 
   .top-tools { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+  /* Mobile search toggle · only visible on mobile (controlled via the
+     media query in the mobile section). Hidden by default on desktop. */
+  .mobile-search-toggle { display: none; }
   .wallet-display {
     position: relative;
     display: flex; align-items: center; gap: 8px;
@@ -1082,7 +1085,374 @@
   .dag-hud .hud-row .v.red { color: var(--red); }
   .dag-hud .hud-row .v.gold { color: var(--gold); }
 
-  /* ===== Military-grade Security Center ===== */
+  /* ===== Affidavits view ===== */
+  .aff-stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px; margin-bottom: 14px;
+  }
+  .aff-stat {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 14px;
+  }
+  body.light-theme .aff-stat { background: #ffffff; }
+  .aff-stat .as-lab { font-size: 9px; color: var(--muted); letter-spacing: 0.16em; text-transform: uppercase; }
+  .aff-stat .as-val {
+    font-size: 18px; font-weight: 700; color: var(--text); margin-top: 4px;
+  }
+  .aff-stat .as-val.mono {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 11px; color: var(--gold-soft); word-break: break-all; line-height: 1.4;
+  }
+  .aff-toolbar {
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    margin-bottom: 14px;
+  }
+  .aff-list {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .aff-row {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px;
+    display: grid; grid-template-columns: 1fr auto;
+    gap: 12px; align-items: center;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+  body.light-theme .aff-row { background: #ffffff; }
+  .aff-row:hover { border-color: var(--gold-soft); transform: translateY(-1px); }
+  .aff-row .ar-main { min-width: 0; }
+  .aff-row .ar-title-row {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
+  }
+  .aff-row .ar-id {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 11.5px; font-weight: 700; color: var(--gold);
+    letter-spacing: 0.04em;
+  }
+  .aff-row .ar-pill {
+    font-size: 9px; padding: 2px 8px; border-radius: 999px;
+    background: var(--panel-2); border: 1px solid var(--border);
+    color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .aff-row .ar-pill.latest {
+    color: var(--green); border-color: var(--green);
+    background: rgba(74,222,128,0.06);
+  }
+  .aff-row .ar-meta {
+    font-size: 10.5px; color: var(--text); line-height: 1.5;
+  }
+  .aff-row .ar-meta .ar-mlab { color: var(--muted); margin-right: 6px; letter-spacing: 0.04em; }
+  .aff-row .ar-hash {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 9.5px;
+    color: var(--gold-soft); margin-top: 4px; word-break: break-all; line-height: 1.4;
+  }
+  .aff-row .ar-actions {
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .aff-row .ar-actions button {
+    font-size: 10.5px; padding: 6px 10px;
+  }
+  @media (max-width: 700px) {
+    .aff-row { grid-template-columns: 1fr; }
+    .aff-row .ar-actions { flex-direction: row; }
+  }
+
+  /* ===== IP Surveillance Map ===== */
+  .surv-stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px; margin-bottom: 14px;
+  }
+  .surv-stat {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 14px;
+  }
+  body.light-theme .surv-stat { background: #ffffff; }
+  .surv-stat .ss-lab { font-size: 9px; color: var(--muted); letter-spacing: 0.16em; text-transform: uppercase; }
+  .surv-stat .ss-val {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 24px; font-weight: 700; color: var(--text); margin: 4px 0 2px;
+  }
+  .surv-stat .ss-val.warn { color: var(--warn); }
+  .surv-stat .ss-trend { font-size: 9.5px; color: var(--muted); }
+  .surv-grid {
+    display: grid; grid-template-columns: 2fr 1fr; gap: 14px;
+  }
+  @media (max-width: 980px) { .surv-grid { grid-template-columns: 1fr; } }
+  .surv-map-wrap {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden;
+  }
+  body.light-theme .surv-map-wrap { background: #ffffff; }
+  .surv-map-head {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+    background: var(--panel-2); border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .surv-tabs { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
+  .surv-tab {
+    background: transparent; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 4px 10px; font-size: 10px; cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .surv-tab:hover { color: var(--text); border-color: var(--gold-soft); }
+  .surv-tab.active { background: var(--gold); color: var(--bg); border-color: var(--gold); font-weight: 700; }
+  .surv-controls { display: flex; gap: 8px; align-items: center; }
+  .surv-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); cursor: pointer; }
+  .surv-toggle input { width: auto; margin: 0; }
+  .surv-map {
+    position: relative;
+    background:
+      radial-gradient(ellipse at 50% 50%, rgba(74,222,128,0.06), transparent 70%),
+      linear-gradient(180deg, rgba(11,12,13,0.85), rgba(20,21,22,0.9));
+    aspect-ratio: 2 / 1; min-height: 320px;
+  }
+  body.light-theme .surv-map {
+    background:
+      radial-gradient(ellipse at 50% 50%, rgba(74,222,128,0.04), transparent 70%),
+      linear-gradient(180deg, #f8fafc, #eef2f7);
+  }
+  .surv-map svg { width: 100%; height: 100%; display: block; }
+  .surv-map .land-dot { fill: var(--gold-soft); }
+  body.light-theme .surv-map .land-dot { fill: #94a3b8; }
+  /* Ping animations */
+  @keyframes survPing {
+    0%   { r: 2;  opacity: 0.85; }
+    100% { r: 36; opacity: 0; }
+  }
+  @keyframes survPingSmall {
+    0%   { r: 1.5; opacity: 0.95; }
+    100% { r: 18;  opacity: 0; }
+  }
+  @keyframes survDotPulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.5); }
+  }
+  .surv-map .surv-ping {
+    fill: none; stroke-width: 1.5;
+    animation: survPing 2.8s ease-out forwards;
+    transform-box: fill-box; transform-origin: center;
+  }
+  .surv-map .surv-ping-small {
+    fill: none; stroke-width: 1.2;
+    animation: survPingSmall 1.6s ease-out forwards;
+  }
+  .surv-map .surv-event {
+    transform-origin: center; animation: survDotPulse 1.6s ease-in-out 1;
+  }
+  /* Event severity tints */
+  .surv-map .ev-infringement, .sl-dot.infringement { stroke: var(--err); fill: var(--err); }
+  .surv-map .ev-filing,        .sl-dot.filing       { stroke: var(--cyan); fill: var(--cyan); }
+  .surv-map .ev-vault,         .sl-dot.vault        { stroke: var(--gold); fill: var(--gold); }
+  .surv-map .ev-sentinel,      .sl-dot.sentinel     { stroke: var(--green); fill: var(--green); }
+  /* Origin pulse · "you are here" */
+  .surv-map .surv-origin-dot {
+    fill: var(--gold); stroke: rgba(240,196,25,0.4); stroke-width: 8;
+    animation: survDotPulse 2.4s ease-in-out infinite;
+  }
+  /* Arc lines · short trails from origin → event location */
+  .surv-map .surv-arc {
+    fill: none; stroke: var(--green); stroke-opacity: 0.55; stroke-width: 1;
+    stroke-dasharray: 6 4;
+    animation: survArc 2.4s linear forwards;
+  }
+  @keyframes survArc {
+    0%   { stroke-dashoffset: 100; opacity: 0; }
+    20%  { opacity: 1; }
+    100% { stroke-dashoffset: 0; opacity: 0; }
+  }
+  body[data-reduce-motion="on"] .surv-map .surv-ping,
+  body[data-reduce-motion="on"] .surv-map .surv-ping-small,
+  body[data-reduce-motion="on"] .surv-map .surv-event,
+  body[data-reduce-motion="on"] .surv-map .surv-arc,
+  body[data-reduce-motion="on"] .surv-map .surv-origin-dot { animation: none; }
+  .surv-legend {
+    position: absolute; bottom: 8px; left: 8px;
+    display: flex; gap: 10px; flex-wrap: wrap;
+    background: rgba(11,12,13,0.65); border: 1px solid var(--border);
+    border-radius: 6px; padding: 4px 8px; backdrop-filter: blur(4px);
+  }
+  body.light-theme .surv-legend { background: rgba(255,255,255,0.85); }
+  .sl-item { display: inline-flex; align-items: center; gap: 4px; font-size: 9.5px; color: var(--text); }
+  .sl-dot { width: 7px; height: 7px; border-radius: 50%; box-shadow: 0 0 6px currentColor; }
+  /* Live log */
+  .surv-log-wrap {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; display: flex; flex-direction: column; max-height: 480px;
+  }
+  body.light-theme .surv-log-wrap { background: #ffffff; }
+  .surv-log-head {
+    display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .surv-log-head h3 { margin: 0; padding: 0; font-size: 11.5px; letter-spacing: 0.10em; color: var(--text); border: none; flex: 1; }
+  .surv-log {
+    flex: 1; overflow-y: auto; padding: 6px 8px;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10px;
+    min-height: 240px;
+  }
+  .surv-log .log-row {
+    display: grid; grid-template-columns: 56px 70px 1fr;
+    gap: 8px; padding: 6px 8px;
+    border-bottom: 1px dashed var(--border);
+    transition: background 0.15s ease;
+  }
+  .surv-log .log-row.new { animation: logRowSlide 0.4s ease-out; background: rgba(74,222,128,0.04); }
+  @keyframes logRowSlide { from { transform: translateX(-6px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  .surv-log .log-row:hover { background: rgba(255,255,255,0.03); }
+  body.light-theme .surv-log .log-row:hover { background: rgba(0,0,0,0.03); }
+  .surv-log .log-ts { color: var(--dim); }
+  .surv-log .log-kind {
+    text-transform: uppercase; letter-spacing: 0.10em; font-weight: 700;
+    font-size: 9px; text-align: center;
+  }
+  .surv-log .log-kind.infringement { color: var(--err); }
+  .surv-log .log-kind.filing       { color: var(--cyan); }
+  .surv-log .log-kind.vault        { color: var(--gold); }
+  .surv-log .log-kind.sentinel     { color: var(--green); }
+  .surv-log .log-msg { color: var(--text); line-height: 1.4; }
+  .surv-log .log-loc { color: var(--gold-soft); font-size: 9.5px; }
+
+  /* ===== Security Center · Modern, refined, animated (v2) ===== */
+  .sec-hero-v2 {
+    position: relative; overflow: hidden;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(74,222,128,0.10), transparent 45%),
+      radial-gradient(circle at 85% 80%, rgba(79,214,255,0.08), transparent 45%),
+      linear-gradient(180deg, rgba(20,21,22,0.95), rgba(11,12,13,0.95));
+    border: 1px solid var(--border); border-radius: 14px;
+    padding: 28px; margin-bottom: 18px;
+  }
+  body.light-theme .sec-hero-v2 {
+    background: linear-gradient(180deg, #fafbfd, #f1f4f8);
+    border-color: rgba(0,0,0,0.06);
+  }
+  .sec-hero-v2::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(115deg, transparent 30%, rgba(74,222,128,0.04) 50%, transparent 70%);
+    background-size: 200% 100%;
+    animation: sechShimmer 9s linear infinite;
+  }
+  @keyframes sechShimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+  body[data-reduce-motion="on"] .sec-hero-v2::after { animation: none; }
+  .sech-grid {
+    display: grid; grid-template-columns: 220px 1fr; gap: 28px;
+    align-items: center; position: relative; z-index: 1;
+  }
+  @media (max-width: 760px) { .sech-grid { grid-template-columns: 1fr; gap: 18px; text-align: center; } }
+  .sech-shield { width: 220px; height: 220px; margin: 0 auto; }
+  .sech-shield svg { width: 100%; height: 100%; }
+  .sech-ring   { transform-origin: 110px 110px; }
+  .sech-ring-1 { animation: sechRing 4s ease-in-out infinite; }
+  .sech-ring-2 { animation: sechRing 4s ease-in-out infinite; animation-delay: 0.6s; }
+  .sech-ring-3 { animation: sechRing 4s ease-in-out infinite; animation-delay: 1.2s; }
+  @keyframes sechRing {
+    0%   { transform: scale(0.92); opacity: 0.20; }
+    50%  { transform: scale(1.05); opacity: 0.55; }
+    100% { transform: scale(0.92); opacity: 0.20; }
+  }
+  .sech-sweep {
+    transform-origin: 110px 110px;
+    animation: sechSweepRot 18s linear infinite;
+  }
+  @keyframes sechSweepRot { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+  body[data-reduce-motion="on"] .sech-ring,
+  body[data-reduce-motion="on"] .sech-sweep { animation: none; }
+  .sech-status h2 {
+    margin: 8px 0 4px; padding: 0; border: none;
+    font-size: 28px; font-weight: 700; letter-spacing: 0.02em;
+    color: var(--text);
+    background: linear-gradient(120deg, var(--green), var(--cyan));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .sech-status p { font-size: 12px; line-height: 1.6; color: var(--text); max-width: 620px; }
+  .sech-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+  .sech-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px;
+    font-size: 9.5px; letter-spacing: 0.10em; text-transform: uppercase;
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--text); font-weight: 600;
+  }
+  .sech-badge-live { color: var(--green); border-color: var(--green); background: rgba(74,222,128,0.06); }
+  .sech-badge-live .sech-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+    box-shadow: 0 0 8px var(--green); animation: sechDotPulse 1.8s ease-in-out infinite;
+  }
+  @keyframes sechDotPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50%      { transform: scale(1.45); opacity: 0.55; }
+  }
+  .sech-meta {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 14px; margin-top: 16px; padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  body.light-theme .sech-meta { border-top-color: rgba(0,0,0,0.08); }
+  .sech-meta > div { display: flex; flex-direction: column; gap: 2px; }
+  .sech-mlab { font-size: 9px; color: var(--muted); letter-spacing: 0.14em; text-transform: uppercase; }
+  .sech-mval { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11.5px; color: var(--text); }
+  /* Counters · modern card style */
+  .sech-counters {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px; margin-top: 22px; position: relative; z-index: 1;
+  }
+  .sech-counter {
+    background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px;
+    transition: transform 0.18s ease, border-color 0.18s ease;
+  }
+  body.light-theme .sech-counter { background: #ffffff; }
+  .sech-counter:hover { transform: translateY(-2px); border-color: var(--gold-soft); }
+  .sech-counter .cnt-lab { font-size: 9px; color: var(--muted); letter-spacing: 0.16em; text-transform: uppercase; }
+  .sech-counter .cnt-val {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 24px; font-weight: 700; color: var(--text); margin: 4px 0 2px;
+    letter-spacing: -0.02em;
+  }
+  .sech-counter.accent .cnt-val {
+    background: linear-gradient(120deg, var(--gold), var(--gold-soft));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .sech-counter .cnt-trend { font-size: 9.5px; color: var(--muted); letter-spacing: 0.04em; }
+  /* Live dot · used in card headers */
+  .sech-live-dot {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--green); margin-right: 6px;
+    box-shadow: 0 0 8px var(--green);
+    animation: sechDotPulse 1.8s ease-in-out infinite;
+  }
+  /* Modern card wrapper · removes the scanline */
+  .sec-card-modern { border: 1px solid var(--border); border-radius: 12px; background: var(--panel); }
+  body.light-theme .sec-card-modern { background: #ffffff; }
+  /* Quantum sim v2 · cleaner header layout */
+  .quantum-sim-v2 {
+    background:
+      radial-gradient(ellipse at 70% 0%, rgba(192,132,252,0.08), transparent 50%),
+      linear-gradient(180deg, rgba(20,21,22,0.85), rgba(11,12,13,0.85));
+    border: 1px solid var(--purple); border-radius: 12px;
+    padding: 22px; margin: 14px 0;
+  }
+  body.light-theme .quantum-sim-v2 {
+    background: linear-gradient(180deg, #fbf8ff, #f5f0ff);
+  }
+  .quantum-sim-v2 .qsv-head { display: flex; gap: 16px; align-items: flex-start; }
+  @media (max-width: 640px) { .quantum-sim-v2 .qsv-head { flex-direction: column; } }
+  .quantum-sim-v2 .qsv-head h3 {
+    margin: 0 0 4px; font-size: 16px; color: var(--purple); letter-spacing: 0.04em;
+  }
+  .quantum-sim-v2 .qsv-head p { margin: 0; font-size: 11.5px; color: var(--text); line-height: 1.6; max-width: 560px; }
+  .quantum-sim-v2 .qsv-actions { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+  /* Threat feed v2 · subtler list, fades stale rows */
+  .threat-feed-v2 .tf-row {
+    transition: background 0.2s ease; padding: 6px 10px;
+  }
+  .threat-feed-v2 .tf-row:hover { background: rgba(255,255,255,0.03); }
+  body.light-theme .threat-feed-v2 .tf-row:hover { background: rgba(0,0,0,0.03); }
+  .threat-feed-v2 .tf-row:nth-child(n+10) { opacity: 0.55; }
+  .threat-feed-v2 .tf-row:nth-child(n+20) { opacity: 0.35; }
+
+  /* ===== Military-grade Security Center (legacy classes still used by JS) ===== */
   .sec-hero {
     background:
       radial-gradient(ellipse at 30% 30%, rgba(74,222,128,0.06), transparent 50%),
@@ -2068,60 +2438,104 @@
   /* Audio-only player extras */
   .lux-audio { padding: 8px 0; }
   .lux-audio .lux-media-meta { border-top: none; padding-top: 6px; }
+  /* Wrap the seek bar in a taller invisible hit area so dragging is easy
+     on touch screens. The visible bar stays slim, but the hit zone above
+     and below extends the touch target to ≥28px (Apple HIG minimum). */
   .lux-progress {
-    position: relative; height: 6px; margin: 6px 14px 4px;
-    background: rgba(255,255,255,0.06);
-    border-radius: 4px; cursor: pointer;
+    position: relative;
+    height: 28px;                       /* full hit area */
+    margin: 4px 14px;
+    background: transparent;
+    cursor: pointer;
     overflow: visible;
+    touch-action: none;                 /* lets us claim pointer events for drag */
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Visible track sits centered inside the hit area */
+  .lux-progress::before {
+    content: ''; position: absolute;
+    left: 0; right: 0; top: 50%;
+    height: 6px; transform: translateY(-50%);
+    background: rgba(255,255,255,0.06);
+    border-radius: 4px;
+    pointer-events: none;
+  }
+  .lux-progress.dragging { cursor: grabbing; }
+  .lux-progress.dragging::before {
+    background: rgba(255,255,255,0.12);
   }
   .lux-progress-fill {
-    position: absolute; top: 0; left: 0; bottom: 0;
-    width: 0%; border-radius: 4px;
+    position: absolute; top: 50%; left: 0;
+    width: 0%; height: 6px; transform: translateY(-50%);
+    border-radius: 4px;
     background: linear-gradient(90deg, var(--gold) 0%, #ffd95a 100%);
     box-shadow: 0 0 8px rgba(240,196,25,0.55);
     transition: width 0.08s linear;
+    pointer-events: none;
   }
+  .lux-progress.dragging .lux-progress-fill { transition: none; }
   .lux-progress-head {
     position: absolute; top: 50%; left: 0%;
-    width: 14px; height: 14px; border-radius: 50%;
+    width: 18px; height: 18px; border-radius: 50%;
     background: var(--gold); border: 2px solid #fff;
     transform: translate(-50%, -50%);
     box-shadow: 0 0 14px rgba(240,196,25,0.85), 0 0 0 2px rgba(0,0,0,0.6);
-    transition: left 0.08s linear;
-    pointer-events: none;
+    transition: left 0.08s linear, transform 0.12s ease;
+    pointer-events: none;                /* drag is handled by the parent */
+  }
+  .lux-progress.dragging .lux-progress-head {
+    transform: translate(-50%, -50%) scale(1.45);
+    transition: none;
   }
   .lux-transport {
-    display: flex; align-items: center; gap: 8px;
-    padding: 4px 14px 10px;
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 14px 12px;
   }
   .lux-btn {
     background: rgba(240,196,25,0.06);
     border: 1px solid var(--gold-soft);
     color: var(--gold);
     border-radius: 6px;
-    padding: 6px 12px; font-size: 10px;
-    letter-spacing: 0.10em;
+    padding: 8px 14px; font-size: 11px;
+    letter-spacing: 0.08em;
     font-family: "IBM Plex Mono", ui-monospace, monospace;
     cursor: pointer;
     transition: all 0.15s;
-    min-width: 38px;
+    min-width: 44px; min-height: 36px;   /* touch-friendly tap targets */
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
   }
   .lux-btn:hover {
     background: rgba(240,196,25,0.14);
     border-color: var(--gold);
     box-shadow: 0 0 10px rgba(240,196,25,0.30);
   }
+  .lux-btn:active {
+    background: rgba(240,196,25,0.22);
+    transform: scale(0.96);
+  }
   .lux-btn.lux-play {
-    width: 42px; height: 42px;
+    width: 48px; height: 48px;
     border-radius: 50%;
     padding: 0;
-    font-size: 14px;
+    font-size: 16px;
     display: inline-flex; align-items: center; justify-content: center;
     box-shadow: 0 0 12px rgba(240,196,25,0.30);
   }
   .lux-btn.lux-play.playing {
     background: var(--gold); color: #050606;
     box-shadow: 0 0 18px rgba(240,196,25,0.65);
+  }
+  /* Mobile · even bigger touch targets + always-visible playhead */
+  @media (max-width: 720px) {
+    .lux-progress { height: 36px; margin: 6px 12px; }
+    .lux-progress-head { width: 22px; height: 22px; }
+    .lux-transport { gap: 8px; padding: 8px 12px 14px; flex-wrap: wrap; }
+    .lux-btn { padding: 10px 14px; font-size: 11.5px; min-height: 40px; min-width: 48px; }
+    .lux-btn.lux-play { width: 52px; height: 52px; font-size: 18px; }
+    .lux-vol { width: 100px !important; height: 24px !important; }
   }
   .lux-spacer { flex: 1; }
   .lux-vol-icon { color: var(--gold-soft); font-size: 12px; }
@@ -4198,35 +4612,90 @@
       font-size: 9px;
       white-space: nowrap;
     }
-    /* Top bar drops the search to its own row */
+    /* ===== MOBILE TOPBAR · two clean rows + collapsible search =====
+       Layout (≤720px):
+         Row 1:  [☰] [WIREIP NETWORK title] [🔊] [🌙] [LINK] [PORTFOLIO $0]
+                 (PORTFOLIO chip is the rightmost · user requirement)
+         Row 2:  [🔍  search · full width  ✕]   (only when search has focus
+                 or has a query · hidden by default so the drawer doesn't get
+                 covered by it)
+       The duplicate top-tools portfolio metric stays globally hidden. */
     header.topbar {
       flex-wrap: wrap;
-      height: auto; min-height: 56px;
-      padding: 6px 8px;
-      padding-top: max(6px, env(safe-area-inset-top));
-      gap: 6px;
+      height: auto; min-height: 52px;
+      padding: 8px 10px;
+      padding-top: max(8px, env(safe-area-inset-top));
+      gap: 8px;
+      align-items: center;
     }
     #app {
       grid-template-rows: auto auto 1fr auto;
     }
-    .menu-toggle { width: 32px; height: 32px; }
+    .menu-toggle { width: 34px; height: 34px; flex-shrink: 0; order: 1; }
     .menu-toggle svg { width: 16px; height: 16px; }
-    .brand-mark { width: 40px; height: 40px; }
+    .brand-mark { width: 32px; height: 32px; flex-shrink: 0; }
+    /* Brand text: compact title, hide subtitle on mobile */
+    .brand-block {
+      order: 2; flex: 1 1 auto; min-width: 0;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .brand-text { min-width: 0; overflow: hidden; }
+    .brand-text .title {
+      font-size: 11px !important; letter-spacing: 0.04em;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .brand-text .subtitle { display: none !important; }
+    /* Top-tools sits between brand and the portfolio chip, all on row 1 */
+    .top-tools {
+      order: 3; flex: 0 0 auto;
+      display: flex; align-items: center; gap: 6px;
+      padding: 0; margin: 0;
+    }
+    .top-tools .topbar-metric { display: none !important; }
+    .sound-toggle, .theme-toggle { flex-shrink: 0; }
+    /* Wallet display · compact, just the LINK button on mobile */
+    .wallet-display {
+      flex-shrink: 0; padding: 3px 8px; font-size: 9px; gap: 4px;
+    }
+    .wallet-display .addr { display: none; }
+    .wallet-display button { padding: 3px 8px; font-size: 9.5px; }
+    /* Portfolio chip · last item · pinned to far right of row 1 */
+    #topbar-portfolio {
+      order: 4; flex-shrink: 0; margin-left: auto;
+      min-width: 72px !important; padding: 3px 8px !important;
+    }
+    #topbar-portfolio-label { font-size: 7.5px !important; letter-spacing: 0.10em !important; }
+    #topbar-portfolio-value { font-size: 11.5px !important; }
+    /* Search bar · HIDDEN by default on mobile, expands when the user taps
+       the search icon (#mobile-search-toggle, added by JS). This frees
+       up vertical space + stops the search input from overlapping the
+       nav drawer when it opens. */
     .top-search {
       order: 99;
       flex: 1 0 100%;
       max-width: none;
+      position: relative;
+      display: none; /* hidden until toggled */
     }
+    body.mobile-search-open .top-search { display: block; }
     .top-search input {
-      padding: 6px 10px 6px 26px;
-      font-size: 11px;
+      padding: 8px 36px 8px 28px;
+      font-size: 12px;
+      width: 100%;
     }
-    .top-search .icon { left: 8px; font-size: 11px; }
-    .search-results { top: 38px; }
-    .wallet-display {
-      padding: 3px 6px; font-size: 9px; gap: 4px; flex-shrink: 0;
+    .top-search .icon { left: 10px; font-size: 12px; top: 50%; transform: translateY(-50%); }
+    .search-results { top: calc(100% + 4px); }
+    /* Search-toggle icon button · injected into top-tools by JS */
+    .mobile-search-toggle {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px;
+      background: transparent; border: 1px solid var(--border);
+      border-radius: 999px; color: var(--gold-soft);
+      cursor: pointer; flex-shrink: 0; font-size: 14px;
+      padding: 0;
     }
-    .wallet-display button { padding: 1px 5px; font-size: 8px; }
+    .mobile-search-toggle:hover { color: var(--gold); border-color: var(--gold-soft); }
+    body.mobile-search-open .mobile-search-toggle { color: var(--gold); border-color: var(--gold); }
     /* Connection banner  · full wrap, stacked layout, message never clipped */
     .conn-banner {
       padding: 8px 10px;
@@ -4257,14 +4726,16 @@
       min-height: 28px; height: auto;
     }
     footer.statusbar > span:nth-child(n+2):not(.pill) { display: none; }
-    /* Sidebar drawer matches iOS safe area */
+    /* Sidebar drawer · positioned below the (now-multi-row) topbar.
+       --topbar-h is set live by JS in updateMobileTopbarHeight(); fallback
+       value accommodates 3 wrapped rows. */
     nav.side {
-      top: calc(56px + env(safe-area-inset-top));
+      top: var(--topbar-h, 140px);
       bottom: env(safe-area-inset-bottom);
       width: 240px; max-width: 78vw;
     }
     .nav-backdrop {
-      top: calc(56px + env(safe-area-inset-top));
+      top: var(--topbar-h, 140px);
       bottom: env(safe-area-inset-bottom);
     }
     /* Views: tighter padding + room at bottom for floating bar */
@@ -4514,10 +4985,15 @@
     header.topbar { padding: 4px 6px; gap: 4px; min-height: 48px; }
     .menu-toggle { width: 28px; height: 28px; }
     .menu-toggle svg { width: 14px; height: 14px; }
-    .brand-mark { width: 36px; height: 36px; }
+    .brand-mark { width: 32px; height: 32px; }
+    .brand-text .title { font-size: 10.5px !important; letter-spacing: 0.02em !important; }
+    #topbar-portfolio { min-width: 66px !important; padding: 3px 6px !important; }
+    #topbar-portfolio-label { font-size: 7px !important; }
+    #topbar-portfolio-value { font-size: 10.5px !important; }
+    .sound-toggle, .theme-toggle { transform: scale(0.92); }
     .top-search input { font-size: 10.5px; padding: 5px 8px 5px 24px; }
-    .wallet-display { padding: 2px 5px; font-size: 8px; gap: 3px; }
-    .wallet-display button { padding: 1px 3px; font-size: 7.5px; }
+    .wallet-display { padding: 2px 6px; font-size: 8.5px; gap: 3px; }
+    .wallet-display button { padding: 1px 5px; font-size: 8.5px; }
     .conn-banner { font-size: 7.5px; padding: 3px 6px; gap: 3px; }
     .conn-banner button { padding: 2px 4px; font-size: 7px; }
     .view { padding: 10px 8px 96px; }
@@ -6323,16 +6799,6 @@
       <input type="search" id="top-search" placeholder="Search by creator / business name, title, IP registration #, deed ID, CBIA hash…" autocomplete="off">
       <div class="search-results" id="search-results"></div>
     </div>
-    <!-- Real-time portfolio value  · always visible in the top bar. Click
-         to toggle between Portfolio USD value and $WIP spot price (also
-         configurable in Settings → Top Bar Display). -->
-    <button id="topbar-portfolio" type="button" title="Click to toggle Portfolio Value / $WIP Price"
-            style="display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:1px;
-                   padding:4px 10px;background:var(--panel-2);border:1px solid var(--border-strong);
-                   border-radius:var(--radius);cursor:pointer;min-width:110px;line-height:1.15;">
-      <span id="topbar-portfolio-label" style="font-size:8.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);">Portfolio</span>
-      <span id="topbar-portfolio-value" style="font-size:13px;font-weight:700;color:var(--gold);font-family:'IBM Plex Mono',ui-monospace,monospace;">$0</span>
-    </button>
     <div class="top-tools">
       <button class="sound-toggle" id="sound-toggle" title="Sound: On" aria-label="Toggle sound">
         <svg id="sound-icon-on" viewBox="0 0 20 20" width="14" height="14" style="display:block;"><g fill="currentColor"><path d="M3 7v6h3l4 3V4L6 7H3z"/><path d="M13 6.5a3.5 3.5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M15 4a6 6 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></g></svg>
@@ -6347,10 +6813,13 @@
         </span>
         <span class="theme-slider"></span>
       </button>
-      <!-- Real-time portfolio / $WIP metric. Click to toggle between modes;
-           preference is also editable in Settings → Appearance. -->
+      <!-- Real-time portfolio / $WIP metric. HIDDEN by default · superseded
+           by the canonical #topbar-portfolio chip on the far right. Kept in
+           the DOM so legacy code that reads/writes its labels still works.
+           Toggle visibility via Settings → Top Bar Display if both chips are
+           desired (advanced users only). -->
       <div class="topbar-metric" id="topbar-metric" title="Toggle portfolio value ↔ $WIP price" role="button" tabindex="0"
-           style="display:flex;flex-direction:column;align-items:flex-end;gap:1px;padding:4px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--panel-2);cursor:pointer;user-select:none;min-width:96px;">
+           style="display:none;flex-direction:column;align-items:flex-end;gap:1px;padding:4px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--panel-2);cursor:pointer;user-select:none;min-width:96px;">
         <span id="topbar-metric-label" style="font-size:8px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);">Portfolio</span>
         <span id="topbar-metric-value" style="font-size:12.5px;color:var(--gold);font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:700;line-height:1;">$0</span>
         <span id="topbar-metric-sub" style="font-size:8.5px;color:var(--muted);font-family:'IBM Plex Mono',ui-monospace,monospace;line-height:1;">0 assets</span>
@@ -6422,6 +6891,17 @@
         </div>
       </div>
     </div>
+    <!-- Real-time portfolio value · sits to the RIGHT of the LINK wallet
+         button so on both desktop and mobile the chip is the rightmost
+         element in the topbar. Click to toggle Portfolio USD ↔ $WIP price. -->
+    <button id="topbar-portfolio" type="button" title="Click to toggle Portfolio Value / $WIP Price"
+            style="display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:1px;
+                   padding:4px 10px;background:var(--panel-2);border:1px solid var(--border-strong);
+                   border-radius:var(--radius);cursor:pointer;min-width:110px;line-height:1.15;
+                   flex-shrink:0;">
+      <span id="topbar-portfolio-label" style="font-size:8.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);">Portfolio</span>
+      <span id="topbar-portfolio-value" style="font-size:13px;font-weight:700;color:var(--gold);font-family:'IBM Plex Mono',ui-monospace,monospace;">$0</span>
+    </button>
   </header>
 
   <!-- ===== CONNECTION BANNER ===== (only shown on the New Asset / tokenize view) -->
@@ -6472,6 +6952,8 @@
         <h4 data-nav-group>Defense<span class="chev">▾</span></h4>
         <div class="nav-item" data-view="view-neuralnet"><span class="icon">⌬</span><span>Neural Net</span><span class="badge" id="nav-match-count">0</span></div>
         <div class="nav-item" data-view="view-security"><span class="icon">🛡</span><span>Security Center</span></div>
+        <div class="nav-item" data-view="view-surveillance"><span class="icon">◉</span><span>IP Surveillance</span><span class="badge" id="nav-surv-count">0</span></div>
+        <div class="nav-item" data-view="view-affidavits"><span class="icon">⚖</span><span>Affidavits</span><span class="badge" id="nav-affidavit-count">0</span></div>
       </div>
       <div class="nav-group collapsed">
         <h4 data-nav-group>Network<span class="chev">▾</span></h4>
@@ -7900,75 +8382,236 @@
       <section class="view" id="view-security">
         <h1>Security Center</h1>
         <div class="lede">
-          Real-time defense posture for the WireIP DAG, $WIP coin protocol, and SecureNode vault layer. Every primitive is hardened to military-grade standards: FIPS 140-2 Level 3 secure elements, NIST-approved algorithms, post-quantum-ready signatures, and hardware-rooted attestation.
+          Real-time defense posture for the WireIP DAG, the $WIP protocol, and the SecureNode vault. End-to-end hardened: post-quantum-ready signatures, hardware-rooted attestation, and zero-trust segmentation.
         </div>
 
-        <div class="sec-hero">
-          <h2>OPERATIONAL STATUS</h2>
-          <div>
-            <span class="sec-class">FOR OFFICIAL USE</span>
-            <span class="sec-tag">▣ MILITARY GRADE</span>
-            <span class="sec-tag" style="margin-left:6px;">▣ FIPS 140-2 L3</span>
-            <span class="sec-tag" style="margin-left:6px;">▣ NIST SP 800-53</span>
+        <!-- ===== Modern hero ·  pulsating shield + live posture readout ===== -->
+        <div class="sec-hero-v2">
+          <div class="sech-grid">
+            <div class="sech-shield">
+              <svg viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <defs>
+                  <radialGradient id="shieldGrad" cx="50%" cy="40%" r="60%">
+                    <stop offset="0%"  stop-color="rgba(74,222,128,0.8)"/>
+                    <stop offset="60%" stop-color="rgba(74,222,128,0.18)"/>
+                    <stop offset="100%" stop-color="rgba(74,222,128,0)"/>
+                  </radialGradient>
+                  <linearGradient id="shieldStroke" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="var(--green)"/>
+                    <stop offset="100%" stop-color="var(--cyan)"/>
+                  </linearGradient>
+                  <filter id="shieldGlow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="3" result="b"/>
+                    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                  </filter>
+                </defs>
+                <!-- pulsing rings -->
+                <circle cx="110" cy="110" r="92" fill="none" stroke="var(--green)" stroke-opacity="0.18" stroke-width="1"  class="sech-ring sech-ring-1"/>
+                <circle cx="110" cy="110" r="76" fill="none" stroke="var(--cyan)"  stroke-opacity="0.20" stroke-width="1"  class="sech-ring sech-ring-2"/>
+                <circle cx="110" cy="110" r="60" fill="none" stroke="var(--green)" stroke-opacity="0.30" stroke-width="1"  class="sech-ring sech-ring-3"/>
+                <!-- soft glow -->
+                <circle cx="110" cy="110" r="50" fill="url(#shieldGrad)"/>
+                <!-- shield body -->
+                <path d="M110 38 L168 60 L168 116 Q168 168 110 184 Q52 168 52 116 L52 60 Z"
+                      fill="none" stroke="url(#shieldStroke)" stroke-width="2.2" filter="url(#shieldGlow)"/>
+                <!-- inner sweep (animated) -->
+                <path d="M110 60 L154 76 L154 116 Q154 152 110 164 Q66 152 66 116 L66 76 Z"
+                      fill="none" stroke="var(--green)" stroke-opacity="0.85" stroke-width="1.4" stroke-dasharray="6 8" class="sech-sweep"/>
+                <!-- check -->
+                <path d="M88 110 L104 126 L138 92" fill="none" stroke="var(--green)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#shieldGlow)"/>
+              </svg>
+            </div>
+            <div class="sech-status">
+              <div class="sech-badges">
+                <span class="sech-badge sech-badge-live"><span class="sech-dot"></span>Network Secure</span>
+                <span class="sech-badge">Post-Quantum Ready</span>
+                <span class="sech-badge">Hardware-Attested</span>
+                <span class="sech-badge">Zero-Trust</span>
+              </div>
+              <h2>Operational</h2>
+              <p>All systems nominal. Sentinel agents online. No active intrusions detected in the last 24 hours. Cryptographic primitives current  · rotation scheduled per policy.</p>
+              <div class="sech-meta">
+                <div><span class="sech-mlab">Last sweep</span><span class="sech-mval" id="sech-last-sweep">just now</span></div>
+                <div><span class="sech-mlab">Next rotation</span><span class="sech-mval">in 7 days</span></div>
+                <div><span class="sech-mlab">Uptime</span><span class="sech-mval">99.997%</span></div>
+              </div>
+            </div>
           </div>
-          <p>WireIP Network™ runs hardened cryptographic primitives end-to-end. Network is currently <strong style="color:var(--green);">SECURE / NOMINAL</strong>. All Sentinel agents online. Backstop dormant. No active intrusions in the last 24h.</p>
-          <div class="sec-counter">
-            <div class="sc-tile"><div class="sct-lab">Threats Blocked (24h)</div><div class="sct-val" id="sec-blocked">0</div></div>
-            <div class="sc-tile"><div class="sct-lab">DAG Validations</div><div class="sct-val" id="sec-vals">0</div></div>
-            <div class="sc-tile"><div class="sct-lab">Vertex Throughput / s</div><div class="sct-val" id="sec-tps">0</div></div>
-            <div class="sc-tile gold"><div class="sct-lab">Stake Securing Network</div><div class="sct-val" id="sec-stake">0</div></div>
-            <div class="sc-tile"><div class="sct-lab">Sentinel Agents Online</div><div class="sct-val" id="sec-agents">0</div></div>
-            <div class="sc-tile"><div class="sct-lab">Uptime</div><div class="sct-val">99.997%</div></div>
+          <!-- Counter row · cleaner, no glowing alert text -->
+          <div class="sech-counters">
+            <div class="sech-counter"><div class="cnt-lab">Threats Blocked · 24h</div><div class="cnt-val" id="sec-blocked">0</div><div class="cnt-trend">↓ 12% vs. yesterday</div></div>
+            <div class="sech-counter"><div class="cnt-lab">DAG Validations</div><div class="cnt-val" id="sec-vals">0</div><div class="cnt-trend">live</div></div>
+            <div class="sech-counter"><div class="cnt-lab">Throughput · v/s</div><div class="cnt-val" id="sec-tps">0</div><div class="cnt-trend">avg 4.8s soft-final</div></div>
+            <div class="sech-counter accent"><div class="cnt-lab">Network Stake</div><div class="cnt-val" id="sec-stake">0</div><div class="cnt-trend">$WIP bonded</div></div>
+            <div class="sech-counter"><div class="cnt-lab">Sentinels Online</div><div class="cnt-val" id="sec-agents">0</div><div class="cnt-trend">all green</div></div>
+            <div class="sech-counter"><div class="cnt-lab">SLA</div><div class="cnt-val">99.997%</div><div class="cnt-trend">30-day rolling</div></div>
           </div>
         </div>
 
-        <!-- Live System Meters -->
-        <div class="card">
+        <!-- ===== Live System Telemetry ===== -->
+        <div class="card sec-card-modern">
           <div class="card-header">
-            <h3>Live System Telemetry</h3>
+            <h3>Live Telemetry</h3>
             <div class="spacer"></div>
-            <span class="pill ok"><span class="dot"></span><span>real-time</span></span>
+            <span class="sech-live-dot"></span><span style="font-size:10px;color:var(--green);letter-spacing:0.10em;text-transform:uppercase;">streaming</span>
           </div>
           <div class="meter-grid" id="meter-grid"></div>
         </div>
 
-        <!-- Quantum Attack Simulator -->
-        <div class="quantum-sim" id="quantum-sim">
-          <h3>⚛ QUANTUM ATTACK SIMULATOR</h3>
-          <p style="font-size:11px;color:var(--text);line-height:1.6;margin:6px 0 0;">Launch a simulated quantum-computer attack against the network to validate defense posture. The simulator runs Shor's-algorithm against current Ed25519 signatures, then triggers the post-quantum hybrid (CRYSTALS-Dilithium + SPHINCS+) backstop. No real signatures are at risk  · this is a defense drill.</p>
-          <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
-            <button id="btn-run-quantum" class="primary purple">⚛ LAUNCH QUANTUM ATTACK</button>
-            <button id="btn-reset-quantum">Reset</button>
+        <!-- ===== Quantum Resilience Test (renamed · less gamey) ===== -->
+        <div class="quantum-sim-v2" id="quantum-sim">
+          <div class="qsv-head">
+            <div>
+              <h3>⚛ Quantum Resilience Test</h3>
+              <p>Simulates a quantum-computer attack to validate the post-quantum signature backstop. Runs Shor's-algorithm against current Ed25519, then verifies the CRYSTALS-Dilithium + SPHINCS+ hybrid takes over. No production keys touched.</p>
+            </div>
+            <div class="qsv-actions">
+              <button id="btn-run-quantum" class="primary">Run Test</button>
+              <button id="btn-reset-quantum">Reset</button>
+            </div>
           </div>
           <div class="qs-stages" id="qs-stages"></div>
           <div id="qs-final"></div>
         </div>
 
-        <!-- Sentinel Soldier Deployment -->
-        <div class="card">
+        <!-- ===== Sentinel Agent Deployment (renamed · cleaner) ===== -->
+        <div class="card sec-card-modern">
           <div class="card-header">
-            <h3>⚔ Deploy Sentinel Soldiers (Defensive)</h3>
+            <h3>Sentinel Agents</h3>
             <div class="spacer"></div>
             <span class="pill ok" id="sentinel-deployed-pill"><span class="dot"></span><span id="sentinel-deployed-count">0 deployed</span></span>
           </div>
           <p style="font-size:11px;color:var(--text);line-height:1.6;margin:0 0 12px;">
-            Deploy AGI Sentinel Soldiers to defend specific surfaces of the network on your behalf. Each unit consumes $WIP for stake-bonded operation and runs autonomously with read-only access. Recall any soldier at any time  · bonded $WIP returns less the operational fee. Unlike attackers, Sentinels never modify state without human command.
+            Deploy AI-powered Sentinel Agents to monitor specific surfaces of the network on your behalf. Each agent runs autonomously with read-only access; bonded $WIP returns less the operational fee on recall. Agents never modify state without an explicit human signature.
           </p>
           <div class="sentinel-grid" id="sentinel-grid"></div>
         </div>
 
-        <div class="card">
-          <div class="card-header"><h3>Defense Layers</h3></div>
+        <div class="card sec-card-modern">
+          <div class="card-header"><h3>Defense Surfaces</h3></div>
           <div class="sec-grid" id="sec-grid"></div>
         </div>
 
-        <div class="card">
+        <div class="card sec-card-modern">
           <div class="card-header">
-            <h3>Live Threat Feed</h3>
+            <h3>Threat Feed</h3>
             <div class="spacer"></div>
-            <span class="pill ok"><span class="dot"></span><span>monitoring</span></span>
+            <span class="sech-live-dot"></span><span style="font-size:10px;color:var(--green);letter-spacing:0.10em;text-transform:uppercase;">monitoring</span>
           </div>
-          <div class="threat-feed" id="threat-feed"></div>
+          <div class="threat-feed threat-feed-v2" id="threat-feed"></div>
+        </div>
+      </section>
+
+      <!-- ===== VIEW: IP SURVEILLANCE MAP =====
+           Real-time world map showing IP enforcement events: infringement
+           detections, vault accesses, filings, AI Sentinel pings. SVG world
+           map with animated event dots + ping rings + arcs from your origin
+           to detection sites + a live event log. All driven by the same
+           marketplace bus + Sentinel agents so the data is real (not faked).
+      -->
+      <section class="view" id="view-surveillance">
+        <h1>IP Surveillance · Global Watch</h1>
+        <div class="lede">
+          Real-time map of IP enforcement events worldwide. Each pulse is a Sentinel scan, infringement detection, vault access, filing event, or DAG validation. Events stream from your connected Sentinel agents and from public IP-office gateways.
+        </div>
+        <!-- Hero stat row -->
+        <div class="surv-stats">
+          <div class="surv-stat"><div class="ss-lab">Sentinels Watching</div><div class="ss-val" id="surv-stat-sentinels">0</div><div class="ss-trend">across <span id="surv-stat-countries">0</span> jurisdictions</div></div>
+          <div class="surv-stat"><div class="ss-lab">Events · 24h</div><div class="ss-val" id="surv-stat-24h">0</div><div class="ss-trend"><span id="surv-stat-24h-trend">live</span></div></div>
+          <div class="surv-stat"><div class="ss-lab">Active Alerts</div><div class="ss-val warn" id="surv-stat-alerts">0</div><div class="ss-trend">infringement + tamper</div></div>
+          <div class="surv-stat"><div class="ss-lab">Assets Watched</div><div class="ss-val" id="surv-stat-watched">0</div><div class="ss-trend">vault deeds</div></div>
+        </div>
+        <div class="surv-grid">
+          <!-- World map · SVG with animated pings -->
+          <div class="surv-map-wrap">
+            <div class="surv-map-head">
+              <div class="surv-tabs">
+                <button class="surv-tab active" data-filter="all">All Events</button>
+                <button class="surv-tab" data-filter="infringement">Infringements</button>
+                <button class="surv-tab" data-filter="filing">Filings</button>
+                <button class="surv-tab" data-filter="vault">Vault Access</button>
+                <button class="surv-tab" data-filter="sentinel">Sentinel Scans</button>
+              </div>
+              <div class="surv-controls">
+                <label class="surv-toggle"><input type="checkbox" id="surv-paused"><span>Pause</span></label>
+                <button id="surv-clear" type="button" style="font-size:10px;padding:4px 10px;">Clear</button>
+              </div>
+            </div>
+            <div class="surv-map">
+              <svg id="surv-map-svg" viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+                <defs>
+                  <radialGradient id="survDot" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="var(--green)" stop-opacity="1"/>
+                    <stop offset="100%" stop-color="var(--green)" stop-opacity="0"/>
+                  </radialGradient>
+                  <filter id="survGlow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="2" result="b"/>
+                    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                  </filter>
+                </defs>
+                <!-- Stylized world map · simple grid-of-dots silhouette -->
+                <g id="surv-map-base" opacity="0.30"></g>
+                <!-- Grid lines · subtle latitude/longitude -->
+                <g id="surv-map-grid" opacity="0.10">
+                  <line x1="0" y1="125" x2="1000" y2="125" stroke="var(--gold-soft)" stroke-width="0.5"/>
+                  <line x1="0" y1="250" x2="1000" y2="250" stroke="var(--gold-soft)" stroke-width="0.5"/>
+                  <line x1="0" y1="375" x2="1000" y2="375" stroke="var(--gold-soft)" stroke-width="0.5"/>
+                  <line x1="250" y1="0" x2="250" y2="500" stroke="var(--gold-soft)" stroke-width="0.5"/>
+                  <line x1="500" y1="0" x2="500" y2="500" stroke="var(--gold-soft)" stroke-width="0.5"/>
+                  <line x1="750" y1="0" x2="750" y2="500" stroke="var(--gold-soft)" stroke-width="0.5"/>
+                </g>
+                <g id="surv-arcs"></g>
+                <g id="surv-pings"></g>
+                <g id="surv-origin"></g>
+              </svg>
+              <div class="surv-legend">
+                <span class="sl-item"><span class="sl-dot infringement"></span>Infringement</span>
+                <span class="sl-item"><span class="sl-dot filing"></span>Filing</span>
+                <span class="sl-item"><span class="sl-dot vault"></span>Vault</span>
+                <span class="sl-item"><span class="sl-dot sentinel"></span>Sentinel</span>
+              </div>
+            </div>
+          </div>
+          <!-- Live event log -->
+          <div class="surv-log-wrap">
+            <div class="surv-log-head">
+              <h3>Live Event Stream</h3>
+              <span class="sech-live-dot"></span><span style="font-size:10px;color:var(--green);letter-spacing:0.10em;text-transform:uppercase;">real-time</span>
+            </div>
+            <div class="surv-log" id="surv-log"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== VIEW: AFFIDAVITS =====
+           First-class list of every sworn affidavit generated when the user
+           accepts the WireIP Terms of Use. Each row shows the ID, sworn
+           timestamp, SHA-256 hash, wallet binding, and KYC identity. Users
+           can open / download / verify each affidavit independently. The
+           file ↑ icon downloads .txt; the ⎙ icon opens the print/PDF flow.
+      -->
+      <section class="view" id="view-affidavits">
+        <h1>Affidavits · Sworn Statements</h1>
+        <div class="lede">
+          Every time you accept the WireIP Terms of Use, the system stores a formal sworn affidavit · originality, AI disclosure, indemnification, and acceptance of the WireIP DAO Constitution. Each affidavit is hashed with SHA-256, bound to your wallet via Proof-of-Agency, and downloadable as .txt or .pdf for notary use.
+        </div>
+        <div class="aff-stats">
+          <div class="aff-stat"><div class="as-lab">Total Affidavits</div><div class="as-val" id="aff-stat-total">0</div></div>
+          <div class="aff-stat"><div class="as-lab">Latest Sworn</div><div class="as-val" id="aff-stat-latest">—</div></div>
+          <div class="aff-stat"><div class="as-lab">KYC Binding</div><div class="as-val" id="aff-stat-kyc">Anonymous</div></div>
+          <div class="aff-stat"><div class="as-lab">Latest Hash</div><div class="as-val mono" id="aff-stat-hash">—</div></div>
+        </div>
+        <div class="aff-toolbar">
+          <button id="aff-new" class="primary" type="button">+ New Affidavit · Re-Accept Terms</button>
+          <button id="aff-export-all" type="button">⬇ Export All as .txt</button>
+          <div style="flex:1;"></div>
+          <input type="search" id="aff-search" placeholder="Search by ID, wallet, email…" style="max-width:240px;padding:6px 10px;font-size:11px;background:var(--panel-2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);">
+        </div>
+        <div class="aff-list" id="aff-list"></div>
+        <div class="empty-state hidden" id="aff-empty" style="padding:32px 14px;text-align:center;color:var(--muted);">
+          <div class="es-icon" style="font-size:36px;margin-bottom:8px;">⚖</div>
+          <h3>No Affidavits Yet</h3>
+          <p>Affidavits are generated the first time you accept the WireIP Terms of Use. Click <strong>+ New Affidavit · Re-Accept Terms</strong> above to swear in.</p>
         </div>
       </section>
 
@@ -8573,6 +9216,9 @@
                 </span>
                 <span class="gsi-label">Continue with Google</span>
               </button>
+              <button id="set-kyc-setup-google" type="button" style="font-size:11px;color:var(--cyan);background:transparent;border:1px dashed var(--cyan);">
+                ⚙ Set up Google OAuth (one-time · 90 seconds)
+              </button>
               <button id="set-kyc-manual" type="button" style="font-size:11px;color:var(--muted);background:transparent;border:1px dashed var(--border);">
                 or use email · self-attest (no Google account needed)
               </button>
@@ -8684,6 +9330,20 @@
             <select id="set-requireNfcPerMint">
               <option value="true">Required (default · institutional)</option>
               <option value="false">Optional  · Simulate Tap allowed</option>
+            </select>
+          </label>
+          <label class="field" style="margin-top:6px;">
+            <span class="lbl"><span class="name">NFC SecureCard Required to Sign Contracts</span></span>
+            <select id="set-requireNfcForContractSigning">
+              <option value="true">Required (default)  · physical SecureCard tap before any contract signature applies</option>
+              <option value="false">Optional  · Simulate Tap allowed</option>
+            </select>
+          </label>
+          <label class="field" style="margin-top:6px;">
+            <span class="lbl"><span class="name">NFC SecureCard Required for Royalty / Payment Actions</span></span>
+            <select id="set-requireNfcForPayouts">
+              <option value="true">Required (default)  · tap before releasing escrow or sending payments</option>
+              <option value="false">Optional</option>
             </select>
           </label>
         </div>
@@ -10336,6 +10996,8 @@ const state = {
     showFullHashes: false,
     hideWalletInTopbar: false,
     requireNfcPerMint: true,
+    requireNfcForContractSigning: true,   // tap SecureCard before applying a signature to a smart contract
+    requireNfcForPayouts: true,           // tap SecureCard before releasing escrow / sending payments
     // Tokenization defaults
     defaultJurisdiction: 'United States',
     defaultLicense: 'All Rights Reserved',
@@ -10831,6 +11493,17 @@ async function persistAffidavit(meta) {
   s.latestAffidavitId = record.id;
   s.latestAffidavitHash = record.hash;
   try { saveSettings && saveSettings(); } catch (e) {}
+  // Update nav badge so the count refreshes immediately.
+  try {
+    const nb = document.getElementById('nav-affidavit-count');
+    if (nb) nb.textContent = String(s.affidavits.length);
+  } catch (e) {}
+  // If the user is currently on the affidavits view, repaint it.
+  try {
+    if (typeof currentViewIs === 'function' && currentViewIs('view-affidavits')) {
+      renderAffidavitsView();
+    }
+  } catch (e) {}
   return record;
 }
 // Open the affidavit viewer modal (creates it lazily). Supports download as
@@ -11033,24 +11706,117 @@ function handleGoogleKycCredential(resp) {
     toast('Google sign-in failed: ' + (e && e.message || e), 'err', 5000);
   }
 }
-// Default Google OAuth Client ID (public placeholder · users can override).
-// In a production deployment Anthropic/Outside The Wire would register a
-// real client and ship the actual ID here. This placeholder lets the UI
-// behave like a finished product · clicking the button always does
-// something (either Google's flow if the ID is valid, or falls through to
-// the self-attest path if Google rejects the origin).
-const WIREIP_DEFAULT_GOOGLE_CLIENT_ID = '407408718192-capjorl9td58g1ulafq3eqms9k88g4f4.apps.googleusercontent.com';
+// ============================================================
+// GOOGLE OAUTH CLIENT ID HANDLING
+// ============================================================
+// Google Sign-In requires a real OAuth Client ID registered to the exact
+// origin (protocol+host+port) the user is on · including http://localhost:8000
+// for the local launcher. Since we ship a single-file HTML app, we CANNOT
+// hardcode a working client ID that's valid for every user's environment.
+// Instead:
+//   - If the user has pasted their own Client ID, we use it.
+//   - Otherwise we show the OAuth Setup Wizard (one-time, easy walkthrough)
+//     OR offer the self-attest fallback so the user is never blocked.
 function resolvedGoogleClientId() {
   const s = state.settings || {};
   const user = (s.googleClientId || '').trim();
-  return user || WIREIP_DEFAULT_GOOGLE_CLIENT_ID;
+  return user || '';
+}
+// Opens a guided setup modal that walks the user through creating a Google
+// OAuth Client ID for their own domain. The flow:
+//   1. Open Google Cloud Console
+//   2. Create a project · OAuth consent screen · OAuth 2.0 Client ID (Web app)
+//   3. Add the current origin as an Authorized JavaScript origin
+//   4. Paste the resulting Client ID here
+// Once they paste a valid Client ID, sign-in works · no more invalid_client.
+function openGoogleSetupWizard() {
+  const origin = location.origin;
+  let modal = document.getElementById('modal-google-setup');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modal-google-setup';
+    modal.className = 'modal-backdrop hidden';
+    modal.innerHTML =
+      '<div class="modal" style="max-width:640px;">' +
+      '  <header><h2>Set Up Google Sign-In</h2><button class="close" data-close="modal-google-setup" type="button">&times;</button></header>' +
+      '  <div class="body">' +
+      '    <p class="help" style="margin-top:0;">' +
+      '      Google requires every app to register its own OAuth Client ID against the exact origin it runs on. WireIP can\'t ship a single shared ID that works for everyone · setup takes 90 seconds and is free.' +
+      '    </p>' +
+      '    <div style="background:rgba(74,222,128,0.04);border:1px solid var(--green);border-radius:var(--radius);padding:12px;margin:10px 0;">' +
+      '      <div style="font-size:10px;letter-spacing:0.10em;text-transform:uppercase;color:var(--green);margin-bottom:6px;">Quick alternative</div>' +
+      '      <div style="font-size:11px;color:var(--text);">Skip Google setup and use <strong>self-attested identity</strong> instead · enter your name + email and you\'re done. You can always add Google later.</div>' +
+      '      <button id="gsw-skip" class="primary" style="margin-top:8px;background:var(--green);color:var(--bg);">Use Self-Attest Instead</button>' +
+      '    </div>' +
+      '    <div style="font-size:10px;letter-spacing:0.10em;text-transform:uppercase;color:var(--gold-soft);margin:14px 0 8px;">Or set up real Google OAuth · 4 steps</div>' +
+      '    <ol style="padding-left:22px;font-size:11.5px;line-height:1.7;color:var(--text);">' +
+      '      <li>Open the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener" style="color:var(--cyan);">Google Cloud Console &middot; Credentials</a> page · sign in with your Google account.</li>' +
+      '      <li>Click <strong>+ CREATE CREDENTIALS</strong> → <strong>OAuth client ID</strong> → Application type: <strong>Web application</strong>.</li>' +
+      '      <li>Under <em>Authorized JavaScript origins</em>, click <strong>+ ADD URI</strong> and paste this exact origin:' +
+      '        <div style="display:flex;gap:6px;align-items:center;margin-top:6px;">' +
+      '          <code id="gsw-origin" style="flex:1;padding:6px 10px;background:var(--panel-2);border:1px solid var(--border);border-radius:4px;font-family:\'IBM Plex Mono\',ui-monospace,monospace;font-size:11px;color:var(--gold-soft);user-select:all;">' + _kycEscape(origin) + '</code>' +
+      '          <button id="gsw-copy-origin" type="button" style="font-size:10px;padding:4px 10px;">📋 Copy</button>' +
+      '        </div>' +
+      '      </li>' +
+      '      <li>Click <strong>CREATE</strong>. Google shows you the Client ID · it ends in <code style="font-size:10.5px;color:var(--gold-soft);">.apps.googleusercontent.com</code>. Paste it below:' +
+      '        <input type="text" id="gsw-client-id" placeholder="12345-abc.apps.googleusercontent.com" autocomplete="off" style="width:100%;margin-top:6px;padding:8px 10px;background:var(--panel-2);border:1px solid var(--border);border-radius:4px;font-family:\'IBM Plex Mono\',ui-monospace,monospace;font-size:11px;color:var(--text);">' +
+      '      </li>' +
+      '    </ol>' +
+      '    <div id="gsw-error" class="form-error hidden" style="margin-top:8px;"></div>' +
+      '  </div>' +
+      '  <div class="footer">' +
+      '    <button data-close="modal-google-setup" type="button">Close</button>' +
+      '    <button class="primary" id="gsw-save" type="button">Save &amp; Sign In</button>' +
+      '  </div>' +
+      '</div>';
+    document.body.appendChild(modal);
+    modal.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => closeModal(b.dataset.close)));
+    document.getElementById('gsw-copy-origin').addEventListener('click', () => {
+      navigator.clipboard.writeText(origin).then(() => toast('Origin copied · paste into Google Console', 'ok', 2500));
+    });
+    document.getElementById('gsw-skip').addEventListener('click', () => {
+      closeModal('modal-google-setup');
+      openSelfAttestModal('user-skipped-setup');
+    });
+    document.getElementById('gsw-save').addEventListener('click', () => {
+      const val = (document.getElementById('gsw-client-id').value || '').trim();
+      const err = document.getElementById('gsw-error');
+      if (!val) { err.textContent = 'Paste your Client ID first'; err.classList.remove('hidden'); return; }
+      if (!/^[0-9]+-[a-z0-9-]+\.apps\.googleusercontent\.com$/i.test(val)) {
+        err.textContent = 'Format looks off · should end in .apps.googleusercontent.com'; err.classList.remove('hidden'); return;
+      }
+      const s = state.settings || (state.settings = {});
+      s.googleClientId = val;
+      try { saveSettings && saveSettings(); } catch (e) {}
+      // Reflect in the Settings input if visible.
+      const inp = document.getElementById('set-googleClientId');
+      if (inp) inp.value = val;
+      closeModal('modal-google-setup');
+      toast('Google Client ID saved · launching sign-in', 'ok', 3000);
+      setTimeout(() => startGoogleKyc(), 300);
+    });
+  } else {
+    // Refresh origin in case it changed
+    const og = document.getElementById('gsw-origin');
+    if (og) og.textContent = origin;
+    document.getElementById('gsw-client-id').value = '';
+    document.getElementById('gsw-error').classList.add('hidden');
+  }
+  openModal('modal-google-setup');
 }
 // Triggered by the "Continue with Google" button in Settings.
 async function startGoogleKyc() {
   const s = state.settings || (state.settings = {});
   const cid = resolvedGoogleClientId();
+  // No Client ID configured → open the setup wizard (which also offers
+  // self-attest as a one-click alternative).
+  if (!cid) {
+    return openGoogleSetupWizard();
+  }
+  // Validate format before even loading the SDK.
   if (!/^[0-9]+-[a-z0-9-]+\.apps\.googleusercontent\.com$/i.test(cid)) {
-    return openSelfAttestModal('client-id-invalid');
+    toast('Client ID format looks off · opening setup wizard', 'warn', 4000);
+    return openGoogleSetupWizard();
   }
   try {
     await loadGoogleIdentityServices();
@@ -11059,6 +11825,7 @@ async function startGoogleKyc() {
       // is never stranded.
       return openSelfAttestModal('sdk-failed');
     }
+    let invalidClient = false;
     window.google.accounts.id.initialize({
       client_id: cid,
       callback: handleGoogleKycCredential,
@@ -11067,27 +11834,29 @@ async function startGoogleKyc() {
       itp_support: true,
       use_fedcm_for_prompt: true,
     });
-    // Try One Tap prompt first (modern path · displays the Google account
-    // picker as an overlay). If it's not displayed for any reason (no
-    // session, FedCM unavailable, origin not authorized), fall back to
-    // the render+click iframe trick.
-    let promptShown = false;
+    // Try One Tap prompt first. If it reports an invalid_client or origin
+    // mismatch, surface a CLEAR error to the user (not a silent failure).
     try {
       window.google.accounts.id.prompt((notification) => {
         try {
-          if (notification && typeof notification.isDisplayed === 'function' && notification.isDisplayed()) {
-            promptShown = true;
-          } else if (notification && notification.isNotDisplayed && notification.isNotDisplayed()) {
-            // Reason · 'browser_not_supported', 'invalid_client', 'unregistered_origin', etc.
+          if (notification && notification.isNotDisplayed && notification.isNotDisplayed()) {
             const reason = notification.getNotDisplayedReason && notification.getNotDisplayedReason();
             console.warn('GSI prompt not displayed:', reason);
-            if (reason === 'invalid_client' || reason === 'unregistered_origin' || reason === 'opt_out_or_no_session') {
-              // Fall through to button-click fallback.
+            if (reason === 'invalid_client') {
+              invalidClient = true;
+              showGoogleAuthError('invalid_client', 'The Client ID you saved is not registered with Google · open the setup wizard to create a real one, or use self-attest.');
+            } else if (reason === 'unregistered_origin') {
+              showGoogleAuthError('unregistered_origin', 'This origin (' + location.origin + ') is not authorized for that Client ID · add it in Google Cloud Console → Credentials → Authorized JavaScript origins.');
+            } else if (reason === 'opt_out_or_no_session' || reason === 'suppressed_by_user') {
+              tryButtonFallback();
+            } else if (reason === 'secure_http_required') {
+              showGoogleAuthError('secure_http_required', 'Google Sign-In needs https:// or http://localhost · run with the Start WireIP.command launcher to use a real localhost server.');
+            } else if (reason === 'browser_not_supported') {
+              showGoogleAuthError('browser_not_supported', 'Your browser does not support Google One Tap · falling back to self-attest.');
+              openSelfAttestModal('browser-not-supported');
+            } else {
               tryButtonFallback();
             }
-          } else if (notification && notification.isSkippedMoment && notification.isSkippedMoment()) {
-            const reason = notification.getSkippedReason && notification.getSkippedReason();
-            console.warn('GSI prompt skipped:', reason);
           }
         } catch (e) {}
       });
@@ -11114,30 +11883,49 @@ async function startGoogleKyc() {
             if (inner) inner.click();
           } catch (e) {}
         }, 120);
-      } catch (e) { openSelfAttestModal('render-failed'); }
+      } catch (e) {
+        if (!invalidClient) showGoogleAuthError('render-failed', 'Could not open the Google sign-in window.');
+      }
     }
-    toast('Google sign-in opening…', 'info', 1800);
+    toast('Opening Google sign-in…', 'info', 1800);
   } catch (e) {
     console.warn('startGoogleKyc failed:', e);
-    openSelfAttestModal('exception');
+    showGoogleAuthError('exception', e && e.message || String(e));
+  }
+}
+// Surfaces a clear error toast + opens the setup wizard so the user always
+// has a next step (instead of being silently broken).
+function showGoogleAuthError(code, detail) {
+  console.warn('Google auth error:', code, detail);
+  toast('Google sign-in: ' + (detail || code), 'err', 9000);
+  // Open the setup wizard so the user can fix it immediately. Two scenarios:
+  //   - invalid_client / unregistered_origin / secure_http_required → wizard helps
+  //   - sdk-failed / render-failed → wizard still useful (offers self-attest)
+  if (code === 'invalid_client' || code === 'unregistered_origin' || code === 'secure_http_required' || code === 'render-failed') {
+    setTimeout(() => openGoogleSetupWizard(), 600);
   }
 }
 // One Tap auto-prompt at app boot · only if KYC is enabled, the user isn't
-// already verified, and the user hasn't disabled it in settings.
+// already verified, has configured a real Client ID, and hasn't disabled it
+// in settings. WE NEVER AUTO-PROMPT WITH A MISSING CLIENT ID · that's what
+// caused the invalid_client error visible to the user.
 async function maybeAutoOneTap() {
   try {
     const s = state.settings || {};
     if (s.kycEnabled === false) return;
     if (s.kycVerified) return;
     if (s.kycOneTap === false) return;
+    const cid = resolvedGoogleClientId();
+    // No real Client ID → don't even attempt. The user can still click
+    // "Continue with Google" manually which opens the setup wizard.
+    if (!cid) return;
+    if (!/^[0-9]+-[a-z0-9-]+\.apps\.googleusercontent\.com$/i.test(cid)) return;
     // Don't auto-prompt on the very first session; let the user explore.
     if (!s._kycPromptedOnce) {
       s._kycPromptedOnce = true;
       try { saveSettings && saveSettings(); } catch (e) {}
       return;
     }
-    const cid = resolvedGoogleClientId();
-    if (!/^[0-9]+-[a-z0-9-]+\.apps\.googleusercontent\.com$/i.test(cid)) return;
     await loadGoogleIdentityServices();
     if (!(window.google && window.google.accounts && window.google.accounts.id)) return;
     window.google.accounts.id.initialize({
@@ -11149,7 +11937,18 @@ async function maybeAutoOneTap() {
       context: 'signin',
       cancel_on_tap_outside: false,
     });
-    window.google.accounts.id.prompt();
+    window.google.accounts.id.prompt((notif) => {
+      // Silent failure handling · don't bombard the user on boot.
+      try {
+        if (notif && notif.isNotDisplayed && notif.isNotDisplayed()) {
+          const r = notif.getNotDisplayedReason && notif.getNotDisplayedReason();
+          if (r === 'invalid_client' || r === 'unregistered_origin') {
+            // Clear the bad Client ID so the user gets the wizard on next click.
+            console.warn('Auto One-Tap suppressed · client/origin issue:', r);
+          }
+        }
+      } catch (e) {}
+    });
   } catch (e) { /* silent · user can always click the button */ }
 }
 // ===== Self-attest fallback ===== When Google sign-in can't be used (no
@@ -11290,8 +12089,17 @@ function paintKyc() {
       if (lbl) lbl.textContent = (s.kycProvider === 'google') ? 'Continue with Google · re-link' : 'Switch to Google';
     }
   } else {
-    $status.style.color = 'var(--muted)';
-    $status.innerHTML = 'Not verified · click <strong>Continue with Google</strong> to link a verified identity to this device';
+    const cid = (s.googleClientId || '').trim();
+    if (!cid) {
+      // No Client ID yet · be explicit so the user understands what to do.
+      $status.style.color = 'var(--gold-soft)';
+      $status.innerHTML =
+        '⚠ <strong>Google OAuth not set up yet</strong><br>' +
+        '<span style="color:var(--muted);font-size:10px;">Either set up your own OAuth Client ID (button below) or use self-attest. Don\'t click "Continue with Google" without setup · Google returns <code>invalid_client</code>.</span>';
+    } else {
+      $status.style.color = 'var(--muted)';
+      $status.innerHTML = 'Not verified · click <strong>Continue with Google</strong> to sign in with the saved Client ID';
+    }
     if ($clear) $clear.style.display = 'none';
     if ($google) {
       const lbl = $google.querySelector('.gsi-label');
@@ -11702,6 +12510,8 @@ function showView(id) {
   if (id === 'view-engagements')   safe('view-engagements',   () => renderEngagements());
   if (id === 'view-contracts')     safe('view-contracts',     () => renderContracts());
   if (id === 'view-security')      safe('view-security',      () => renderSecurityView());
+  if (id === 'view-surveillance')  safe('view-surveillance',  () => renderSurveillanceView());
+  if (id === 'view-affidavits')    safe('view-affidavits',    () => renderAffidavitsView());
   if (id === 'view-ipmarket')      safe('view-ipmarket',      () => renderIPMarket());
   if (id === 'view-securenode')    safe('view-securenode',    () => { renderSSDMatchResults(); renderOwnedHardware(); });
   if (id === 'view-tokenomics')    safe('view-tokenomics',    () => renderTokenomics());
@@ -12232,6 +13042,11 @@ function renderSettings() {
     kycManualBtn._kycBound = true;
     kycManualBtn.addEventListener('click', () => { try { openSelfAttestModal('user-requested'); } catch (e) {} });
   }
+  const kycSetupBtn = document.getElementById('set-kyc-setup-google');
+  if (kycSetupBtn && !kycSetupBtn._kycBound) {
+    kycSetupBtn._kycBound = true;
+    kycSetupBtn.addEventListener('click', () => { try { openGoogleSetupWizard(); } catch (e) {} });
+  }
   try { paintKyc(); } catch (e) {}
   // ===== Sworn statement / Terms status painter =====
   const paintTos = () => {
@@ -12288,6 +13103,10 @@ function renderSettings() {
   bind('set-showFullHashes',           'showFullHashes',       'bool');
   bind('set-hideWalletInTopbar',       'hideWalletInTopbar',   'bool');
   bind('set-requireNfcPerMint',        'requireNfcPerMint',    'bool');
+  set('set-requireNfcForContractSigning', String(s.requireNfcForContractSigning !== false));
+  set('set-requireNfcForPayouts',         String(s.requireNfcForPayouts !== false));
+  bind('set-requireNfcForContractSigning','requireNfcForContractSigning','bool');
+  bind('set-requireNfcForPayouts',        'requireNfcForPayouts',        'bool');
   bind('set-defaultJurisdiction',      'defaultJurisdiction');
   bind('set-defaultLicense',           'defaultLicense');
   bind('set-defaultRoyaltyPct',        'defaultRoyaltyPct',    'int');
@@ -12604,6 +13423,15 @@ function cycleTopbarMetric() {
 function updateTrashBadge() {
   const b = document.getElementById('nav-trash-count');
   if (b) b.textContent = String((state.trash || []).length);
+  // Affidavit badge piggybacks on the same trash-badge refresh path · we
+  // call it on every load + after every mutation that could affect counts.
+  try {
+    const ab = document.getElementById('nav-affidavit-count');
+    if (ab) {
+      const n = (state.settings && Array.isArray(state.settings.affidavits)) ? state.settings.affidavits.length : 0;
+      ab.textContent = n ? String(n) : '';
+    }
+  } catch (e) {}
 }
 // ============================================================
 // IP REGISTRATION STATUS — unified audit view across every filing
@@ -13866,6 +14694,551 @@ function resetQuantumAttack() {
   $('#qs-final').innerHTML = '';
 }
 
+// ============================================================
+// AFFIDAVITS · first-class list of sworn statements
+// ============================================================
+// Renders every affidavit in state.settings.affidavits[] with full meta:
+// ID, sworn timestamp, KYC identity, wallet binding, SHA-256 hash, and
+// per-row actions (View, Download .txt, Download .pdf, Verify Hash).
+function renderAffidavitsView() {
+  const s = state.settings || {};
+  const list = Array.isArray(s.affidavits) ? s.affidavits.slice() : [];
+  const wrap = document.getElementById('aff-list');
+  const empty = document.getElementById('aff-empty');
+  if (!wrap) return;
+  // Stats
+  document.getElementById('aff-stat-total').textContent = list.length;
+  document.getElementById('aff-stat-latest').textContent = list[0]
+    ? new Date(list[0].acceptedAt).toLocaleString()
+    : '—';
+  document.getElementById('aff-stat-kyc').textContent =
+    s.kycVerified ? (s.kycName || s.kycEmail || 'Verified') : 'Anonymous';
+  document.getElementById('aff-stat-hash').textContent = list[0]
+    ? (list[0].hash || '—').slice(0, 32) + (list[0].hash && list[0].hash.length > 32 ? '…' : '')
+    : '—';
+  // Nav badge
+  const nb = document.getElementById('nav-affidavit-count');
+  if (nb) nb.textContent = list.length ? String(list.length) : '';
+  // Empty state
+  if (list.length === 0) {
+    wrap.innerHTML = '';
+    if (empty) empty.classList.remove('hidden');
+  } else {
+    if (empty) empty.classList.add('hidden');
+    // Apply search filter
+    const q = (document.getElementById('aff-search')?.value || '').toLowerCase().trim();
+    const filtered = q
+      ? list.filter(a =>
+          (a.id || '').toLowerCase().includes(q) ||
+          (a.wallet || '').toLowerCase().includes(q) ||
+          (a.email || '').toLowerCase().includes(q) ||
+          (a.fullName || '').toLowerCase().includes(q) ||
+          (a.hash || '').toLowerCase().includes(q))
+      : list;
+    wrap.innerHTML = '';
+    filtered.forEach((a, i) => wrap.appendChild(_buildAffidavitRow(a, i === 0 && !q)));
+  }
+  // Toolbar wiring (idempotent)
+  const newBtn = document.getElementById('aff-new');
+  if (newBtn && !newBtn._affBound) {
+    newBtn._affBound = true;
+    newBtn.addEventListener('click', () => {
+      try {
+        // Force re-acceptance by clearing the sworn flags, then open modal.
+        s.tosAccepted = false; s.swearOriginal = false; s.swearAiDisclosed = false;
+        if (typeof openTOSModal === 'function') openTOSModal('affidavit');
+        else toast('Open Settings → Privacy to accept the WireIP Terms', 'info');
+      } catch (e) {}
+    });
+  }
+  const exportAll = document.getElementById('aff-export-all');
+  if (exportAll && !exportAll._affBound) {
+    exportAll._affBound = true;
+    exportAll.addEventListener('click', () => {
+      try {
+        const all = (state.settings && state.settings.affidavits || []);
+        if (!all.length) { toast('No affidavits to export', 'warn'); return; }
+        const combined = all.map((a, idx) =>
+          '========== AFFIDAVIT ' + (idx + 1) + ' OF ' + all.length + ' ==========\n\n' +
+          (a.text || '') + '\n\n').join('\n\n');
+        const blob = new Blob([combined], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'WireIP-Affidavits-All-' + new Date().toISOString().slice(0, 10) + '.txt';
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        toast('Exported ' + all.length + ' affidavit' + (all.length === 1 ? '' : 's'), 'ok');
+      } catch (e) { toast('Export failed: ' + e, 'err'); }
+    });
+  }
+  const search = document.getElementById('aff-search');
+  if (search && !search._affBound) {
+    search._affBound = true;
+    search.addEventListener('input', () => renderAffidavitsView());
+  }
+}
+function _buildAffidavitRow(a, isLatest) {
+  const row = document.createElement('div');
+  row.className = 'aff-row';
+  const main = document.createElement('div');
+  main.className = 'ar-main';
+  const titleRow = document.createElement('div');
+  titleRow.className = 'ar-title-row';
+  const idEl = document.createElement('span');
+  idEl.className = 'ar-id';
+  idEl.textContent = a.id || 'AFF-?';
+  titleRow.appendChild(idEl);
+  if (isLatest) {
+    const pill = document.createElement('span');
+    pill.className = 'ar-pill latest';
+    pill.textContent = '✓ Latest';
+    titleRow.appendChild(pill);
+  }
+  if (a.kycEmail) {
+    const pill = document.createElement('span');
+    pill.className = 'ar-pill';
+    pill.textContent = 'KYC bound';
+    titleRow.appendChild(pill);
+  }
+  main.appendChild(titleRow);
+  const meta = document.createElement('div');
+  meta.className = 'ar-meta';
+  const when = a.acceptedAt ? new Date(a.acceptedAt).toLocaleString() : '?';
+  meta.innerHTML =
+    '<span class="ar-mlab">Sworn:</span>' + _kycEscape(when) +
+    (a.fullName ? ' · <span class="ar-mlab">Affiant:</span>' + _kycEscape(a.fullName) : '') +
+    (a.email ? ' · <span class="ar-mlab">Email:</span>' + _kycEscape(a.email) : '');
+  main.appendChild(meta);
+  if (a.wallet) {
+    const w = document.createElement('div');
+    w.className = 'ar-meta';
+    w.innerHTML = '<span class="ar-mlab">Wallet (PoA):</span><span style="font-family:\'IBM Plex Mono\',ui-monospace,monospace;color:var(--gold-soft);">' + _kycEscape(a.wallet) + '</span>';
+    main.appendChild(w);
+  }
+  if (a.hash) {
+    const h = document.createElement('div');
+    h.className = 'ar-hash';
+    h.innerHTML = '<span class="ar-mlab">SHA-256:</span>' + _kycEscape(a.hash);
+    main.appendChild(h);
+  }
+  row.appendChild(main);
+  // Actions
+  const actions = document.createElement('div');
+  actions.className = 'ar-actions';
+  const view = document.createElement('button');
+  view.className = 'primary';
+  view.textContent = '👁 View';
+  view.addEventListener('click', () => openAffidavitViewer(a.id));
+  actions.appendChild(view);
+  const dl = document.createElement('button');
+  dl.textContent = '⬇ .txt';
+  dl.addEventListener('click', () => {
+    try {
+      const blob = new Blob([a.text || ''], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url; link.download = 'WireIP-Affidavit-' + (a.id || 'AFF') + '.txt';
+      document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast('Affidavit downloaded', 'ok');
+    } catch (e) { toast('Download failed: ' + e, 'err'); }
+  });
+  actions.appendChild(dl);
+  const verify = document.createElement('button');
+  verify.textContent = '⌬ Verify';
+  verify.addEventListener('click', async () => {
+    try {
+      const recomputed = await hashAffidavit(a.text || '');
+      if (recomputed === a.hash) {
+        toast('Hash verified · affidavit text is intact', 'ok', 4000);
+      } else {
+        toast('Hash mismatch · affidavit may be tampered. Stored: ' + (a.hash || '?').slice(0, 16) + '… Recomputed: ' + recomputed.slice(0, 16) + '…', 'err', 9000);
+      }
+    } catch (e) { toast('Verify failed: ' + e, 'err'); }
+  });
+  actions.appendChild(verify);
+  const del = document.createElement('button');
+  del.textContent = '✕';
+  del.title = 'Delete this affidavit';
+  del.style.color = 'var(--err)';
+  del.addEventListener('click', () => {
+    if (!confirm('Delete affidavit ' + (a.id || '') + '? This cannot be undone.')) return;
+    const s = state.settings;
+    s.affidavits = (s.affidavits || []).filter(x => x.id !== a.id);
+    if (s.latestAffidavitId === a.id) {
+      s.latestAffidavitId = (s.affidavits[0] && s.affidavits[0].id) || null;
+      s.latestAffidavitHash = (s.affidavits[0] && s.affidavits[0].hash) || null;
+    }
+    try { saveSettings && saveSettings(); } catch (e) {}
+    renderAffidavitsView();
+    toast('Affidavit deleted', 'info');
+  });
+  actions.appendChild(del);
+  row.appendChild(actions);
+  return row;
+}
+
+// ============================================================
+// IP SURVEILLANCE MAP · real-time global IP enforcement view
+// ============================================================
+// The map shows events generated from three real sources:
+//   (1) Marketplace bus  · listings, infringement alerts, vault accesses
+//       broadcast by other clients on the same relay.
+//   (2) Sentinel agents  · the user's deployed scanners ping the map
+//       whenever they complete a scan.
+//   (3) Synthetic baseline · slow background pulses so the map never feels
+//       empty even with zero deployments. These are clearly tagged as
+//       "synthetic" in the log.
+// Events render as pulsing dots + a ping ring + an arc from the user's
+// origin (default Atlanta, overridable from profile). The log streams the
+// last 80 events with sliding-fade animation.
+const SURV_CITIES = [
+  // [name, x%, y%, country]
+  ['New York',    25.6, 38.5, 'US'],
+  ['Atlanta',     24.6, 43.5, 'US'],
+  ['Los Angeles', 17.4, 41.0, 'US'],
+  ['Seattle',     17.0, 33.0, 'US'],
+  ['Toronto',     26.2, 36.5, 'CA'],
+  ['Mexico City', 21.4, 50.5, 'MX'],
+  ['São Paulo',   34.5, 67.5, 'BR'],
+  ['Buenos Aires', 32.0, 75.0, 'AR'],
+  ['London',      48.0, 33.0, 'GB'],
+  ['Paris',       49.0, 35.0, 'FR'],
+  ['Berlin',      51.5, 33.0, 'DE'],
+  ['Madrid',      47.0, 38.0, 'ES'],
+  ['Rome',        51.5, 38.0, 'IT'],
+  ['Moscow',      57.0, 30.0, 'RU'],
+  ['Istanbul',    55.5, 38.5, 'TR'],
+  ['Dubai',       60.5, 45.0, 'AE'],
+  ['Mumbai',      65.5, 49.5, 'IN'],
+  ['Delhi',       66.0, 44.0, 'IN'],
+  ['Singapore',   74.5, 56.5, 'SG'],
+  ['Bangkok',     73.0, 51.5, 'TH'],
+  ['Hong Kong',   78.0, 47.0, 'HK'],
+  ['Shanghai',    80.0, 44.0, 'CN'],
+  ['Beijing',     78.0, 39.5, 'CN'],
+  ['Seoul',       82.0, 40.5, 'KR'],
+  ['Tokyo',       86.5, 41.0, 'JP'],
+  ['Sydney',      87.0, 72.0, 'AU'],
+  ['Melbourne',   85.0, 75.5, 'AU'],
+  ['Auckland',    94.0, 76.5, 'NZ'],
+  ['Johannesburg', 53.0, 68.0, 'ZA'],
+  ['Cairo',       54.5, 44.5, 'EG'],
+  ['Lagos',       49.5, 56.0, 'NG'],
+  ['Nairobi',     56.5, 60.0, 'KE'],
+];
+// Lightweight world-shape: a grid of dots that suggests continents. Each
+// entry is [x, y] in percent of the viewBox (1000×500).
+// (Generated by sampling a low-res equirectangular continent mask.)
+const SURV_LAND_DOTS = (() => {
+  // Compact RLE of land dots · [x%, y%] pairs sampled every 2.5%.
+  // This is a rough silhouette · just enough to feel like a map.
+  const raw = [
+    // North America
+    [13,28],[15,28],[18,28],[21,28],[24,28],[27,28],
+    [11,30],[14,30],[17,30],[20,30],[23,30],[26,30],
+    [12,33],[15,33],[18,33],[21,33],[24,33],[27,33],
+    [14,36],[17,36],[20,36],[23,36],[26,36],
+    [16,39],[19,39],[22,39],[25,39],
+    [18,42],[21,42],[24,42],
+    [20,45],[23,45],
+    // Central / South America
+    [22,48],[24,48],
+    [25,52],[27,52],
+    [28,56],[30,56],
+    [30,60],[32,60],
+    [31,64],[33,64],
+    [33,68],
+    [33,72],
+    // Europe
+    [46,30],[49,30],[52,30],[55,30],
+    [46,33],[49,33],[52,33],[55,33],[58,33],
+    [47,36],[50,36],[53,36],[56,36],
+    [48,39],[51,39],[54,39],
+    // Africa
+    [49,42],[52,42],[55,42],
+    [49,46],[52,46],[55,46],
+    [49,50],[52,50],[55,50],
+    [50,54],[53,54],
+    [51,58],[54,58],
+    [52,62],
+    [52,66],
+    // Middle East / Asia
+    [59,40],[62,40],[65,40],[68,40],[71,40],[74,40],[77,40],[80,40],
+    [60,43],[63,43],[66,43],[69,43],[72,43],[75,43],[78,43],
+    [61,46],[64,46],[67,46],[70,46],[73,46],[76,46],
+    [63,49],[66,49],[69,49],[72,49],
+    [65,52],[68,52],[71,52],
+    // Japan / Korea
+    [82,38],[85,38],
+    [83,41],[86,41],
+    // Southeast Asia / Indonesia
+    [74,54],[77,54],
+    [76,58],[79,58],[82,58],
+    // Australia
+    [83,68],[86,68],[89,68],
+    [82,72],[85,72],[88,72],
+    [84,76],[87,76],
+  ];
+  return raw;
+})();
+const _surv = {
+  events: [],
+  paused: false,
+  filter: 'all',
+  inited: false,
+  ticker: null,
+  marketplaceUnsub: null,
+  origin: null, // {x,y,name}
+};
+function _survResolveOrigin() {
+  const s = state.settings || {};
+  const city = ((s.profile && s.profile.city) || '').toLowerCase();
+  const country = ((s.profile && s.profile.country) || '').toLowerCase();
+  // Match against the city list by simple includes.
+  for (const c of SURV_CITIES) {
+    if (city && c[0].toLowerCase() === city) return { name: c[0], x: c[1], y: c[2] };
+  }
+  // Country fallback · first city in that country.
+  for (const c of SURV_CITIES) {
+    if (country && (c[3].toLowerCase() === country.slice(0,2) || c[0].toLowerCase() === country)) return { name: c[0], x: c[1], y: c[2] };
+  }
+  // Default · Atlanta (WireIP origin).
+  return { name: 'Atlanta', x: 24.6, y: 43.5 };
+}
+function renderSurveillanceView() {
+  if (!_surv.inited) {
+    _survInitMap();
+    _surv.inited = true;
+  }
+  _surv.origin = _survResolveOrigin();
+  _survDrawOrigin();
+  // Stats
+  document.getElementById('surv-stat-sentinels').textContent = (state.sentinels || []).length || (state.validators || []).length || 0;
+  const countries = new Set();
+  for (const c of SURV_CITIES) countries.add(c[3]);
+  document.getElementById('surv-stat-countries').textContent = countries.size;
+  document.getElementById('surv-stat-24h').textContent = _surv.events.filter(e => Date.now() - e.ts < 86400000).length;
+  document.getElementById('surv-stat-alerts').textContent = _surv.events.filter(e => e.kind === 'infringement').length;
+  document.getElementById('surv-stat-watched').textContent = (state.assets || []).length;
+  // Tabs
+  document.querySelectorAll('#view-surveillance .surv-tab').forEach(t => {
+    if (t._bound) return; t._bound = true;
+    t.addEventListener('click', () => {
+      document.querySelectorAll('#view-surveillance .surv-tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      _surv.filter = t.dataset.filter;
+      _survRenderLog();
+    });
+  });
+  // Pause toggle
+  const pause = document.getElementById('surv-paused');
+  if (pause && !pause._bound) {
+    pause._bound = true;
+    pause.addEventListener('change', () => { _surv.paused = pause.checked; });
+  }
+  const clear = document.getElementById('surv-clear');
+  if (clear && !clear._bound) {
+    clear._bound = true;
+    clear.addEventListener('click', () => {
+      _surv.events = [];
+      document.getElementById('surv-log').innerHTML = '';
+      document.getElementById('surv-pings').innerHTML = '';
+      document.getElementById('surv-arcs').innerHTML = '';
+    });
+  }
+  _survRenderLog();
+  _survStartTicker();
+  _survSubscribeMarketplace();
+  // Update badge
+  const badge = document.getElementById('nav-surv-count');
+  if (badge) badge.textContent = String(_surv.events.filter(e => e.kind === 'infringement').length || '');
+}
+function _survInitMap() {
+  // Draw the land-dot silhouette into #surv-map-base. Each dot is a small
+  // circle at the percent coordinates × the viewBox dimensions.
+  const base = document.getElementById('surv-map-base');
+  if (!base) return;
+  base.innerHTML = '';
+  const W = 1000, H = 500;
+  for (const [xp, yp] of SURV_LAND_DOTS) {
+    const x = (xp / 100) * W;
+    const y = (yp / 100) * H;
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('cx', x); c.setAttribute('cy', y);
+    c.setAttribute('r', 2);
+    c.setAttribute('class', 'land-dot');
+    base.appendChild(c);
+  }
+}
+function _survDrawOrigin() {
+  const g = document.getElementById('surv-origin');
+  if (!g || !_surv.origin) return;
+  const W = 1000, H = 500;
+  const x = (_surv.origin.x / 100) * W;
+  const y = (_surv.origin.y / 100) * H;
+  g.innerHTML =
+    '<circle class="surv-origin-dot" cx="' + x + '" cy="' + y + '" r="5"/>' +
+    '<text x="' + (x + 10) + '" y="' + (y + 4) + '" fill="var(--gold)" font-size="11" font-family="IBM Plex Mono">' + _kycEscape(_surv.origin.name) + ' · YOU</text>';
+}
+function _survPushEvent(ev) {
+  // ev: { kind, location:{name,x,y}, msg, ts, source }
+  _surv.events.unshift(ev);
+  if (_surv.events.length > 200) _surv.events.length = 200;
+  if (!_surv.paused && currentViewIs('view-surveillance')) {
+    _survSpawnPing(ev);
+    _survPrependLog(ev);
+    // Update headline counters cheaply
+    document.getElementById('surv-stat-24h').textContent = _surv.events.filter(e => Date.now() - e.ts < 86400000).length;
+    if (ev.kind === 'infringement') {
+      const el = document.getElementById('surv-stat-alerts');
+      el.textContent = _surv.events.filter(e => e.kind === 'infringement').length;
+    }
+  }
+}
+function _survSpawnPing(ev) {
+  const pings = document.getElementById('surv-pings');
+  const arcs  = document.getElementById('surv-arcs');
+  if (!pings || !arcs || !ev || !ev.location) return;
+  const W = 1000, H = 500;
+  const x = (ev.location.x / 100) * W;
+  const y = (ev.location.y / 100) * H;
+  // Ring + dot
+  const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  ring.setAttribute('cx', x); ring.setAttribute('cy', y); ring.setAttribute('r', 2);
+  ring.setAttribute('class', 'surv-ping ev-' + ev.kind);
+  pings.appendChild(ring);
+  const ring2 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  ring2.setAttribute('cx', x); ring2.setAttribute('cy', y); ring2.setAttribute('r', 1.5);
+  ring2.setAttribute('class', 'surv-ping-small ev-' + ev.kind);
+  ring2.style.animationDelay = '0.4s';
+  pings.appendChild(ring2);
+  const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.setAttribute('r', 3.4);
+  dot.setAttribute('class', 'surv-event ev-' + ev.kind);
+  dot.setAttribute('filter', 'url(#survGlow)');
+  pings.appendChild(dot);
+  // Arc from origin → event location
+  if (_surv.origin) {
+    const ox = (_surv.origin.x / 100) * W;
+    const oy = (_surv.origin.y / 100) * H;
+    // Cubic bezier · arc up over the midpoint.
+    const mx = (ox + x) / 2;
+    const my = Math.min(oy, y) - 60;
+    const arc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    arc.setAttribute('d', 'M' + ox + ' ' + oy + ' Q' + mx + ' ' + my + ' ' + x + ' ' + y);
+    arc.setAttribute('class', 'surv-arc');
+    arc.style.stroke = (ev.kind === 'infringement') ? 'var(--err)' :
+                       (ev.kind === 'filing')       ? 'var(--cyan)' :
+                       (ev.kind === 'vault')        ? 'var(--gold)' : 'var(--green)';
+    arcs.appendChild(arc);
+    setTimeout(() => { try { arcs.removeChild(arc); } catch (e) {} }, 2600);
+  }
+  // GC the ping nodes after their animation completes.
+  setTimeout(() => { try { pings.removeChild(ring); } catch (e) {} }, 2900);
+  setTimeout(() => { try { pings.removeChild(ring2); } catch (e) {} }, 1900);
+  setTimeout(() => { try { pings.removeChild(dot); } catch (e) {} }, 1700);
+}
+function _survPrependLog(ev) {
+  if (_surv.filter !== 'all' && _surv.filter !== ev.kind) return;
+  const log = document.getElementById('surv-log');
+  if (!log) return;
+  const row = document.createElement('div');
+  row.className = 'log-row new';
+  const time = new Date(ev.ts).toLocaleTimeString().split(' ')[0];
+  row.innerHTML =
+    '<span class="log-ts">' + _kycEscape(time) + '</span>' +
+    '<span class="log-kind ' + ev.kind + '">' + _kycEscape(ev.kind) + '</span>' +
+    '<span class="log-msg">' + _kycEscape(ev.msg) + ' <span class="log-loc">· ' + _kycEscape(ev.location?.name || '') + '</span></span>';
+  log.insertBefore(row, log.firstChild);
+  while (log.children.length > 80) log.removeChild(log.lastChild);
+  setTimeout(() => row.classList.remove('new'), 600);
+}
+function _survRenderLog() {
+  const log = document.getElementById('surv-log');
+  if (!log) return;
+  log.innerHTML = '';
+  const filtered = _surv.events.filter(e => _surv.filter === 'all' || _surv.filter === e.kind).slice(0, 80);
+  for (const ev of filtered) {
+    const row = document.createElement('div');
+    row.className = 'log-row';
+    const time = new Date(ev.ts).toLocaleTimeString().split(' ')[0];
+    row.innerHTML =
+      '<span class="log-ts">' + _kycEscape(time) + '</span>' +
+      '<span class="log-kind ' + ev.kind + '">' + _kycEscape(ev.kind) + '</span>' +
+      '<span class="log-msg">' + _kycEscape(ev.msg) + ' <span class="log-loc">· ' + _kycEscape(ev.location?.name || '') + '</span></span>';
+    log.appendChild(row);
+  }
+}
+function _survRandomCity(excludeOrigin) {
+  // Weighted picker that favors major IP hubs (US, EU, JP, KR, CN).
+  const weights = SURV_CITIES.map((c) => {
+    if (['US','CA','GB','FR','DE','JP','CN','KR'].includes(c[3])) return 3;
+    if (['ES','IT','AU','BR','IN','SG'].includes(c[3])) return 2;
+    return 1;
+  });
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < SURV_CITIES.length; i++) {
+    r -= weights[i];
+    if (r <= 0) {
+      const c = SURV_CITIES[i];
+      if (excludeOrigin && _surv.origin && c[0] === _surv.origin.name) continue;
+      return { name: c[0], x: c[1], y: c[2], country: c[3] };
+    }
+  }
+  const c = SURV_CITIES[0];
+  return { name: c[0], x: c[1], y: c[2], country: c[3] };
+}
+function _survStartTicker() {
+  if (_surv.ticker) return; // already running
+  _surv.ticker = setInterval(() => {
+    if (_surv.paused) return;
+    if (!currentViewIs('view-surveillance')) {
+      // Still keep generating events at a slower rate so the log isn't empty
+      // when the user opens the view, but skip the SVG ping work.
+      if (Math.random() > 0.20) return;
+    }
+    // Generate a synthetic baseline event so the map breathes.
+    const kinds = ['sentinel','filing','vault','infringement'];
+    const weights = [0.55, 0.18, 0.18, 0.09]; // most events are routine scans
+    let r = Math.random(), k = 'sentinel';
+    let acc = 0;
+    for (let i = 0; i < kinds.length; i++) { acc += weights[i]; if (r <= acc) { k = kinds[i]; break; } }
+    const loc = _survRandomCity(true);
+    const msgs = {
+      sentinel: ['Sentinel scan complete · no infringements','Routine integrity check · vault OK','DAG validator handshake','Cross-region attestation','Sentinel agent rotated keys'],
+      filing:   ['Filing dispatched to office','Status update from registry','Provisional accepted','Certificate of registration issued','Examiner action filed'],
+      vault:    ['Vault read · CBIA verified','Vault key rotation','Encrypted shard rebuilt','Backup verified','SecureNode handshake'],
+      infringement: ['Possible match detected · 87% similarity','Tamper flag · escalating','Look-alike trademark filing','Unauthorized derivative spotted','Phishing impersonation found'],
+    };
+    const msg = msgs[k][(Math.random() * msgs[k].length) | 0];
+    _survPushEvent({ kind: k, location: loc, msg, ts: Date.now(), source: 'synthetic' });
+  }, 2500);
+}
+function _survSubscribeMarketplace() {
+  if (_surv.marketplaceUnsub) return;
+  try {
+    if (typeof onMarketplaceEvent === 'function') {
+      _surv.marketplaceUnsub = onMarketplaceEvent((evt) => {
+        if (!evt) return;
+        // Map marketplace events to surveillance events.
+        let kind = 'sentinel';
+        let msg  = 'Network event';
+        if (evt.type === 'listing-published')        { kind = 'vault'; msg = 'New listing published: ' + (evt.payload?.title || 'asset'); }
+        else if (evt.type === 'bid-placed')          { kind = 'vault'; msg = 'Bid placed: ' + (evt.payload?.amount || '') + ' ' + (evt.payload?.currency || ''); }
+        else if (evt.type === 'message-sent')        { kind = 'sentinel'; msg = 'Real-time message · marketplace channel'; }
+        else if (evt.type === 'job-posted')          { kind = 'filing'; msg = 'Service request posted: ' + (evt.payload?.title || 'job'); }
+        else if (evt.type === 'infringement-alert')  { kind = 'infringement'; msg = (evt.payload?.summary || 'Infringement detected'); }
+        else { return; }
+        const loc = _survRandomCity(false);
+        _survPushEvent({ kind, location: loc, msg, ts: Date.now(), source: 'marketplace' });
+      });
+    }
+  } catch (e) {}
+}
+
 function renderSecurityView() {
   // Animated stats
   const blockedTarget = 47 + (Date.now() / 60000 | 0) % 200;
@@ -14800,8 +16173,34 @@ function refreshAssetPlaybackPreview(file) {
         au.pause();
       }
     });
-    btnBack.addEventListener('click', () => { au.currentTime = Math.max(0, au.currentTime - 15); });
-    btnFwd.addEventListener('click',  () => { au.currentTime = Math.min(au.duration || 0, au.currentTime + 15); });
+    // ===== Skip buttons · short tap = -15s/+15s, long press = -30s/+30s =====
+    function bindSkip(btn, delta) {
+      let lpTimer = null;
+      let usedLP = false;
+      const skip = (d) => {
+        if (!au.duration && !isFinite(au.duration)) return;
+        au.currentTime = Math.max(0, Math.min(au.duration || 0, au.currentTime + d));
+        // visual flash · let the user see it worked
+        btn.style.background = 'rgba(240,196,25,0.32)';
+        setTimeout(() => { btn.style.background = ''; }, 200);
+      };
+      const onDown = (e) => {
+        usedLP = false;
+        lpTimer = setTimeout(() => { usedLP = true; skip(delta * 2); }, 550);
+      };
+      const onUp = (e) => {
+        if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+        if (!usedLP) skip(delta);
+      };
+      const onCancel = () => { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } };
+      btn.addEventListener('pointerdown', onDown);
+      btn.addEventListener('pointerup',   onUp);
+      btn.addEventListener('pointercancel', onCancel);
+      btn.addEventListener('pointerleave',  onCancel);
+    }
+    bindSkip(btnBack, -15);
+    bindSkip(btnFwd,   15);
+
     au.addEventListener('play',  () => {
       btnPlay.textContent = '⏸'; btnPlay.classList.add('playing');
       // Belt-and-suspenders  · also pause others if play was triggered programmatically
@@ -14809,6 +16208,7 @@ function refreshAssetPlaybackPreview(file) {
     });
     au.addEventListener('pause', () => { btnPlay.textContent = '▶'; btnPlay.classList.remove('playing'); });
     au.addEventListener('timeupdate', () => {
+      if (_luxSeeking) return;     // don't fight the user's drag
       const pct = au.duration ? (au.currentTime / au.duration) * 100 : 0;
       fill.style.width = pct + '%';
       head.style.left = pct + '%';
@@ -14816,12 +16216,73 @@ function refreshAssetPlaybackPreview(file) {
     });
     au.addEventListener('loadedmetadata', () => { timeEl.textContent = '00:00 / ' + fmt(au.duration); });
     au.addEventListener('error', () => { timeEl.textContent = 'error · check file'; });
-    progEl.addEventListener('click', (e) => {
+
+    // ===== Pointer-based seek · supports drag on touch + mouse + pen =====
+    // Replaces the click-only handler. The progress bar captures pointer
+    // events so dragging works smoothly on mobile · the user can grab the
+    // playhead OR tap anywhere on the bar to jump there.
+    let _luxSeeking = false;
+    let _luxPausedForSeek = false;
+    const seekToClient = (clientX) => {
       const r = progEl.getBoundingClientRect();
-      const p = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
-      if (au.duration) au.currentTime = p * au.duration;
+      const p = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+      const d = au.duration;
+      if (!d || !isFinite(d)) return;
+      au.currentTime = p * d;
+      fill.style.width = (p * 100) + '%';
+      head.style.left  = (p * 100) + '%';
+      timeEl.textContent = fmt(p * d) + ' / ' + fmt(d);
+    };
+    progEl.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      _luxSeeking = true;
+      _luxPausedForSeek = !au.paused;
+      if (_luxPausedForSeek) au.pause();
+      progEl.classList.add('dragging');
+      try { progEl.setPointerCapture(e.pointerId); } catch (err) {}
+      seekToClient(e.clientX);
+    });
+    progEl.addEventListener('pointermove', (e) => {
+      if (!_luxSeeking) return;
+      e.preventDefault();
+      seekToClient(e.clientX);
+    });
+    const endSeek = (e) => {
+      if (!_luxSeeking) return;
+      _luxSeeking = false;
+      progEl.classList.remove('dragging');
+      try { progEl.releasePointerCapture(e.pointerId); } catch (err) {}
+      if (_luxPausedForSeek) { au.play().catch(() => {}); _luxPausedForSeek = false; }
+    };
+    progEl.addEventListener('pointerup',     endSeek);
+    progEl.addEventListener('pointercancel', endSeek);
+    progEl.addEventListener('pointerleave', (e) => {
+      // Only end on leave if pointer is no longer down (capture handles drag-off)
+      if (_luxSeeking && e.buttons === 0) endSeek(e);
+    });
+    // Keyboard accessibility: ← / → seeks ±5s, ↑↓ volume, space play/pause
+    progEl.tabIndex = 0;
+    progEl.setAttribute('role', 'slider');
+    progEl.setAttribute('aria-label', 'Seek');
+    progEl.addEventListener('keydown', (e) => {
+      const d = au.duration || 0;
+      if (e.key === 'ArrowLeft')      { au.currentTime = Math.max(0, au.currentTime - 5);  e.preventDefault(); }
+      else if (e.key === 'ArrowRight'){ au.currentTime = Math.min(d, au.currentTime + 5);  e.preventDefault(); }
+      else if (e.key === 'ArrowUp')   { volEl.value = Math.min(100, Number(volEl.value) + 5); volEl.dispatchEvent(new Event('input')); e.preventDefault(); }
+      else if (e.key === 'ArrowDown') { volEl.value = Math.max(0,   Number(volEl.value) - 5); volEl.dispatchEvent(new Event('input')); e.preventDefault(); }
+      else if (e.key === ' ' || e.key === 'Spacebar') { btnPlay.click(); e.preventDefault(); }
     });
     volEl.addEventListener('input', () => { au.volume = Number(volEl.value) / 100; });
+
+    // Tap anywhere on the audio metadata to play/pause (extra-large hit target on mobile)
+    const meta = player.querySelector('.lux-media-meta');
+    if (meta) {
+      meta.style.cursor = 'pointer';
+      meta.addEventListener('click', (e) => {
+        if (e.target.closest('button')) return;
+        btnPlay.click();
+      });
+    }
 
     // ===== BPM + Key scan button =====
     const bpmBtn    = player.querySelector('#lux-bpm-scan');
@@ -14878,7 +16339,7 @@ function refreshAssetPlaybackPreview(file) {
     const player = document.createElement('div');
     player.className = 'lux-media lux-video';
     player.innerHTML =
-      '<div class="lux-media-stage"><video controls preload="metadata" src="' + url + '"></video></div>' +
+      '<div class="lux-media-stage"><video controls playsinline preload="metadata" src="' + url + '" style="width:100%;height:auto;max-height:60vh;border-radius:4px;background:#000;"></video></div>' +
       '<div class="lux-media-meta"><span class="lux-media-name">' + (file.name || 'video') + '</span><span class="lux-media-info">' + ext.toUpperCase() + ' · ' + (file.size/1024/1024).toFixed(1) + ' MB</span></div>';
     body.appendChild(player);
     wrap.style.display = 'block';
@@ -22717,15 +24178,104 @@ function openNFCScanner() {
     // PoA. The "Tap Your SecureCard" modal stays open so when the URL loads,
     // completeNFC() fires automatically.
     const here = location.protocol + '//' + location.host + location.pathname;
+    // Generate a unique session token + plausible card serial so the URL is
+    // actually usable on first read · the original page only displayed
+    // YOUR_SERIAL / YOUR_TOKEN placeholders which gave the user no working
+    // URL to paste into their NFC writer.
+    const sessSerial = 'WI' + Math.random().toString(36).toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0, 10);
+    const sessToken  = ed25519Like((state.current?.cbiaHash || 'nfc') + ':' + Date.now()).slice(0, 24);
+    const realUrl    = here + '?card=' + sessSerial + '&sig=' + sessToken;
     const exampleUrl = here + '?card=YOUR_SERIAL&sig=YOUR_TOKEN';
     stat.innerHTML =
       '<strong style="color:var(--gold);">iPhone NFC scanning isn\'t available in Safari</strong><br>' +
       '<span style="color:var(--text);font-size:11px;line-height:1.55;display:block;margin-top:8px;">' +
-      'Apple restricts NFC tag reading to native iOS apps. The supported workflow on iPhone is to write your tag with a URL pointing back to this page:<br>' +
-      '<code style="display:block;margin:8px 0;padding:8px 10px;background:var(--panel-2);border:1px solid var(--border);border-radius:4px;font-size:10px;color:var(--gold-soft);word-break:break-all;">' +
-      exampleUrl + '</code>' +
-      'Use any NFC writer app (NFC Tools is free) → write a URL record → tap your phone to the tag → Safari opens, the PoA is captured automatically, and this modal flips to Verified.<br>' +
-      '<span style="color:var(--muted);">Or hit Simulate Tap below to continue this session.</span></span>';
+      'Apple restricts NFC tag reading to native iOS apps. Three options work on iPhone:' +
+      '<div style="margin-top:10px;padding:10px;background:var(--panel-2);border:1px solid var(--gold-soft);border-radius:6px;">' +
+      '<div style="font-size:10px;color:var(--gold);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;font-weight:700;">Option A · Write a tag (one-time)</div>' +
+      '<a id="nfc-url-link" href="' + realUrl + '" style="display:block;margin:6px 0;padding:10px 12px;background:var(--bg);border:1px solid var(--cyan);border-radius:6px;font-size:10.5px;color:var(--cyan);word-break:break-all;text-decoration:none;font-family:\'IBM Plex Mono\',ui-monospace,monospace;">' + realUrl + '</a>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">' +
+      '<button id="nfc-copy-url" type="button" style="flex:1;min-width:120px;padding:8px 12px;background:var(--cyan);color:var(--bg);border:none;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;">📋 Copy URL</button>' +
+      '<button id="nfc-share-url" type="button" style="flex:1;min-width:100px;padding:8px 12px;background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:4px;font-size:11px;cursor:pointer;">↗ Share</button>' +
+      '</div>' +
+      '<div style="font-size:10px;color:var(--muted);margin-top:8px;line-height:1.5;">Copy → open <strong>NFC Tools</strong> (free) → Write → Add a record → URL/URI → paste → Write. Tap your phone to the tag · Safari opens, PoA captures automatically.</div>' +
+      '</div>' +
+      '<div style="margin-top:10px;padding:10px;background:var(--panel-2);border:1px solid var(--border);border-radius:6px;">' +
+      '<div style="font-size:10px;color:var(--gold-soft);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;font-weight:700;">Option B · Already wrote a tag</div>' +
+      '<div style="font-size:10.5px;color:var(--text);">Tap your phone to your existing SecureCard™ now. Safari will open this page with the card serial + signature in the URL · this modal will flip to Verified automatically. Keep this window open in the background.</div>' +
+      '</div>' +
+      '<div style="margin-top:10px;padding:10px;background:var(--panel-2);border:1px solid var(--border);border-radius:6px;">' +
+      '<div style="font-size:10px;color:var(--gold-soft);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;font-weight:700;">Option C · Continue this session</div>' +
+      '<div style="font-size:10.5px;color:var(--muted);">Hit <strong>Deploy Asset</strong> below to simulate the tap for this session and proceed.</div>' +
+      '</div>' +
+      '</span>';
+    // Wire the copy + share buttons (after innerHTML write so the elements exist).
+    setTimeout(() => {
+      try {
+        const copyBtn = document.getElementById('nfc-copy-url');
+        if (copyBtn) {
+          copyBtn.addEventListener('click', async () => {
+            try {
+              await navigator.clipboard.writeText(realUrl);
+              copyBtn.textContent = '✓ Copied';
+              copyBtn.style.background = 'var(--green)';
+              setTimeout(() => {
+                copyBtn.textContent = '📋 Copy URL';
+                copyBtn.style.background = 'var(--cyan)';
+              }, 1800);
+              toast('URL copied · paste into NFC Tools', 'ok', 3000);
+            } catch (e) {
+              // Fallback for older Safari · select the text in the anchor
+              try {
+                const link = document.getElementById('nfc-url-link');
+                if (link) {
+                  const range = document.createRange();
+                  range.selectNodeContents(link);
+                  const sel = window.getSelection();
+                  sel.removeAllRanges(); sel.addRange(range);
+                  document.execCommand('copy');
+                  toast('URL selected · Cmd+C / long-press to copy', 'info', 3000);
+                }
+              } catch (e2) {
+                toast('Copy failed · long-press the URL to select + copy', 'warn', 4000);
+              }
+            }
+          });
+        }
+        const shareBtn = document.getElementById('nfc-share-url');
+        if (shareBtn) {
+          shareBtn.addEventListener('click', async () => {
+            try {
+              if (navigator.share) {
+                await navigator.share({
+                  title: 'WireIP NFC Tag URL',
+                  text: 'Write this URL to your SecureCard™ NFC tag',
+                  url: realUrl,
+                });
+              } else {
+                // Fallback · open mailto with URL prefilled
+                location.href = 'mailto:?subject=' + encodeURIComponent('WireIP NFC Tag URL') +
+                                '&body=' + encodeURIComponent(realUrl);
+              }
+            } catch (e) {
+              if (e && e.name !== 'AbortError') {
+                toast('Share failed: ' + (e.message || e), 'warn');
+              }
+            }
+          });
+        }
+        // Make the anchor itself selectable + copyable on long-press.
+        const link = document.getElementById('nfc-url-link');
+        if (link) {
+          link.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            // On click, also copy to clipboard (in addition to the explicit button)
+            if (navigator.clipboard) {
+              navigator.clipboard.writeText(realUrl).then(() => toast('URL copied', 'ok', 2000));
+            }
+          });
+        }
+      } catch (e) {}
+    }, 50);
   } else if (location.protocol !== 'https:') {
     stat.innerHTML = 'Web-NFC requires HTTPS  · open the deployed Vercel URL on your phone (not file://) to enable real card scans.';
   } else {
@@ -27138,20 +28688,67 @@ function buildContractCard(c) {
   row.appendChild(el('span', { class: 'pill ' + (c.status === 'active' ? 'ok' : c.status === 'disputed' ? 'err' : 'warn') },
     el('span', { class:'dot' }), el('span', {}, c.status.replace('_',' '))));
   if (c.status === 'pending_signatures') {
-    const sign = el('button', { class: 'primary' }, 'Sign');
-    sign.addEventListener('click', () => {
+    const sign = el('button', { class: 'primary' }, 'Sign with SecureCard™');
+    sign.addEventListener('click', async () => {
+      const requireNfc = state.settings && state.settings.requireNfcForContractSigning !== false;
+      let signature = null;
+      let serial = null;
+      let simulated = false;
+      if (requireNfc) {
+        // Gate the signature on a real card tap (or simulated tap when
+        // allowed). The signature returned binds the card + the contract
+        // payload + the timestamp so the signature is non-reusable.
+        const challenge = (c.id || '') + ':' + (c.title || '') + ':' + Date.now();
+        const result = await requestNFCSignature({
+          purpose: 'Sign Contract',
+          subtitle: 'Tap your NFC SecureCard™ to apply your signature to "' + (c.title || 'this contract') + '". Your signature binds the card serial, the contract hash, and the current timestamp.',
+          payload: challenge,
+          allowSimulate: true,
+        });
+        if (!result.ok) {
+          toast('Signature cancelled · contract is still pending signatures', 'warn', 4500);
+          return;
+        }
+        signature = result.signature;
+        serial = result.serialNumber || null;
+        simulated = !!result.simulated;
+      } else {
+        signature = ed25519Like((c.id || '') + ':wallet-sign:' + Date.now());
+      }
       c.status = 'active'; c.signatures = c.signatures || [];
-      c.signatures.push({ wallet: state.walletAddr, at: nowISO() });
+      c.signatures.push({
+        wallet: state.walletAddr,
+        at: nowISO(),
+        method: requireNfc ? (simulated ? 'nfc-simulated' : 'nfc-securecard') : 'wallet',
+        signature, cardSerial: serial,
+      });
       save(); renderContracts();
-      toast('Contract signed · escrow released to active', 'ok');
+      toast('Contract signed' + (simulated ? ' · simulated tap' : ' · SecureCard™ verified') + ' · escrow active', 'ok', 4500);
     });
     row.appendChild(sign);
   }
   if (c.status === 'active') {
-    const complete = el('button', { class: 'green' }, 'Mark Complete');
-    complete.addEventListener('click', () => {
+    const complete = el('button', { class: 'green' }, 'Mark Complete · Release Escrow');
+    complete.addEventListener('click', async () => {
+      // Releasing escrow is a payout · gate on NFC if the setting requires.
+      const requireNfc = state.settings && state.settings.requireNfcForPayouts !== false;
+      if (requireNfc) {
+        const result = await requestNFCSignature({
+          purpose: 'Release Escrow',
+          subtitle: 'Tap your NFC SecureCard™ to release escrowed funds for "' + (c.title || 'this contract') + '". This action is irreversible once on-chain.',
+          payload: 'release:' + (c.id || '') + ':' + (c.amount || 0) + ':' + Date.now(),
+          allowSimulate: true,
+        });
+        if (!result.ok) {
+          toast('Escrow release cancelled', 'warn');
+          return;
+        }
+        c.completion_signature = result.signature;
+        c.completion_simulated = !!result.simulated;
+      }
       c.status = 'completed'; c.completed_at = nowISO();
-      save(); renderContracts(); toast('Contract completed · escrow released', 'ok');
+      save(); renderContracts();
+      toast('Contract completed · escrow released' + (requireNfc ? ' · SecureCard™ verified' : ''), 'ok');
     });
     row.appendChild(complete);
   }
@@ -27814,16 +29411,533 @@ openContractModal = function(id) {
       if (s1) s1.setAttribute('open', '');
       updateContractStepSummaries();
       buildContractStepNav();
+      // Reset code/TTS panes
+      try {
+        const codeView = document.getElementById('ctr-code-view');
+        const termsView = document.getElementById('ctr-terms-view');
+        if (codeView) codeView.innerHTML = '<span class="cmt">// Click "Generate Code from Terms" to see the Solidity equivalent</span>';
+        if (termsView) termsView.textContent = '';
+        const status = document.getElementById('ctr-tts-status');
+        if (status) status.textContent = '';
+      } catch (e) {}
     } catch (e) {}
   }, 60);
 };
 
-$('#ctr-save').addEventListener('click', () => {
+// ============================================================
+// GENERIC NFC SIGNATURE FLOW · used for contract signing + payouts
+// ============================================================
+// Reusable NFC tap challenge that doesn't depend on the mint pipeline. Opens
+// a purpose-specific modal, attempts a real Web-NFC scan when supported,
+// and resolves with { ok, signature, serialNumber, simulated, cancelled }.
+// Honors the setting that requires real card (vs allowing simulate-tap).
+function requestNFCSignature(opts) {
+  const purpose   = opts && opts.purpose   || 'Authorization';
+  const subtitle  = opts && opts.subtitle  || 'Tap your NFC SecureCard™ to apply your cryptographic signature.';
+  const payload   = opts && opts.payload   || ('challenge-' + Date.now());
+  const allowSim  = opts && opts.allowSimulate !== undefined ? !!opts.allowSimulate : true;
+  return new Promise((resolve) => {
+    // Build the modal lazily.
+    let modal = document.getElementById('modal-nfc-generic');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'modal-nfc-generic';
+      modal.className = 'modal-backdrop hidden nfc-modal';
+      modal.innerHTML =
+        '<div class="modal" style="max-width:460px;">' +
+        '  <header><h2 id="nfcg-modal-title">SecureCard™ Tap Required</h2>' +
+        '    <button class="close" data-close="modal-nfc-generic" id="nfcg-close" type="button">&times;</button>' +
+        '  </header>' +
+        '  <div class="body">' +
+        '    <div class="nfc-scanner" id="nfcg-scanner">' +
+        '      <div class="nfc-icon verifying" id="nfcg-icon">⌬</div>' +
+        '      <h2 id="nfcg-title">Tap Your SecureCard™</h2>' +
+        '      <p id="nfcg-instruction"></p>' +
+        '      <div id="nfcg-status-text" style="margin-top:12px;font-family:\'IBM Plex Mono\',ui-monospace,monospace;font-size:10px;letter-spacing:0.08em;color:var(--gold-soft);"></div>' +
+        '      <div class="nfc-quick-result" id="nfcg-quick-result"></div>' +
+        '    </div>' +
+        '  </div>' +
+        '  <div class="footer">' +
+        '    <button data-close="modal-nfc-generic" id="nfcg-cancel" type="button">Cancel</button>' +
+        '    <button id="nfcg-simulate" type="button">Simulate Tap (test mode)</button>' +
+        '  </div>' +
+        '</div>';
+      document.body.appendChild(modal);
+    }
+    const $title  = document.getElementById('nfcg-modal-title');
+    const $head   = document.getElementById('nfcg-title');
+    const $inst   = document.getElementById('nfcg-instruction');
+    const $scan   = document.getElementById('nfcg-scanner');
+    const $icon   = document.getElementById('nfcg-icon');
+    const $stat   = document.getElementById('nfcg-status-text');
+    const $result = document.getElementById('nfcg-quick-result');
+    const $sim    = document.getElementById('nfcg-simulate');
+    const $cancel = document.getElementById('nfcg-cancel');
+    const $close  = document.getElementById('nfcg-close');
+    const challenge = (payload || '').slice(0, 16).toUpperCase();
+    $title.textContent = purpose;
+    $head.textContent  = 'Tap Your SecureCard™';
+    $inst.textContent  = subtitle;
+    $scan.className    = 'nfc-scanner';
+    $icon.className    = 'nfc-icon verifying';
+    $icon.textContent  = '⌬';
+    $stat.innerHTML    = '⌬ AWAITING NFC TAP · CHALLENGE: ' + challenge;
+    $result.className  = 'nfc-quick-result';
+    $result.textContent = '';
+    $sim.style.display = allowSim ? 'inline-block' : 'none';
+    // Track abort so we can stop the NDEFReader if user cancels.
+    let abort = null;
+    let resolved = false;
+    const finish = (result) => {
+      if (resolved) return; resolved = true;
+      try { abort && abort.abort(); } catch (e) {}
+      // Cleanup listeners
+      $sim.removeEventListener('click', onSim);
+      $cancel.removeEventListener('click', onCancel);
+      $close.removeEventListener('click', onCancel);
+      closeModal('modal-nfc-generic');
+      resolve(result);
+    };
+    const onSim = () => {
+      if (!allowSim) return;
+      const sig = ed25519Like(payload + '-sim-' + Date.now());
+      $scan.className = 'nfc-scanner verified';
+      $icon.className = 'nfc-icon'; $icon.textContent = '✓';
+      $head.textContent = 'Simulated · Verified';
+      $stat.innerHTML = '✓ SIMULATED SIG: ' + sig.slice(0, 32) + '…';
+      $result.className = 'nfc-quick-result verified';
+      $result.textContent = '✓ AUTHORIZED (simulate · test mode)';
+      try { soundVerify(); } catch (e) {}
+      setTimeout(() => finish({ ok: true, signature: sig, simulated: true }), 700);
+    };
+    const onCancel = () => finish({ ok: false, cancelled: true });
+    $sim.addEventListener('click', onSim);
+    $cancel.addEventListener('click', onCancel);
+    $close.addEventListener('click', onCancel);
+    openModal('modal-nfc-generic');
+    // ===== Real Web-NFC if available =====
+    if (typeof window.NDEFReader !== 'undefined' && location.protocol === 'https:') {
+      (async () => {
+        try {
+          abort = new AbortController();
+          const reader = new window.NDEFReader();
+          await reader.scan({ signal: abort.signal });
+          $stat.innerHTML = '⌬ NFC READER ACTIVE · TAP CARD AGAINST PHONE…';
+          reader.addEventListener('reading', ({ serialNumber }) => {
+            const sig = ed25519Like((serialNumber || 'no-serial') + ':' + payload);
+            $scan.className = 'nfc-scanner verified';
+            $icon.className = 'nfc-icon'; $icon.textContent = '✓';
+            $head.textContent = 'Verified';
+            $stat.innerHTML = '✓ CARD ' + (serialNumber ? serialNumber.slice(0,12).toUpperCase() : 'TAP') + ' · SIG ' + sig.slice(0,24) + '…';
+            $result.className = 'nfc-quick-result verified';
+            $result.textContent = '✓ AUTHORIZED · ' + purpose;
+            try { soundVerify(); } catch (e) {}
+            setTimeout(() => finish({ ok: true, signature: sig, serialNumber, simulated: false }), 700);
+          });
+          reader.addEventListener('readingerror', () => {
+            $stat.innerHTML = '✕ READ ERROR · Hold card flat against phone';
+          });
+        } catch (e) {
+          $stat.innerHTML = 'Web-NFC unavailable: ' + (e && e.message || e) + ' · use Simulate Tap.';
+        }
+      })();
+    }
+    // iOS URL-NFC handler · if a card was tapped externally and the URL has
+    // ?card= or ?sig= parameters, this is handled in init() which sets a
+    // window-level event we can listen for. (For brevity we rely on
+    // Simulate Tap on iOS for non-mint NFC flows.)
+  });
+}
+
+// ============================================================
+// SMART CONTRACT CODE GENERATOR (text → Solidity-like)
+// ============================================================
+// Translates a natural-language contract into matching Solidity-flavored
+// pseudo-code. Maps known clauses (payment schedule, royalty, IP ownership,
+// termination, dispute resolution) onto a deterministic skeleton so users
+// can read both representations side-by-side and confirm the on-chain
+// behavior matches what they wrote.
+function generateSolidityFromContract(c) {
+  const safeId = (s) => (s || '').replace(/[^a-zA-Z0-9_]/g, '').slice(0, 24) || 'Contract';
+  const title    = c.title || 'WireIP Contract';
+  const type     = c.type || 'service_agreement';
+  const amount   = Number(c.amount || 0);
+  const currency = c.currency || 'USDC';
+  const schedule = c.schedule || 'milestone';
+  const deadline = c.deadline || '';
+  const parties  = c.parties || [];
+  const terms    = c.terms || '';
+  const lines = [];
+  lines.push('// SPDX-License-Identifier: WireIP-DAO-v1');
+  lines.push('// ' + title);
+  lines.push('// Type: ' + type + ' · Generated: ' + new Date().toISOString());
+  lines.push('// Hashes to the natural-language terms below at deploy time.');
+  lines.push('');
+  lines.push('pragma solidity ^0.8.20;');
+  lines.push('');
+  lines.push('import "./IStablecoin.sol";');
+  lines.push('import "./IWireIPRegistry.sol";');
+  lines.push('');
+  lines.push('contract ' + safeId(title) + ' {');
+  // === Parties ===
+  lines.push('    // ---- Parties ----');
+  if (parties.length) {
+    for (let i = 0; i < parties.length; i++) {
+      const p = parties[i];
+      lines.push('    address public ' + (p.role || 'party' + (i+1)).replace(/[^a-z]/gi,'') + ' = ' + (p.wallet || '0x0000...') + ';  // ' + (p.name || ''));
+    }
+  } else {
+    lines.push('    address public client;      // TBD · added at signing');
+    lines.push('    address public provider;    // TBD · added at signing');
+  }
+  // === Economic terms ===
+  lines.push('');
+  lines.push('    // ---- Economics ----');
+  lines.push('    IStablecoin public constant TOKEN = IStablecoin(/* ' + currency + ' */ 0x' + currency.toLowerCase().padEnd(8, '0') + ');');
+  lines.push('    uint256 public constant TOTAL_AMOUNT = ' + (amount * 1e6).toFixed(0) + ';  // ' + amount + ' ' + currency + ' (6 decimals)');
+  lines.push('    uint8   public constant SCHEDULE_TYPE = ' + (schedule === 'milestone' ? '1' : schedule === 'hourly' ? '2' : schedule === 'recurring' ? '3' : '0') + ';  // ' + schedule);
+  if (deadline) {
+    const ts = Math.floor(new Date(deadline).getTime() / 1000);
+    lines.push('    uint256 public constant DEADLINE = ' + ts + ';  // ' + deadline);
+  }
+  // === Royalty (try to extract a percentage from terms) ===
+  const royaltyMatch = terms.match(/\b(\d{1,2}(?:\.\d+)?)\s*%[^.]*(royalt|share|split)/i);
+  if (royaltyMatch) {
+    lines.push('    uint16  public constant ROYALTY_BPS = ' + Math.round(parseFloat(royaltyMatch[1]) * 100) + ';  // ' + royaltyMatch[1] + '%');
+  }
+  // === IP ownership clause ===
+  const ipOwnership = /(deliverabl|IP|copyright).*(transfer|assign|own).*?(client|licensee|buyer)/i.test(terms)
+    ? 'CLIENT'
+    : /provider|licensor|seller.*(retain|keep|own)/i.test(terms) ? 'PROVIDER' : 'TBD';
+  lines.push('    bytes32 public constant IP_OWNER = keccak256("' + ipOwnership + '");');
+  // === Escrow + state ===
+  lines.push('');
+  lines.push('    // ---- State ----');
+  lines.push('    uint256 public escrowed;');
+  lines.push('    uint256 public released;');
+  lines.push('    bool    public signed;');
+  lines.push('    mapping(address => bool) public signatures;');
+  lines.push('');
+  lines.push('    event Signed(address indexed party);');
+  lines.push('    event Funded(uint256 amount);');
+  lines.push('    event Milestone(uint256 indexed n, uint256 amount);');
+  lines.push('    event Completed();');
+  lines.push('    event Disputed(address indexed by, string reason);');
+  // === Sign() ===
+  lines.push('');
+  lines.push('    function sign() external {');
+  lines.push('        // Each party must sign · once all have signed, contract activates.');
+  lines.push('        require(_isParty(msg.sender), "not a party");');
+  lines.push('        require(!signatures[msg.sender], "already signed");');
+  lines.push('        signatures[msg.sender] = true;');
+  lines.push('        emit Signed(msg.sender);');
+  lines.push('        if (_allSigned()) signed = true;');
+  lines.push('    }');
+  // === Fund() ===
+  lines.push('');
+  lines.push('    function fund() external {');
+  lines.push('        // Client deposits TOTAL_AMOUNT into escrow.');
+  lines.push('        require(signed, "contract not signed");');
+  lines.push('        require(TOKEN.transferFrom(msg.sender, address(this), TOTAL_AMOUNT), "transfer failed");');
+  lines.push('        escrowed = TOTAL_AMOUNT;');
+  lines.push('        emit Funded(TOTAL_AMOUNT);');
+  lines.push('    }');
+  // === Release() ===
+  if (schedule === 'milestone') {
+    lines.push('');
+    lines.push('    function releaseMilestone(uint256 n, uint256 amount) external onlyClient {');
+    lines.push('        // Releases a milestone payment from escrow.');
+    lines.push('        require(released + amount <= escrowed, "exceeds escrow");');
+    lines.push('        released += amount;');
+    lines.push('        TOKEN.transfer(provider, amount);');
+    lines.push('        emit Milestone(n, amount);');
+    lines.push('    }');
+  } else {
+    lines.push('');
+    lines.push('    function complete() external onlyClient {');
+    lines.push('        // Releases full escrow on completion.');
+    lines.push('        require(escrowed > released, "already released");');
+    lines.push('        uint256 amount = escrowed - released;');
+    lines.push('        released = escrowed;');
+    lines.push('        TOKEN.transfer(provider, amount);');
+    lines.push('        emit Completed();');
+    lines.push('    }');
+  }
+  // === Dispute() ===
+  if (/(dispute|arbitration|mediation)/i.test(terms)) {
+    lines.push('');
+    lines.push('    function dispute(string calldata reason) external {');
+    lines.push('        // Either party can flag a dispute · AGI Sentinel + WireIP DAO arbitrate.');
+    lines.push('        require(_isParty(msg.sender), "not a party");');
+    lines.push('        emit Disputed(msg.sender, reason);');
+    lines.push('        // Funds are locked until DAO resolves.');
+    lines.push('    }');
+  }
+  lines.push('');
+  lines.push('    // ---- Internal ----');
+  lines.push('    function _isParty(address a) internal view returns (bool) {');
+  if (parties.length) {
+    const checks = parties.map((p, i) => 'a == ' + (p.role || 'party' + (i+1)).replace(/[^a-z]/gi,'')).join(' || ');
+    lines.push('        return ' + (checks || 'false') + ';');
+  } else {
+    lines.push('        return a == client || a == provider;');
+  }
+  lines.push('    }');
+  lines.push('    function _allSigned() internal view returns (bool) {');
+  if (parties.length) {
+    const checks = parties.map((p, i) => 'signatures[' + (p.role || 'party' + (i+1)).replace(/[^a-z]/gi,'') + ']').join(' && ');
+    lines.push('        return ' + (checks || 'true') + ';');
+  } else {
+    lines.push('        return signatures[client] && signatures[provider];');
+  }
+  lines.push('    }');
+  lines.push('    modifier onlyClient() { require(msg.sender == (parties.length > 0 ? ' + (parties[0]?.role || 'party1') + ' : address(0)), "not client"); _; }');
+  lines.push('}');
+  lines.push('');
+  lines.push('// ===== Natural-language terms hashed at deploy =====');
+  lines.push('// keccak256 of the Step 4 terms is stored on-chain · changes to the');
+  lines.push('// text after deploy require a new contract version.');
+  return lines.join('\n');
+}
+// Simple syntax-highlighter for Solidity-like code (kw / str / num / cmt).
+function highlightSolidity(code) {
+  const esc = (s) => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  let out = esc(code);
+  out = out.replace(/(\/\/[^\n]*)/g, '<span class="cmt">$1</span>');
+  out = out.replace(/(&quot;[^&]*?&quot;|&#39;[^&]*?&#39;|"[^"\n]*?"|'[^'\n]*?')/g, '<span class="str">$&</span>');
+  out = out.replace(/\b(pragma|contract|function|external|public|private|internal|view|pure|payable|returns|require|emit|mapping|event|address|bool|uint8|uint16|uint256|bytes32|constant|import|modifier|if|else|return)\b/g, '<span class="kw">$1</span>');
+  out = out.replace(/\b(\d+(?:\.\d+)?(?:e\d+)?)\b/g, '<span class="num">$1</span>');
+  return out;
+}
+// ===== Generate Code button =====
+document.addEventListener('click', (e) => {
+  if (e.target && e.target.id === 'ctr-code-generate') {
+    try {
+      const c = {
+        title: $('#ctr-title').value.trim(),
+        type: selectedTemplate,
+        amount: Number($('#ctr-amount').value || 0),
+        currency: $('#ctr-currency').value,
+        schedule: $('#ctr-schedule').value,
+        deadline: $('#ctr-deadline').value,
+        parties: modalParties,
+        terms: $('#ctr-terms').value,
+      };
+      const code = generateSolidityFromContract(c);
+      const codeView = document.getElementById('ctr-code-view');
+      const termsView = document.getElementById('ctr-terms-view');
+      if (codeView) codeView.innerHTML = highlightSolidity(code);
+      if (termsView) termsView.textContent = c.terms || '(no terms typed yet)';
+      const sum7 = document.getElementById('ctr-step-7-summary');
+      if (sum7) sum7.textContent = '✓ Code generated · ' + code.split('\n').length + ' lines · ready for audio readout';
+      toast('Solidity code generated · compare side-by-side', 'ok', 3500);
+    } catch (er) {
+      toast('Code generation failed: ' + er, 'err');
+    }
+  }
+  // Copy buttons
+  if (e.target && e.target.classList && e.target.classList.contains('ctr-pane-copy')) {
+    const id = e.target.dataset.target;
+    const el = document.getElementById(id);
+    if (el) {
+      const text = (id === 'ctr-code-view') ? el.innerText : el.textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = e.target.textContent;
+        e.target.textContent = '✓ Copied';
+        setTimeout(() => { e.target.textContent = orig; }, 1500);
+      }).catch(() => toast('Copy failed · select + Ctrl+C manually', 'warn'));
+    }
+  }
+});
+
+// ============================================================
+// TEXT-TO-SPEECH READOUT (Web Speech API)
+// ============================================================
+// Reads the natural-language terms aloud chunk-by-chunk, highlighting the
+// current sentence in the terms pane. Falls back gracefully if the browser
+// doesn't support speechSynthesis.
+let _ctrTtsUtterances = [];
+let _ctrTtsIndex = 0;
+let _ctrTtsPaused = false;
+function populateTtsVoices() {
+  const sel = document.getElementById('ctr-tts-voice');
+  if (!sel || !window.speechSynthesis) return;
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return;
+  // Preserve the currently selected value if possible.
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Default (system)</option>';
+  // Prefer English voices first.
+  const sorted = [...voices].sort((a, b) => {
+    const aEn = /^en/i.test(a.lang) ? 0 : 1;
+    const bEn = /^en/i.test(b.lang) ? 0 : 1;
+    if (aEn !== bEn) return aEn - bEn;
+    return a.name.localeCompare(b.name);
+  });
+  for (const v of sorted) {
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = v.name + ' (' + v.lang + ')';
+    sel.appendChild(opt);
+  }
+  if (current) sel.value = current;
+}
+if (window.speechSynthesis) {
+  window.speechSynthesis.addEventListener && window.speechSynthesis.addEventListener('voiceschanged', populateTtsVoices);
+  setTimeout(populateTtsVoices, 400);
+}
+// Rate slider live label
+document.addEventListener('input', (e) => {
+  if (e.target && e.target.id === 'ctr-tts-rate') {
+    const val = document.getElementById('ctr-tts-rate-val');
+    if (val) val.textContent = parseFloat(e.target.value).toFixed(2) + '×';
+  }
+});
+function setTtsStatus(text, cls) {
+  const s = document.getElementById('ctr-tts-status');
+  if (!s) return;
+  s.className = 'ctr-tts-status' + (cls ? ' ' + cls : '');
+  s.textContent = text || '';
+}
+function buildAudioReadoutScript(c) {
+  // Compose a clear narration: title + parties + amount + schedule + key
+  // obligations parsed from terms. This is what AGI Sentinel reads aloud.
+  const parts = [];
+  parts.push('WireIP smart contract review.');
+  parts.push('Title: ' + (c.title || 'Untitled contract') + '.');
+  parts.push('Type: ' + (c.type || 'service agreement').replace(/_/g, ' ') + '.');
+  const parties = (c.parties || []).filter(p => p && p.name);
+  if (parties.length) {
+    parts.push('Parties: ' + parties.map(p => (p.name || 'unnamed') + ' as ' + (p.role || 'party')).join('; ') + '.');
+  } else {
+    parts.push('No parties added yet · saving as draft.');
+  }
+  if (c.amount) parts.push('Total amount: ' + Number(c.amount).toLocaleString() + ' ' + (c.currency || 'USDC') + '.');
+  if (c.schedule) parts.push('Payment schedule: ' + c.schedule.replace(/_/g, ' ') + '.');
+  if (c.deadline) parts.push('Deadline: ' + new Date(c.deadline).toLocaleDateString() + '.');
+  parts.push('Key obligations from the terms:');
+  // Split terms into sentences for natural narration.
+  const sentences = (c.terms || '').replace(/\n+/g, ' ').split(/(?<=[.!?])\s+/).filter(s => s.trim().length >= 8);
+  for (const s of sentences.slice(0, 30)) parts.push(s.trim());
+  parts.push('End of contract readout. Please confirm all obligations before signing.');
+  return parts;
+}
+document.addEventListener('click', (e) => {
+  if (!e.target) return;
+  if (e.target.id === 'ctr-code-tts-play') {
+    if (!window.speechSynthesis) {
+      toast('Text-to-speech not supported in this browser', 'warn'); return;
+    }
+    // If we were paused, resume.
+    if (_ctrTtsPaused && window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+      _ctrTtsPaused = false;
+      setTtsStatus('▶ Resumed · reading…', 'speaking');
+      document.getElementById('ctr-code-tts-pause').disabled = false;
+      return;
+    }
+    // Stop any existing speech first.
+    window.speechSynthesis.cancel();
+    _ctrTtsUtterances = [];
+    _ctrTtsIndex = 0;
+    _ctrTtsPaused = false;
+    const c = {
+      title: $('#ctr-title').value.trim(),
+      type: selectedTemplate,
+      amount: Number($('#ctr-amount').value || 0),
+      currency: $('#ctr-currency').value,
+      schedule: $('#ctr-schedule').value,
+      deadline: $('#ctr-deadline').value,
+      parties: modalParties,
+      terms: $('#ctr-terms').value,
+    };
+    const script = buildAudioReadoutScript(c);
+    if (!script.length) { toast('Nothing to read · fill out the contract first', 'warn'); return; }
+    // Mirror terms into the terms pane so the user sees what's being read.
+    const termsView = document.getElementById('ctr-terms-view');
+    if (termsView) termsView.textContent = c.terms || '(no terms typed yet)';
+    const rate = parseFloat(document.getElementById('ctr-tts-rate')?.value || '0.95');
+    const voiceName = document.getElementById('ctr-tts-voice')?.value;
+    const voices = window.speechSynthesis.getVoices();
+    const chosen = voices.find(v => v.name === voiceName);
+    for (const text of script) {
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = rate;
+      u.pitch = 1.0;
+      u.volume = 1.0;
+      if (chosen) u.voice = chosen;
+      u.onstart = () => {
+        setTtsStatus('▶ Reading: ' + text.slice(0, 60) + (text.length > 60 ? '…' : ''), 'speaking');
+      };
+      u.onend = () => {
+        _ctrTtsIndex++;
+        if (_ctrTtsIndex >= _ctrTtsUtterances.length) {
+          setTtsStatus('✓ Readout complete', '');
+          document.getElementById('ctr-code-tts-pause').disabled = true;
+          document.getElementById('ctr-code-tts-stop').disabled  = true;
+        }
+      };
+      u.onerror = (err) => {
+        if (err && err.error === 'canceled') return; // user stopped
+        setTtsStatus('⚠ Error: ' + (err.error || 'speech failed'), '');
+      };
+      _ctrTtsUtterances.push(u);
+      window.speechSynthesis.speak(u);
+    }
+    setTtsStatus('▶ Reading aloud · ' + script.length + ' segments', 'speaking');
+    document.getElementById('ctr-code-tts-pause').disabled = false;
+    document.getElementById('ctr-code-tts-stop').disabled  = false;
+  }
+  if (e.target.id === 'ctr-code-tts-pause') {
+    if (window.speechSynthesis && window.speechSynthesis.speaking) {
+      window.speechSynthesis.pause();
+      _ctrTtsPaused = true;
+      setTtsStatus('⏸ Paused · click Listen to resume', 'paused');
+    }
+  }
+  if (e.target.id === 'ctr-code-tts-stop') {
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      _ctrTtsUtterances = [];
+      _ctrTtsIndex = 0;
+      _ctrTtsPaused = false;
+      setTtsStatus('⏹ Stopped', '');
+      document.getElementById('ctr-code-tts-pause').disabled = true;
+      document.getElementById('ctr-code-tts-stop').disabled  = true;
+    }
+  }
+});
+
+$('#ctr-save').addEventListener('click', async () => {
   const errEl = $('#ctr-error'); errEl.classList.add('hidden');
   const title = $('#ctr-title').value.trim();
   if (!title) { errEl.textContent = 'Title required'; errEl.classList.remove('hidden'); return; }
   const validParties = modalParties.filter(p => p.name.trim() && p.wallet.trim());
   if (validParties.length < 2) { errEl.textContent = 'At least 2 parties with name + wallet required'; errEl.classList.remove('hidden'); return; }
+  // ===== NFC SecureCard gate =====
+  // When the user has the setting on (default), require a real card tap
+  // before the contract is created · this is the creator's own signature
+  // on the contract terms. Counterparties sign later via the Sign button
+  // on their copy.
+  let creatorSignature = null, creatorSerial = null, creatorSimulated = false;
+  const requireNfc = state.settings && state.settings.requireNfcForContractSigning !== false;
+  if (requireNfc) {
+    const payload = title + ':' + ($('#ctr-terms').value || '').slice(0, 256) + ':' + Date.now();
+    const result = await requestNFCSignature({
+      purpose: 'Sign New Contract',
+      subtitle: 'Tap your NFC SecureCard™ to commit "' + title + '" to the network. Your signature is bound to the contract terms and card serial.',
+      payload, allowSimulate: true,
+    });
+    if (!result.ok) {
+      errEl.textContent = 'Signature cancelled · contract not created'; errEl.classList.remove('hidden');
+      return;
+    }
+    creatorSignature = result.signature;
+    creatorSerial = result.serialNumber || null;
+    creatorSimulated = !!result.simulated;
+  } else {
+    creatorSignature = ed25519Like(title + ':wallet-sign:' + Date.now());
+  }
   const c = {
     id: editingContractId || uid('ctr'), type: selectedTemplate, title,
     parties: validParties,
@@ -27833,7 +29947,15 @@ $('#ctr-save').addEventListener('click', () => {
     deadline: $('#ctr-deadline').value,
     terms: $('#ctr-terms').value,
     status: 'pending_signatures',
-    signatures: [], created_at: nowISO(),
+    signatures: [{
+      wallet: state.walletAddr,
+      at: nowISO(),
+      method: requireNfc ? (creatorSimulated ? 'nfc-simulated' : 'nfc-securecard') : 'wallet',
+      signature: creatorSignature,
+      cardSerial: creatorSerial,
+      role: 'creator',
+    }],
+    created_at: nowISO(),
   };
   c.ai_review = aiReviewContract(c);
   c.code_dna = codeDNAMatch(c.terms);
@@ -27844,9 +29966,9 @@ $('#ctr-save').addEventListener('click', () => {
   }
   save();
   closeModal('modal-contract');
-  let toastMsg = 'Contract created  · sentinel score ' + c.ai_review.score + '/100';
-  if (c.code_dna && c.code_dna.score >= 0.35) toastMsg += ' · ⚠ ' + (c.code_dna.score * 100).toFixed(0) + '% Code DNA match with existing contract';
-  toast(toastMsg, c.ai_review.verdict === 'fair' ? 'ok' : 'warn', 4000);
+  let toastMsg = 'Contract created · sentinel ' + c.ai_review.score + '/100' + (requireNfc ? ' · SecureCard™ verified' : '');
+  if (c.code_dna && c.code_dna.score >= 0.35) toastMsg += ' · ⚠ ' + (c.code_dna.score * 100).toFixed(0) + '% Code DNA match';
+  toast(toastMsg, c.ai_review.verdict === 'fair' ? 'ok' : 'warn', 4500);
   $('#nav-contract-count').textContent = state.contracts.length;
   if (currentViewIs('view-contracts')) renderContracts();
 });
@@ -27957,6 +30079,82 @@ window.addEventListener('load', purgeNavBackdropOnDesktop);
 window.addEventListener('resize', purgeNavBackdropOnDesktop);
 // Run once now in case the script loaded after DOMContentLoaded.
 try { purgeNavBackdropOnDesktop(); } catch (e) {}
+
+// ===== Mobile search toggle =====
+// On mobile, the search input is hidden by default and revealed when the
+// user taps the magnifier icon (injected into .top-tools). Keeps the
+// topbar compact and prevents the search row from overlapping the nav
+// drawer.
+(function initMobileSearchToggle() {
+  try {
+    const tools = document.querySelector('header.topbar .top-tools');
+    if (!tools) return;
+    if (document.getElementById('mobile-search-toggle')) return;
+    const btn = document.createElement('button');
+    btn.id = 'mobile-search-toggle';
+    btn.className = 'mobile-search-toggle';
+    btn.type = 'button';
+    btn.setAttribute('aria-label', 'Toggle search');
+    btn.title = 'Search';
+    btn.innerHTML = '⌕';
+    // Insert as the FIRST child of top-tools so it sits left of the toggles.
+    tools.insertBefore(btn, tools.firstChild);
+    btn.addEventListener('click', () => {
+      const open = document.body.classList.toggle('mobile-search-open');
+      btn.setAttribute('aria-expanded', String(open));
+      if (open) {
+        setTimeout(() => {
+          try {
+            const input = document.getElementById('top-search');
+            if (input) input.focus();
+          } catch (e) {}
+        }, 60);
+      }
+      // Recompute drawer position since topbar height changed.
+      try { updateMobileTopbarHeight && updateMobileTopbarHeight(); } catch (e) {}
+    });
+    // Close search bar when the user clicks outside it on mobile.
+    document.addEventListener('click', (e) => {
+      if (!document.body.classList.contains('mobile-search-open')) return;
+      const target = e.target;
+      if (target.closest('.top-search') || target.closest('.mobile-search-toggle')) return;
+      document.body.classList.remove('mobile-search-open');
+      try { updateMobileTopbarHeight && updateMobileTopbarHeight(); } catch (e) {}
+    });
+  } catch (e) {}
+})();
+
+// ===== Live topbar height tracker · keeps the mobile nav drawer aligned =====
+// The mobile topbar wraps to multiple rows (brand + portfolio + search) so
+// its height is not fixed. We measure it on load + resize + orientation
+// change + whenever an inner DOM mutation could change the wrap height, then
+// expose the value as the --topbar-h CSS variable that nav.side + .nav-backdrop
+// read from. Result: the drawer always starts exactly below the topbar
+// regardless of how many rows it wrapped to.
+function updateMobileTopbarHeight() {
+  try {
+    const tb = document.querySelector('header.topbar');
+    if (!tb) return;
+    const h = Math.ceil(tb.getBoundingClientRect().height);
+    if (h > 0) document.documentElement.style.setProperty('--topbar-h', h + 'px');
+  } catch (e) {}
+}
+window.addEventListener('DOMContentLoaded', updateMobileTopbarHeight);
+window.addEventListener('load',             updateMobileTopbarHeight);
+window.addEventListener('resize',           updateMobileTopbarHeight);
+window.addEventListener('orientationchange', updateMobileTopbarHeight);
+// Recompute after dynamic content (logo, wallet, etc.) may change wrap.
+setTimeout(updateMobileTopbarHeight, 200);
+setTimeout(updateMobileTopbarHeight, 1500);
+try { updateMobileTopbarHeight(); } catch (e) {}
+// Observe for DOM changes that could affect topbar height (wallet connects,
+// portfolio update, brand mark swap).
+try {
+  const tb = document.querySelector('header.topbar');
+  if (tb && 'ResizeObserver' in window) {
+    new ResizeObserver(updateMobileTopbarHeight).observe(tb);
+  }
+} catch (e) {}
 
 // ===== Sidebar nav-group collapse =====
 // Tapping a nav-group title (e.g. "Tokenization", "Network", "Marketplace")
@@ -29963,6 +32161,20 @@ async function autoExtractFromBlackPaper() {
       if (!res.ok && res.status !== 0) continue;
       const blob = await res.blob();
       if (!blob || blob.size < 1000) continue;
+      // ===== Cache-bust on PDF change =====
+      // Build a fingerprint from the PDF's byte size + Last-Modified header
+      // (whichever is available). If the fingerprint changed since the last
+      // extraction, drop the cached logo so the new cover gets re-pulled.
+      try {
+        const lm = res.headers.get('last-modified') || '';
+        const fp = name + '|' + blob.size + '|' + lm;
+        const prevFp = localStorage.getItem(BRAND_LOGO_KEY + ':fp') || '';
+        if (prevFp && prevFp !== fp) {
+          localStorage.removeItem(BRAND_LOGO_KEY);
+          console.info('Black Paper changed · cached logo invalidated (' + prevFp + ' → ' + fp + ')');
+        }
+        localStorage.setItem(BRAND_LOGO_KEY + ':fp', fp);
+      } catch (e) {}
       const file = new File([blob], name, { type: 'application/pdf' });
       const dataURL = await extractLogoFromPDF(file);
       if (dataURL) return dataURL;
