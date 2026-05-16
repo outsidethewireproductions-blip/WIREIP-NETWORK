@@ -5499,6 +5499,48 @@
   .nfc-scanner .nfc-icon.verifying {
     animation: nfcPulse 1.4s ease-in-out infinite;
   }
+  /* ===== Active scanning state ·  faster, more energetic =====
+     Triggered when Web NFC is actively listening for a tap. Doubles the
+     pulse speed and adds an inner sweeping arc so the user has clear
+     visual proof the system is scanning. */
+  .nfc-scanner.scanning .nfc-icon {
+    animation: nfcPulseFast 0.9s ease-in-out infinite;
+  }
+  .nfc-scanner.scanning .nfc-icon::before {
+    animation: nfcRing 1.2s ease-out infinite;
+    border-color: var(--cyan);
+  }
+  .nfc-scanner.scanning .nfc-icon::after {
+    animation: nfcRing 1.2s ease-out 0.4s infinite;
+    border-color: var(--cyan);
+  }
+  /* Inner rotating sweep · "radar scanning" feel */
+  .nfc-scanner.scanning .nfc-icon {
+    background:
+      conic-gradient(from 0deg, rgba(79,214,255,0.50) 0deg, rgba(79,214,255,0.05) 90deg, transparent 180deg, transparent 360deg),
+      radial-gradient(circle, rgba(79,214,255,0.18), rgba(79,214,255,0.04) 70%);
+    background-blend-mode: screen;
+  }
+  .nfc-scanner.scanning .nfc-icon::before {
+    background: conic-gradient(from 0deg, rgba(79,214,255,0.0), rgba(79,214,255,0.30), rgba(79,214,255,0.0));
+    border: none;
+    inset: 6px; border-radius: 50%;
+    animation: nfcSweep 1.4s linear infinite, nfcRing 1.2s ease-out infinite;
+    mix-blend-mode: screen;
+  }
+  @keyframes nfcPulseFast {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 28px rgba(79,214,255,0.50), inset 0 0 14px rgba(79,214,255,0.30); }
+    50% { transform: scale(1.10); box-shadow: 0 0 60px rgba(79,214,255,0.95), inset 0 0 22px rgba(79,214,255,0.45); }
+  }
+  @keyframes nfcSweep {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  body[data-reduce-motion="on"] .nfc-scanner.scanning .nfc-icon,
+  body[data-reduce-motion="on"] .nfc-scanner.scanning .nfc-icon::before,
+  body[data-reduce-motion="on"] .nfc-scanner.scanning .nfc-icon::after {
+    animation: none;
+  }
   .nfc-scanner .nfc-icon::before {
     content: ''; position: absolute; inset: -10px;
     border-radius: 50%; border: 2px solid var(--cyan); opacity: 0.6;
@@ -7527,14 +7569,14 @@
                 <span>Audio Waveform Style (when an audio file is uploaded)</span>
               </div>
               <div class="viz-wave-style-row" id="viz-wave-style-row" style="display:flex;gap:5px;flex-wrap:wrap;">
-                <div class="viz-wave-chip active" data-ws="bars"     style="padding:6px 10px;font-size:9.5px;border:1px solid var(--gold);border-radius:12px;cursor:pointer;color:var(--gold);background:rgba(240,196,25,0.10);letter-spacing:0.04em;text-transform:uppercase;">▌ Bars</div>
+                <div class="viz-wave-chip" data-ws="bars"            style="padding:6px 10px;font-size:9.5px;border:1px solid var(--border);border-radius:12px;cursor:pointer;color:var(--muted);background:var(--panel-2);letter-spacing:0.04em;text-transform:uppercase;">▌ Bars</div>
                 <div class="viz-wave-chip" data-ws="radial"          style="padding:6px 10px;font-size:9.5px;border:1px solid var(--border);border-radius:12px;cursor:pointer;color:var(--muted);background:var(--panel-2);letter-spacing:0.04em;text-transform:uppercase;">⊕ Radial</div>
                 <div class="viz-wave-chip" data-ws="ring"            style="padding:6px 10px;font-size:9.5px;border:1px solid var(--border);border-radius:12px;cursor:pointer;color:var(--muted);background:var(--panel-2);letter-spacing:0.04em;text-transform:uppercase;">◯ Ring</div>
                 <div class="viz-wave-chip" data-ws="oscilloscope"    style="padding:6px 10px;font-size:9.5px;border:1px solid var(--border);border-radius:12px;cursor:pointer;color:var(--muted);background:var(--panel-2);letter-spacing:0.04em;text-transform:uppercase;">∿ Scope</div>
                 <div class="viz-wave-chip" data-ws="particles"       style="padding:6px 10px;font-size:9.5px;border:1px solid var(--border);border-radius:12px;cursor:pointer;color:var(--muted);background:var(--panel-2);letter-spacing:0.04em;text-transform:uppercase;">∴ Particles</div>
                 <div class="viz-wave-chip" data-ws="mirror"          style="padding:6px 10px;font-size:9.5px;border:1px solid var(--border);border-radius:12px;cursor:pointer;color:var(--muted);background:var(--panel-2);letter-spacing:0.04em;text-transform:uppercase;">▥ Mirror</div>
                 <div class="viz-wave-chip" data-ws="bubbles"         style="padding:6px 10px;font-size:9.5px;border:1px solid var(--border);border-radius:12px;cursor:pointer;color:var(--muted);background:var(--panel-2);letter-spacing:0.04em;text-transform:uppercase;">⊙ Bubbles</div>
-                <div class="viz-wave-chip" data-ws="ribbon"          style="padding:6px 10px;font-size:9.5px;border:1px solid var(--border);border-radius:12px;cursor:pointer;color:var(--muted);background:var(--panel-2);letter-spacing:0.04em;text-transform:uppercase;">≈ Ribbon</div>
+                <div class="viz-wave-chip active" data-ws="ribbon"   style="padding:6px 10px;font-size:9.5px;border:1px solid var(--gold);border-radius:12px;cursor:pointer;color:var(--gold);background:rgba(240,196,25,0.10);letter-spacing:0.04em;text-transform:uppercase;">≈ Ribbon</div>
               </div>
 
               <!-- Waveform Color Mode  · White / Black / Solid Hex / Gradient / Rainbow -->
@@ -11466,6 +11508,75 @@ function showPoaBanner(opts) {
       } catch (e) {}
     }, 12000);
   } catch (e) { console.warn('showPoaBanner failed:', e); }
+}
+
+// ============================================================
+// PoA REJECTION BANNER · shown when a foreign card is tapped
+// ============================================================
+// Mirror of showPoaBanner but in error red · explains exactly which card
+// was tapped vs the registered one, and gives two clear actions: tap the
+// registered card again, or open Settings → SecureNode to re-program.
+function showPoaRejectionBanner(opts) {
+  try {
+    const o = opts || {};
+    let banner = document.getElementById('poa-rejection-banner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'poa-rejection-banner';
+      banner.style.cssText =
+        'position:fixed;top:0;left:0;right:0;z-index:100001;' +
+        'padding:14px 18px;display:flex;align-items:center;gap:12px;' +
+        'background:linear-gradient(135deg,rgba(239,68,68,0.97),rgba(220,38,38,0.97));' +
+        'color:#fff;font-family:system-ui,-apple-system,sans-serif;' +
+        'box-shadow:0 6px 24px rgba(0,0,0,0.45);' +
+        'transform:translateY(-100%);transition:transform 0.35s cubic-bezier(0.16,1,0.3,1);' +
+        'padding-top:max(14px,env(safe-area-inset-top));';
+      banner.innerHTML =
+        '<div style="font-size:30px;line-height:1;flex-shrink:0;">⛔</div>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:13px;font-weight:700;letter-spacing:0.04em;">SecureCard™ Tap Rejected</div>' +
+          '<div id="poa-rej-detail" style="font-size:10.5px;margin-top:2px;font-family:\'IBM Plex Mono\',ui-monospace,monospace;opacity:0.92;line-height:1.4;"></div>' +
+        '</div>' +
+        '<button id="poa-rej-settings" type="button" style="background:#fff;color:#b91c1c;border:none;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;letter-spacing:0.04em;">Settings</button>' +
+        '<button id="poa-rej-close" type="button" style="background:transparent;border:1px solid rgba(255,255,255,0.40);color:#fff;width:28px;height:28px;border-radius:50%;font-size:14px;font-weight:700;cursor:pointer;padding:0;flex-shrink:0;">×</button>';
+      document.body.appendChild(banner);
+      document.getElementById('poa-rej-close').addEventListener('click', () => {
+        banner.style.transform = 'translateY(-100%)';
+        setTimeout(() => { try { banner.remove(); } catch (e) {} }, 350);
+      });
+      document.getElementById('poa-rej-settings').addEventListener('click', () => {
+        banner.style.transform = 'translateY(-100%)';
+        setTimeout(() => { try { banner.remove(); } catch (e) {} }, 350);
+        try { showView && showView('view-settings'); } catch (e) {}
+        // Scroll to the SecureNode card after a small delay
+        setTimeout(() => {
+          try {
+            const card = document.getElementById('set-securecard-status');
+            if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } catch (e) {}
+        }, 400);
+      });
+    }
+    const det = document.getElementById('poa-rej-detail');
+    if (det) {
+      const attempted = (o.attemptedCard || 'unknown').slice(0, 24);
+      const registered = (o.registeredCard || 'unknown').slice(0, 24);
+      det.innerHTML =
+        'Tapped card: <strong>' + _kycEscape(attempted) + '</strong>' +
+        '<br>Registered card: <strong>' + _kycEscape(registered) + '</strong>' +
+        '<br>Tap your registered SecureCard™ or re-program in Settings.';
+    }
+    requestAnimationFrame(() => {
+      banner.style.transform = 'translateY(0)';
+    });
+    if (banner._dismissTimer) clearTimeout(banner._dismissTimer);
+    banner._dismissTimer = setTimeout(() => {
+      try {
+        banner.style.transform = 'translateY(-100%)';
+        setTimeout(() => { try { banner.remove(); } catch (e) {} }, 350);
+      } catch (e) {}
+    }, 15000);
+  } catch (e) { console.warn('showPoaRejectionBanner failed:', e); }
 }
 
 // ============================================================
@@ -17462,18 +17573,64 @@ function drawAudioWaveform(canvas, freq, time, bass, mid, treble, viz) {
   if (!ctx) return;
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
-  const style = (viz && viz.waveStyle) || 'bars';
+  const style = (viz && viz.waveStyle) || 'ribbon';
 
   // ---- Color mode resolver --------------------------------------------------
   // viz.waveColorMode: 'white' | 'black' | 'solid' | 'gradient' | 'rainbow'
   // Backwards compat: if viz.waveRainbow is true, force rainbow mode.
   let mode = (viz && viz.waveColorMode) || 'solid';
   if (viz && viz.waveRainbow) mode = 'rainbow';
-  const solidHex   = (viz && viz.waveColor) ? ('#' + viz.waveColor.replace('#','')) : ((viz && viz.color) || '#f0c419');
-  const gradAHex   = (viz && viz.waveGradA) ? ('#' + viz.waveGradA.replace('#','')) : solidHex;
-  const gradBHex   = (viz && viz.waveGradB) ? ('#' + viz.waveGradB.replace('#','')) : '#ff4d8b';
-  const waveColor  = (mode === 'white') ? '#ffffff'
-                   : (mode === 'black') ? '#000000'
+  // ===== Background-color collision guard =====
+  // The waveform must NEVER be the same color as the visualizer canvas
+  // background (viz.color), or it becomes invisible. We compute the bg
+  // color first, then if the chosen wave color is within a perceptual
+  // distance threshold, we auto-shift the wave hue (or flip white↔black
+  // for monochrome modes) until contrast is restored.
+  const bgHex = ((viz && viz.color) || '#f0c419').toLowerCase();
+  const bgHsl = hexToHSL(bgHex);
+  // Returns true if `hex` is too close to bgHex (Lab-ish ΔE shortcut: HSL
+  // distance with L weighted heavier than H/S). Threshold tuned so bright
+  // yellow on slightly-yellow bg still triggers a shift.
+  function tooCloseToBg(hex) {
+    try {
+      const h = hexToHSL(hex);
+      const dL = Math.abs(h.l - bgHsl.l);
+      const dH = Math.min(Math.abs(h.h - bgHsl.h), 360 - Math.abs(h.h - bgHsl.h));
+      const dS = Math.abs(h.s - bgHsl.s);
+      // Very low lightness gap AND close hue+sat → invisible
+      return (dL < 12 && dH < 28 && dS < 22) || dL < 6;
+    } catch (e) { return false; }
+  }
+  // Adjusts a hex to stand out from bg. Strategy: pick the lightness
+  // opposite (flip across 50%) and shift hue 180° for max separation.
+  function ensureContrast(hex) {
+    if (!tooCloseToBg(hex)) return hex;
+    const h = hexToHSL(hex);
+    const newL = bgHsl.l > 50 ? Math.max(10, bgHsl.l - 45) : Math.min(90, bgHsl.l + 45);
+    let newH = (h.h + 180) % 360;
+    // If sat is near 0 (grayscale), shift to a complementary accent
+    const newS = h.s < 15 ? 70 : h.s;
+    return hslToHex(newH, newS, newL);
+  }
+  let solidHex    = (viz && viz.waveColor) ? ('#' + viz.waveColor.replace('#','')) : ((viz && viz.color) || '#f0c419');
+  // CRITICAL · the user said "waveform should NEVER be the same color as bg".
+  // If solidHex was sourced from viz.color (the bg), force a contrasting accent.
+  if (solidHex.toLowerCase() === bgHex) {
+    solidHex = ensureContrast(solidHex);
+  } else {
+    solidHex = ensureContrast(solidHex);
+  }
+  let gradAHex    = (viz && viz.waveGradA) ? ('#' + viz.waveGradA.replace('#','')) : solidHex;
+  let gradBHex    = (viz && viz.waveGradB) ? ('#' + viz.waveGradB.replace('#','')) : '#ff4d8b';
+  gradAHex = ensureContrast(gradAHex);
+  gradBHex = ensureContrast(gradBHex);
+  // Monochrome modes: flip white↔black if bg is too close to one of them.
+  let monoWhite = '#ffffff';
+  let monoBlack = '#000000';
+  if (mode === 'white' && tooCloseToBg(monoWhite)) monoWhite = '#0a0a0a';
+  if (mode === 'black' && tooCloseToBg(monoBlack)) monoBlack = '#f5f5f5';
+  const waveColor  = (mode === 'white') ? monoWhite
+                   : (mode === 'black') ? monoBlack
                    : (mode === 'gradient') ? gradAHex
                    : solidHex; // solid + rainbow base
   const baseHsl = hexToHSL(waveColor);
@@ -17777,6 +17934,13 @@ function defaultViz() {
     fontColor: 'white',          // 'white' | 'black'  · color of the asset name on the canvas
     dateOrder: 'YMD',            // 'YMD' | 'MDY' | 'DMY'  · format of date in the Unique ID
     createdAt: null,             // ISO date stamp captured when minted; null until mint
+    // ===== Audio waveform defaults =====
+    // Ribbon is the canonical premium style · curves elegantly through the
+    // canvas with built-in gradient + glow. Color mode defaults to 'solid'
+    // so the gold accent ribbon is visible without further config.
+    waveStyle: 'ribbon',
+    waveColorMode: 'solid',
+    waveColor: 'f0c419',
     // Asset image overlay (populated when an image/video is uploaded)
     assetImageDataURL: null,
     assetImageW: null,
@@ -19645,7 +19809,7 @@ function refreshVizPreview() {
     if (lScale) lScale.value = curLogo;
     if (lScaleVal) lScaleVal.textContent = curLogo + '%';
     // Sync waveform style + color + rainbow + speaker shake
-    const curWs = viz.waveStyle || 'bars';
+    const curWs = viz.waveStyle || 'ribbon';
     document.querySelectorAll('.viz-wave-chip').forEach(c => {
       const active = c.dataset.ws === curWs;
       c.classList.toggle('active', active);
@@ -24443,8 +24607,20 @@ function openNFCScanner() {
   scanner.className = 'nfc-scanner';
   icon.className = 'nfc-icon verifying';
   icon.textContent = '⌬';
-  title.textContent = 'Tap Your SecureCard™';
-  inst.textContent = 'Hold your NFC SecureCard™ against the back of your phone (top half on iPhone) to sign the CBIA payload with its on-card Ed25519 key.';
+  // ===== Headline reflects whether a card is registered yet =====
+  // First-time users see "Provision Your SecureCard™" because the first
+  // tap adopts the card. Returning users see "Tap Your Registered Card"
+  // because strict matching is required.
+  const s = state.settings || {};
+  const hasRegistered = !!(s.secureCardId && s.secureCardToken);
+  if (hasRegistered) {
+    title.textContent = 'Tap Your Registered SecureCard™';
+    inst.innerHTML = 'The system is scanning. Hold your <strong>registered</strong> SecureCard™ against the back of your phone. Tapping a different card will be <strong>rejected</strong>.' +
+      '<div style="margin-top:8px;padding:6px 10px;background:rgba(79,214,255,0.06);border:1px solid var(--cyan);border-radius:4px;font-family:\'IBM Plex Mono\',ui-monospace,monospace;font-size:10px;color:var(--cyan);">Registered: ' + _kycEscape(s.secureCardId) + '</div>';
+  } else {
+    title.textContent = 'Provision Your SecureCard™';
+    inst.textContent = 'No SecureCard™ registered to this device yet. The first valid tap will register the card. Future taps must match this card exactly.';
+  }
   stat.innerHTML = '⌬ AWAITING NFC TAP · CHALLENGE: <span id="nfc-challenge">' + challenge + '</span>';
   result.className = 'nfc-quick-result';
   result.textContent = '';
@@ -24659,46 +24835,112 @@ function openNFCScanner() {
 // NFC modal is open. The first valid tag read triggers completeNFC().
 async function attemptWebNFCScan() {
   const stat = $('#nfc-status-text');
+  const scanner = $('#nfc-scanner');
+  const icon = $('#nfc-icon');
   try {
     // Abort any prior scan first.
     try { _webNfcAbort && _webNfcAbort.abort(); } catch (e) {}
     _webNfcAbort = new AbortController();
     const reader = new window.NDEFReader();
     await reader.scan({ signal: _webNfcAbort.signal });
-    stat.innerHTML = '⌬ NFC READER ACTIVE · TAP CARD AGAINST PHONE…';
+    // ===== Interactive scanning state =====
+    // Animate the scanner icon + show ripple pulses while we wait for a tap.
+    // This is the "system is actively scanning" visual the user expects.
+    if (scanner) scanner.classList.add('scanning');
+    if (icon) {
+      icon.classList.add('scanning');
+      icon.textContent = '⌬';
+    }
+    stat.innerHTML =
+      '<span style="color:var(--cyan);font-weight:700;">⌬ NFC READER ACTIVE</span><br>' +
+      '<span style="color:var(--text);font-size:11px;display:block;margin-top:4px;">Hold your SecureCard™ flat against the back of the phone. The system is scanning continuously and will verify the URL on the tag matches your registered SecureCard™.</span>';
 
     reader.addEventListener('readingerror', () => {
-      stat.innerHTML = '✕ READ ERROR · Card moved too quickly  · hold it flat against the phone and try again.';
+      stat.innerHTML = '<span style="color:var(--warn);">✕ READ ERROR</span> · Card moved too quickly · hold it flat and try again.';
     });
 
     reader.addEventListener('reading', ({ message, serialNumber }) => {
       try { _webNfcAbort && _webNfcAbort.abort(); } catch (e) {}
-      // Build a deterministic Ed25519-shaped signature from the card's
-      // serial number + the current challenge. In production this would be
-      // an actual on-card signature returned over NDEF.
-      const challenge = (state.current.cbiaHash || 'no-payload');
-      const sig = ed25519Like((serialNumber || 'no-serial') + ':' + challenge);
-      // Record the card serial so we can verify the same card on future
-      // taps (real implementation would also check a server allowlist).
-      try {
-        if (!state.poaCardSerials) state.poaCardSerials = [];
-        if (serialNumber && !state.poaCardSerials.includes(serialNumber)) {
-          state.poaCardSerials.push(serialNumber);
-        }
-        state.lastPoaSerial = serialNumber || '';
-        save();
-      } catch (e) {}
+      if (scanner) scanner.classList.remove('scanning');
+      // ===== Read the URL written to the tag and verify =====
+      // The tag was programmed with our SecureCard URL containing card= and
+      // sig= params. We decode every URL record on the tag and check if any
+      // matches the registered card.
       const decoder = new TextDecoder();
-      let preview = '';
+      let tagUrl = '';
+      let tagText = '';
       if (message && message.records) {
         for (const r of message.records) {
-          if (r.recordType === 'text' || r.recordType === 'url') {
-            try { preview = decoder.decode(r.data); break; } catch (e) {}
+          if (r.recordType === 'url') {
+            try { tagUrl = decoder.decode(r.data); break; } catch (e) {}
+          } else if (r.recordType === 'absolute-url') {
+            try { tagUrl = decoder.decode(r.data); break; } catch (e) {}
+          } else if (r.recordType === 'text') {
+            try { tagText = decoder.decode(r.data); } catch (e) {}
           }
         }
       }
-      stat.innerHTML = '⌬ TAG READ · serial ' + (serialNumber || ' ·').slice(0, 14) + ' · verifying…';
-      setTimeout(() => completeNFC(true, sig), 350);
+      const urlToCheck = tagUrl || tagText;
+      // Show what was read so the user can see the scanner is working.
+      const previewUrl = urlToCheck ? urlToCheck.slice(0, 48) + (urlToCheck.length > 48 ? '…' : '') : '(no URL record)';
+      stat.innerHTML =
+        '<span style="color:var(--gold);">⌬ TAG READ</span> · serial ' + (serialNumber || '').slice(0, 14).toUpperCase() +
+        '<br><span style="color:var(--muted);font-size:10px;">' + _kycEscape(previewUrl) + '</span>' +
+        '<br><span style="color:var(--cyan);">Verifying against registered card…</span>';
+      // Extract card + sig from the tag's URL (case-insensitive param search)
+      let tagCardId = '', tagSig = '';
+      try {
+        const u = new URL(urlToCheck, location.href);
+        const sp = u.searchParams;
+        tagCardId = sp.get('card') || sp.get('CARD') || sp.get('cardid') || sp.get('serial') || sp.get('uid') || '';
+        tagSig    = sp.get('sig')  || sp.get('SIG')  || sp.get('nfc')    || sp.get('signature') || '';
+      } catch (e) {}
+      // ===== STRICT MATCH against registered SecureCard =====
+      const expectedCardId    = state.settings && state.settings.secureCardId;
+      const expectedCardToken = state.settings && state.settings.secureCardToken;
+      // First-time provisioning (no card registered yet) · adopt
+      if (!expectedCardId && tagCardId && tagSig) {
+        if (!state.settings) state.settings = {};
+        state.settings.secureCardId    = tagCardId;
+        state.settings.secureCardToken = tagSig;
+        state.settings.secureCardCreated = new Date().toISOString();
+        state.settings.secureCardProgrammed = true;
+        state.settings.secureCardAdopted = true;
+        try { saveSettings && saveSettings(); } catch (e) {}
+        setTimeout(() => completeNFC(true, tagSig), 400);
+        return;
+      }
+      // No URL on the tag at all → reject
+      if (!tagCardId || !tagSig) {
+        stat.innerHTML = '<span style="color:var(--err);">✕ TAG INVALID</span> · NFC tag has no SecureCard URL. Program the tag using the Copy URL button + NFC Tools.';
+        setTimeout(() => completeNFC(false, ''), 300);
+        return;
+      }
+      // Strict match
+      const idMatch    = (tagCardId === expectedCardId);
+      const tokenMatch = (tagSig === expectedCardToken);
+      if (idMatch && tokenMatch) {
+        stat.innerHTML = '<span style="color:var(--green);">✓ MATCH</span> · ' + _kycEscape(tagCardId.slice(0, 20)) + '… verified';
+        try {
+          if (!state.poaCardSerials) state.poaCardSerials = [];
+          if (!state.poaCardSerials.includes(tagCardId)) state.poaCardSerials.push(tagCardId);
+          state.lastPoaSerial = tagCardId;
+          state.lastPoaAt = new Date().toISOString();
+          state.lastPoaVerified = true;
+          save && save();
+        } catch (e) {}
+        setTimeout(() => completeNFC(true, tagSig), 350);
+      } else {
+        // Mismatch · explain exactly why
+        const reason = !idMatch ? 'card serial mismatch' : 'signature mismatch';
+        stat.innerHTML = '<span style="color:var(--err);">✕ MISMATCH</span> · ' + reason + '<br>' +
+          '<span style="color:var(--muted);font-size:10px;">Tapped: ' + _kycEscape(tagCardId.slice(0, 20)) + '… <br>Registered: ' + _kycEscape((expectedCardId || '').slice(0, 20)) + '…</span>';
+        try { soundDeny && soundDeny(); } catch (e) {}
+        setTimeout(() => {
+          completeNFC(false, '');
+          showPoaRejectionBanner({ attemptedCard: tagCardId, registeredCard: expectedCardId });
+        }, 400);
+      }
     });
   } catch (e) {
     if (e && e.name === 'NotAllowedError') {
@@ -33164,58 +33406,74 @@ function init() {
     const cardSer   = get('card', 'serial', 'uid', 'cardid', 'cid', 'id', 'ndef');
     const challenge = get('chal', 'challenge', 'c', 'nonce');
     if (nfcSig || cardSer) {
-      // ===== FINAL IMPLEMENTATION · Auto-adopt + verify =====
-      // Any URL that arrives with a card serial + signature is treated as a
-      // valid Proof-of-Agency tap. Verification model:
-      //   1. If THIS device has a registered SecureCard and the incoming ID
-      //      matches → mark as "verified-match" (strongest trust).
-      //   2. If THIS device has no registered card → AUTO-ADOPT the incoming
-      //      card as this device's card (typical first-tap scenario, or
-      //      after clearing site data).
-      //   3. If the incoming card is different from the registered one →
-      //      accept the tap as a valid PoA tagged with the foreign serial,
-      //      and offer the user the option to switch the registered card
-      //      to this new one. We DO NOT reject foreign taps · users need
-      //      cross-device portability (your tag should work on your laptop,
-      //      your phone, and a friend's device when you authorize).
-      // The signature must look non-trivial (≥ 8 chars) to defeat empty
-      // ?card=&sig= URLs. Beyond that, the URL alone is the PoA · the
-      // cryptographic strength of the deed comes from the wallet signature
-      // applied AFTER PoA at mint time.
+      // ===== STRICT VERIFICATION (final security model) =====
+      // The incoming tap URL must match the device's registered SecureCard
+      // exactly on BOTH the card serial and the signature token. Any
+      // mismatch is rejected with a clear, actionable error · no more
+      // foreign-card adoption, no more permissive fallback. This is the
+      // user-mandated behavior: "SECURECARD TAP CARD SHOULD REQUIRE THE
+      // MATCHING SECURECARD URL LINK TAP".
+      //
+      // Adoption path (no card on this device yet):
+      //   The very first tap is still adopted because the user has to
+      //   provision somehow. After that, every subsequent tap must match.
       const expectedCardId    = state.settings && state.settings.secureCardId;
       const expectedCardToken = state.settings && state.settings.secureCardToken;
-      let verificationStatus  = 'unverified';   // unverified | matched | adopted | foreign
+      let verificationStatus  = 'unverified';   // unverified | matched | adopted | mismatch | malformed
       const sigLen = (nfcSig || '').replace(/^ed25519:/i, '').length;
       const cardOk = cardSer && cardSer.length >= 4;
       const sigOk  = sigLen >= 8;
       if (!cardOk || !sigOk) {
-        // Malformed URL · doesn't look like a real NFC tap. Bail silently
-        // so a stray query string doesn't trigger the flow. Do NOT return
-        // from init() · the rest of the boot sequence still needs to run.
+        verificationStatus = 'malformed';
         try {
           const clean = location.protocol + '//' + location.host + location.pathname + location.hash;
           window.history.replaceState({}, document.title, clean);
         } catch (er) {}
-      } else {
-        if (expectedCardId && cardSer === expectedCardId &&
-            expectedCardToken && nfcSig === expectedCardToken) {
+      } else if (expectedCardId && expectedCardToken) {
+        // Card is registered · STRICT match required.
+        const idMatch    = (cardSer === expectedCardId);
+        const tokenMatch = (nfcSig === expectedCardToken);
+        if (idMatch && tokenMatch) {
           verificationStatus = 'matched';
-        } else if (!expectedCardId) {
-          // First tap on this device · auto-adopt the card.
-          if (!state.settings) state.settings = {};
-          state.settings.secureCardId    = cardSer;
-          state.settings.secureCardToken = nfcSig;
-          state.settings.secureCardCreated = new Date().toISOString();
-          state.settings.secureCardProgrammed = true;
-          state.settings.secureCardAdopted = true;
-          try { saveSettings && saveSettings(); } catch (e) {}
-          verificationStatus = 'adopted';
         } else {
-          verificationStatus = 'foreign';
+          verificationStatus = 'mismatch';
         }
+      } else {
+        // No card registered on this device · first-tap provisioning.
+        if (!state.settings) state.settings = {};
+        state.settings.secureCardId    = cardSer;
+        state.settings.secureCardToken = nfcSig;
+        state.settings.secureCardCreated = new Date().toISOString();
+        state.settings.secureCardProgrammed = true;
+        state.settings.secureCardAdopted = true;
+        try { saveSettings && saveSettings(); } catch (e) {}
+        verificationStatus = 'adopted';
       }
-      // Only schedule the tap-success flow if the URL was well-formed.
-      if (verificationStatus !== 'unverified') {
+      // ===== Reject mismatched taps with a clear error =====
+      if (verificationStatus === 'mismatch') {
+        setTimeout(() => {
+          try {
+            // Visual rejection in the NFC modal if it's open · otherwise toast.
+            const modal = document.getElementById('modal-nfc');
+            if (modal && !modal.classList.contains('hidden')) {
+              if (typeof completeNFC === 'function') completeNFC(false, '');
+            }
+            try { soundDeny && soundDeny(); } catch (er) {}
+            toast && toast('SecureCard™ MISMATCH · tapped card ' + cardSer.slice(0, 16) + '… does NOT match the registered card ' + (expectedCardId || '').slice(0, 16) + '…. Tap your registered SecureCard™ or re-generate in Settings → SecureNode.', 'err', 11000);
+            // Show a persistent banner so the user can't miss it.
+            showPoaRejectionBanner({
+              attemptedCard: cardSer,
+              registeredCard: expectedCardId,
+            });
+          } catch (er) {}
+          try {
+            const clean = location.protocol + '//' + location.host + location.pathname + location.hash;
+            window.history.replaceState({}, document.title, clean);
+          } catch (er) {}
+        }, 250);
+      }
+      // Schedule the success flow only when the tap is valid.
+      if (verificationStatus === 'matched' || verificationStatus === 'adopted') {
       // Defer to next tick so the rest of init has time to wire handlers.
       setTimeout(() => {
         try {
@@ -33231,9 +33489,8 @@ function init() {
           }
           // Friendly status message based on verification outcome.
           const statusMsg = {
-            matched:  '✓ SecureCard™ tap verified · registered card matched',
-            adopted:  '✓ SecureCard™ tap accepted · this tag is now registered to this device',
-            foreign:  '✓ SecureCard™ tap accepted · foreign card ' + cardSer + ' (your registered card: ' + (expectedCardId || 'none') + ')',
+            matched:  '✓ SecureCard™ tap verified · registered card ' + cardSer.slice(0, 24) + '… matched',
+            adopted:  '✓ SecureCard™ provisioned · this tag is now registered to this device',
           }[verificationStatus] || '✓ SecureCard™ tap accepted';
           try { toast && toast(statusMsg, 'ok', 5500); } catch (er) {}
           // Build the canonical signature shape the rest of the app expects.
