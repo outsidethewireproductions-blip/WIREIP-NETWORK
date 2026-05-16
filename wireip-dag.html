@@ -8302,6 +8302,7 @@
               <button data-mode="type">By Node Type</button>
               <button data-mode="revenue">By Revenue</button>
               <button data-mode="region">Leading Areas</button>
+              <button id="globe-toggle-labels" type="button" title="Toggle city name labels" style="background:rgba(74,222,128,0.10);border-color:var(--green);color:var(--green);">🏷 Labels: ON</button>
             </div>
             <div class="globe-stats" id="globe-stats">
               <div class="gs-item"><div class="gs-lab">Validators</div><div class="gs-val" id="g-stat-validators">0</div></div>
@@ -9795,15 +9796,14 @@
               SecureCard™ NFC Tag
             </div>
             <p class="help" style="margin-top:0;">
-              Your physical SecureCard™ is identified by a unique ID baked into a URL on the NFC tag. WireIP generates this ID once on this device and remembers it forever. Re-generate only if your tag is lost or stolen.
+              Your physical SecureCard™ is identified by a unique ID baked into an <strong>encrypted</strong> URL on the NFC tag. The URL itself is never displayed or copyable inside WireIP · only the tag carries it. Re-generate only if your tag is lost or stolen.
             </p>
             <div id="set-securecard-status" style="margin-top:8px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;padding:10px 14px;background:var(--panel-2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);word-break:break-all;line-height:1.5;">
               Not yet provisioned · open the NFC modal once to generate
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
-              <button id="set-securecard-copy" class="primary" type="button">📋 Copy Tap URL</button>
-              <button id="set-securecard-program" type="button">🆔 Program a Tag</button>
-              <button id="set-securecard-regen" type="button" style="color:var(--err);border-color:var(--err);">↻ Re-generate</button>
+              <button id="set-securecard-program" class="primary" type="button">🆔 Program / Re-program Tag</button>
+              <button id="set-securecard-regen" type="button" style="color:var(--err);border-color:var(--err);">↻ Re-generate ID</button>
             </div>
           </div>
         </div>
@@ -10973,23 +10973,22 @@
         <div class="nfc-status-text" id="nfc-status-text">⌬ AWAITING NFC TAP · CHALLENGE: <span id="nfc-challenge"> ·</span></div>
         <div class="nfc-quick-result" id="nfc-quick-result"></div>
       </div>
-      <!-- ===== Paste-URL test path =====
-           iOS Safari can't actively scan NFC. This input lets the user
-           paste the URL they wrote to their physical prototype card, so
-           the system can verify the strict match WITHOUT requiring an
-           in-Safari tap. Same matching logic as a real tap. -->
+      <!-- ===== Paste-URL verification path =====
+           iOS Safari can't actively scan NFC. This input accepts the URL
+           the user reads from a physical tag (via an NFC reader app) so
+           the system can verify it matches the registered card. The
+           pasted URL is NEVER echoed back · only a pass/fail result. -->
       <details id="nfc-paste-details" style="margin-top:14px;border-top:1px dashed var(--border);padding-top:10px;">
         <summary style="cursor:pointer;font-size:11.5px;color:var(--gold);letter-spacing:0.04em;padding:8px 0;font-weight:700;">
-          ⌬ Test physical NFC tag (paste the URL you wrote to it)
+          ⌬ Verify physical tag · paste URL read from your SecureCard
         </summary>
         <div style="padding:8px 4px;">
           <p style="font-size:10.5px;color:var(--text);line-height:1.55;margin:0 0 10px;">
-            <strong style="color:var(--gold);">Have a prototype tag?</strong> Paste the EXACT URL you wrote to it below. The system runs the same strict match as a real tap. Use this on iPhone (iOS Safari can't actively scan NFC inside the browser).
+            <strong style="color:var(--gold);">Verification only.</strong> Paste the URL you read from your physical SecureCard™ tag (using an NFC reader app). The system verifies the match without echoing anything back · the URL is wiped from the input immediately on submit.
           </p>
-          <input type="text" id="nfc-paste-url" placeholder="https://wireip-network.vercel.app/wireip-dag?card=…&sig=…" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--cyan);border-radius:6px;font-size:10.5px;color:var(--cyan);font-family:'IBM Plex Mono',ui-monospace,monospace;">
+          <input type="password" id="nfc-paste-url" placeholder="Paste URL from your tag · masked for security" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--cyan);border-radius:6px;font-size:10.5px;color:var(--cyan);font-family:'IBM Plex Mono',ui-monospace,monospace;letter-spacing:0.04em;">
           <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
-            <button id="nfc-paste-verify" type="button" style="flex:1;min-width:140px;min-height:44px;padding:10px 16px;background:var(--cyan);color:var(--bg);border:none;border-radius:6px;font-size:12px;font-weight:700;letter-spacing:0.06em;cursor:pointer;">⌬ VERIFY TAG URL</button>
-            <button id="nfc-paste-clipboard" type="button" style="flex:0 0 auto;min-height:44px;padding:10px 12px;background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:6px;font-size:11px;cursor:pointer;">📋 Paste</button>
+            <button id="nfc-paste-verify" type="button" style="flex:1;min-width:140px;min-height:44px;padding:10px 16px;background:var(--cyan);color:var(--bg);border:none;border-radius:6px;font-size:12px;font-weight:700;letter-spacing:0.06em;cursor:pointer;">🔒 VERIFY · WIPE INPUT</button>
           </div>
           <div id="nfc-paste-result" style="margin-top:8px;font-size:10.5px;font-family:'IBM Plex Mono',ui-monospace,monospace;line-height:1.55;"></div>
         </div>
@@ -13543,48 +13542,34 @@ function renderSettings() {
   bind('set-secureNodeAutoReconnect',  'secureNodeAutoReconnect', 'bool');
   bind('set-secureNodeHealthCheckSec', 'secureNodeHealthCheckSec', 'int');
   // ===== SecureCard™ NFC tag panel =====
+  // URL display is intentionally REMOVED · the encrypted tap URL is never
+  // shown anywhere in the UI. Users see only the public card ID + a
+  // masked stub indicating the token length. The only way to obtain the
+  // full URL is to physically read it off a programmed NFC tag.
   function paintSecureCard() {
     const $st = document.getElementById('set-securecard-status');
-    const $copy = document.getElementById('set-securecard-copy');
     if (!$st) return;
     const ss = state.settings || {};
     if (!ss.secureCardId) {
       $st.style.color = 'var(--muted)';
       $st.textContent = 'Not yet provisioned · open the NFC modal once to generate';
-      if ($copy) $copy.disabled = true;
       return;
     }
-    if ($copy) $copy.disabled = false;
-    const here = location.protocol + '//' + location.host + location.pathname;
-    const url = here + '?card=' + ss.secureCardId + '&sig=' + (ss.secureCardToken || '');
     const created = ss.secureCardCreated ? new Date(ss.secureCardCreated).toLocaleString() : 'unknown';
-    const programmed = ss.secureCardProgrammed ? '<span style="color:var(--green);">✓ Tag programmed</span>' : '<span style="color:var(--gold);">⚠ Tag not programmed yet</span>';
+    const programmed = ss.secureCardProgrammed
+      ? '<span style="color:var(--green);">✓ Tag programmed</span>'
+      : '<span style="color:var(--gold);">⚠ Tag not programmed yet</span>';
+    const tokenLen = (ss.secureCardToken || '').length;
     $st.style.color = 'var(--text)';
     $st.innerHTML =
       '<div><strong style="color:var(--gold);">ID:</strong> <span style="color:var(--cyan);">' + _kycEscape(ss.secureCardId) + '</span></div>' +
-      '<div style="margin-top:4px;"><strong style="color:var(--gold-soft);">Tap URL:</strong></div>' +
-      '<div style="margin-top:2px;color:var(--cyan);background:var(--bg);padding:6px 8px;border-radius:4px;border:1px solid var(--cyan);font-size:9.5px;">' + _kycEscape(url) + '</div>' +
+      '<div style="margin-top:4px;display:flex;align-items:center;gap:6px;">' +
+        '<strong style="color:var(--gold-soft);">Tap URL:</strong>' +
+        '<span style="color:var(--muted);font-size:10px;letter-spacing:0.04em;">🔒 ENCRYPTED · ' + (tokenLen * 4) + '-bit token · not displayed</span>' +
+      '</div>' +
       '<div style="margin-top:6px;color:var(--muted);font-size:10px;">Provisioned: ' + _kycEscape(created) + ' · ' + programmed + '</div>';
   }
   paintSecureCard();
-  const scCopy = document.getElementById('set-securecard-copy');
-  if (scCopy && !scCopy._scBound) {
-    scCopy._scBound = true;
-    scCopy.addEventListener('click', async () => {
-      const ss = state.settings || {};
-      if (!ss.secureCardId) { toast('Open the NFC modal first to generate your card', 'warn'); return; }
-      const here = location.protocol + '//' + location.host + location.pathname;
-      const url = here + '?card=' + ss.secureCardId + '&sig=' + (ss.secureCardToken || '');
-      try {
-        await navigator.clipboard.writeText(url);
-        toast('Tap URL copied · paste into NFC Tools to program a tag', 'ok', 4000);
-        ss.secureCardProgrammed = true; saveSettings && saveSettings();
-        paintSecureCard();
-      } catch (e) {
-        toast('Copy failed · long-press the URL above to copy', 'warn');
-      }
-    });
-  }
   const scProgram = document.getElementById('set-securecard-program');
   if (scProgram && !scProgram._scBound) {
     scProgram._scBound = true;
@@ -25201,8 +25186,9 @@ function _wireNfcPasteVerify() {
     }
     const expectedCardId    = state.settings && state.settings.secureCardId;
     const expectedCardToken = state.settings && state.settings.secureCardToken;
-    // Show what was parsed so the user can compare bit by bit.
-    const cmp = (a, b) => '<span style="color:' + (a === b ? 'var(--green)' : 'var(--err)') + ';">' + _kycEscape(a || '(empty)') + '</span>';
+    // ===== Verification result · NEVER echo back the pasted URL or sig =====
+    // We only confirm match/mismatch + show the public card ID. The token
+    // bytes stay encrypted both in storage and in any UI surface.
     if (!expectedCardId) {
       // First-time provisioning · adopt
       if (!state.settings) state.settings = {};
@@ -25213,10 +25199,11 @@ function _wireNfcPasteVerify() {
       state.settings.secureCardAdopted = true;
       try { saveSettings && saveSettings(); } catch (e) {}
       out.innerHTML =
-        '<span style="color:var(--green);">✓ TAG ADOPTED</span><br>' +
-        '<div style="margin-top:4px;color:var(--muted);">card: ' + _kycEscape(tagCardId) + '</div>' +
-        '<div style="color:var(--muted);">sig:  ' + _kycEscape(tagSig.slice(0, 32)) + '…</div>' +
-        '<div style="margin-top:4px;color:var(--green);">This tag is now registered to this device.</div>';
+        '<span style="color:var(--green);">✓ TAG ADOPTED · registered to this device</span><br>' +
+        '<div style="margin-top:4px;color:var(--muted);">Card ID: ' + _kycEscape(tagCardId) + '</div>' +
+        '<div style="color:var(--muted);">Token: 🔒 encrypted · not displayed</div>';
+      // Clear the input immediately so the URL doesn't sit there visible
+      if (inp) inp.value = '';
       try { soundVerify && soundVerify(); } catch (e) {}
       setTimeout(() => { try { completeNFC(true, tagSig); } catch (e) {} }, 400);
       return;
@@ -25226,23 +25213,26 @@ function _wireNfcPasteVerify() {
     if (idMatch && tokenMatch) {
       out.innerHTML =
         '<span style="color:var(--green);">✓ MATCH · verified</span><br>' +
-        '<div style="margin-top:4px;">tag card: ' + cmp(tagCardId, expectedCardId) + '</div>' +
-        '<div>reg card: <span style="color:var(--green);">' + _kycEscape(expectedCardId) + '</span></div>';
+        '<div style="margin-top:4px;color:var(--muted);">Card ID: <span style="color:var(--green);">' + _kycEscape(expectedCardId) + '</span> ✓</div>' +
+        '<div style="color:var(--muted);">Token: 🔒 verified · not displayed</div>';
+      // Wipe the pasted URL · don't let it sit there
+      if (inp) inp.value = '';
       try { soundVerify && soundVerify(); } catch (e) {}
       setTimeout(() => { try { completeNFC(true, tagSig); } catch (e) {} }, 400);
     } else {
+      // Show ONLY the verdict + which check failed · never echo bytes
+      const reason =
+        !idMatch && !tokenMatch ? 'Card serial AND signature both differ · this is not your registered tag.' :
+        !idMatch ? 'Card serial doesn\'t match · this tag has a different ID than the one registered to this device.' :
+        'Signature doesn\'t match · same card ID but the encrypted token is invalid (corrupted write, or programmed from an older URL format).';
       out.innerHTML =
         '<span style="color:var(--err);">✕ MISMATCH</span><br>' +
-        '<div style="margin-top:4px;">tag card:  ' + cmp(tagCardId, expectedCardId) + '</div>' +
-        '<div>reg card:  <span style="color:var(--gold);">' + _kycEscape(expectedCardId) + '</span></div>' +
-        '<div style="margin-top:4px;">tag sig:   ' + cmp(tagSig.slice(0, 32), (expectedCardToken || '').slice(0, 32)) + '…</div>' +
-        '<div>reg sig:   <span style="color:var(--gold);">' + _kycEscape((expectedCardToken || '').slice(0, 32)) + '…</span></div>' +
-        '<div style="margin-top:6px;color:var(--muted);">' +
-          (!idMatch && !tokenMatch ? 'Both card serial and signature are different · this tag is not your registered SecureCard.' :
-           !idMatch ? 'Card serial doesn\'t match · this is a different tag.' :
-           'Signature doesn\'t match · same card serial but the sig token is wrong (corrupted write, or older URL format).') +
-        '</div>' +
-        '<div style="margin-top:6px;color:var(--gold);">→ Copy the current Tap URL from this modal and re-program the tag with NFC Tools to fix.</div>';
+        '<div style="margin-top:4px;color:var(--muted);">Card ID check: ' + (idMatch ? '<span style="color:var(--green);">✓ pass</span>' : '<span style="color:var(--err);">✕ fail</span>') + '</div>' +
+        '<div style="color:var(--muted);">Token check: ' + (tokenMatch ? '<span style="color:var(--green);">✓ pass</span>' : '<span style="color:var(--err);">✕ fail</span>') + ' · bytes not displayed</div>' +
+        '<div style="margin-top:6px;color:var(--text);">' + _safeHtml(reason) + '</div>' +
+        '<div style="margin-top:6px;color:var(--gold);">→ Re-program your tag using <strong>Write to Blank NFC Tag</strong> above (URL never leaves the system).</div>';
+      // Clear input so the URL isn't lingering on screen
+      if (inp) inp.value = '';
       try { soundDeny && soundDeny(); } catch (e) {}
     }
   });
@@ -25253,29 +25243,10 @@ function _wireNfcPasteVerify() {
       if (e.key === 'Enter') { e.preventDefault(); btn.click(); }
     });
   }
-  // Paste-from-clipboard button (saves the user from long-press → Paste)
-  const pasteBtn = document.getElementById('nfc-paste-clipboard');
-  if (pasteBtn && !pasteBtn._pasteBound) {
-    pasteBtn._pasteBound = true;
-    pasteBtn.addEventListener('click', async () => {
-      try {
-        if (navigator.clipboard && navigator.clipboard.readText) {
-          const text = await navigator.clipboard.readText();
-          if (text && inp) {
-            inp.value = text.trim();
-            // Auto-verify after a brief moment so the user can see the paste land.
-            setTimeout(() => btn.click(), 250);
-          }
-        } else {
-          inp.focus();
-          toast && toast('Long-press the input field and tap Paste', 'info', 3500);
-        }
-      } catch (e) {
-        inp && inp.focus();
-        toast && toast('Long-press the input field and tap Paste', 'info', 3500);
-      }
-    });
-  }
+  // ===== nfc-paste-clipboard removed by design =====
+  // The clipboard-read button was removed to prevent any path that would
+  // surface the URL inside the WireIP UI. Users must read the URL off the
+  // physical tag with their own NFC reader app and paste it in manually.
 }
 // Re-wire whenever the NFC modal becomes visible (the modal's innerHTML
 // may have been replaced by the iOS-fallback renderer). Also auto-expand
@@ -25396,39 +25367,48 @@ function openNFCScanner() {
     }
     const card = getOrCreateSecureCardId();
     const realUrl = here + '?card=' + card.id + '&sig=' + card.token;
+    // ===== Cache the URL on the modal element ONLY · never exposed to UI =====
+    // We keep the URL on a non-enumerable property so the verification +
+    // Write-to-Tag flow can use it without ever displaying or copying it
+    // anywhere a user could read it. The only path to the URL is reading
+    // it off the physical NFC tag itself.
+    try {
+      const modalEl = document.getElementById('modal-nfc');
+      if (modalEl) modalEl._secureCardUrl = realUrl;
+    } catch (e) {}
     const isFirstTime = !state.settings.secureCardProgrammed;
+    // Encrypted/masked display string · shows the card ID but masks the
+    // signature token completely so even reading the modal carefully
+    // doesn't leak the cryptographic part of the URL.
+    const masked =
+      'https://• • • • • • • • • • • • • • • • • •/?card=' + card.id + '&sig=• • • • • • • • • • • • • • • • • • • • • • • • • • • • • •';
     stat.innerHTML =
       '<div style="text-align:left;">' +
       '<div style="padding:10px 12px;background:linear-gradient(135deg,rgba(79,214,255,0.06),rgba(74,222,128,0.04));border:1px solid var(--cyan);border-radius:6px;margin-bottom:10px;">' +
         '<div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--cyan);font-weight:700;">Your SecureCard™ ID</div>' +
         '<div style="font-family:\'IBM Plex Mono\',ui-monospace,monospace;font-size:14px;color:var(--gold);margin-top:4px;letter-spacing:0.04em;">' + card.id + '</div>' +
-        '<div style="font-size:9.5px;color:var(--muted);margin-top:4px;">Persistent · saved to this device · same URL every time</div>' +
+        '<div style="font-size:9.5px;color:var(--muted);margin-top:4px;">Persistent · saved to this device · the full tap URL is encrypted and never shown</div>' +
       '</div>' +
       '<div style="font-size:11px;color:var(--text);line-height:1.55;margin-bottom:8px;">' +
         (isFirstTime
-          ? '<strong style="color:var(--gold);">First time?</strong> Program a blank NFC tag with the URL below. Once programmed, just tap your phone to that tag whenever you need to sign · this modal flips to Verified automatically.'
-          : '<strong style="color:var(--green);">Tag already programmed?</strong> Tap your phone to your NFC SecureCard™ now. Safari will load this page with your signature and the modal will flip to Verified. Keep this window open.') +
+          ? '<strong style="color:var(--gold);">First time?</strong> Program a blank NFC tag using <strong>Write to Tag</strong> below. The system writes the URL directly to the tag · you never see, copy, or share it. Only the tag itself carries the URL.'
+          : '<strong style="color:var(--green);">Tag already programmed?</strong> Tap your phone to your NFC SecureCard™. Safari loads the URL from the tag and the modal flips to Verified · all without exposing the URL to you.') +
       '</div>' +
-      // The real, working URL block · tappable, copyable, shareable.
+      // Encrypted URL display · masked, not selectable, not copyable.
       '<div style="margin-top:6px;padding:10px;background:var(--panel-2);border:1px solid var(--gold-soft);border-radius:6px;">' +
-        '<div style="font-size:10px;letter-spacing:0.10em;text-transform:uppercase;color:var(--gold-soft);font-weight:700;margin-bottom:6px;">SecureCard™ Tap URL</div>' +
-        '<a id="nfc-url-link" href="' + realUrl + '" style="display:block;padding:10px 12px;background:var(--bg);border:1px solid var(--cyan);border-radius:6px;font-size:10.5px;color:var(--cyan);word-break:break-all;text-decoration:none;font-family:\'IBM Plex Mono\',ui-monospace,monospace;user-select:all;-webkit-user-select:all;">' + realUrl + '</a>' +
-        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">' +
-          '<button id="nfc-copy-url" type="button" style="flex:1 1 calc(50% - 3px);min-width:130px;min-height:42px;padding:10px 14px;background:var(--cyan);color:var(--bg);border:none;border-radius:6px;font-size:11.5px;font-weight:700;letter-spacing:0.04em;cursor:pointer;">📋 Copy URL</button>' +
-          '<button id="nfc-share-url" type="button" style="flex:1 1 calc(50% - 3px);min-width:110px;min-height:42px;padding:10px 14px;background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:6px;font-size:11.5px;cursor:pointer;">↗ Share</button>' +
-          '<button id="nfc-test-tap" type="button" style="flex:1 1 100%;min-height:42px;padding:10px 14px;background:transparent;color:var(--green);border:1px solid var(--green);border-radius:6px;font-size:11.5px;font-weight:600;cursor:pointer;">✓ Test Tap · Load URL Now</button>' +
+        '<div style="font-size:10px;letter-spacing:0.10em;text-transform:uppercase;color:var(--gold-soft);font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:6px;">' +
+          '<span>🔒 Encrypted Tap URL</span>' +
+          '<span style="margin-left:auto;color:var(--cyan);font-size:9px;letter-spacing:0.06em;">' + (card.token.length * 4) + '-bit token</span>' +
         '</div>' +
-        '<details style="margin-top:8px;">' +
-          '<summary style="cursor:pointer;font-size:10.5px;color:var(--gold-soft);letter-spacing:0.04em;padding:4px 0;">How to program your NFC tag · step-by-step</summary>' +
-          '<ol style="margin:6px 0 0 18px;padding:0;font-size:10.5px;color:var(--text);line-height:1.6;">' +
-            '<li>Tap <strong>Copy URL</strong> above.</li>' +
-            '<li>Open the <strong>NFC Tools</strong> app (free on the App Store).</li>' +
-            '<li>Tap <strong>Write</strong> → <strong>Add a record</strong> → <strong>URL / URI</strong>.</li>' +
-            '<li>Paste the URL → <strong>OK</strong> → <strong>Write</strong>.</li>' +
-            '<li>Hold your blank NFC tag/card against the back of your phone until NFC Tools confirms "Write complete."</li>' +
-            '<li>Done. From now on, just tap your phone to that tag · this page loads with your card ID + signature pre-filled and the modal flips to Verified.</li>' +
-          '</ol>' +
-        '</details>' +
+        '<div id="nfc-url-masked" style="display:block;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--muted);word-break:break-all;font-family:\'IBM Plex Mono\',ui-monospace,monospace;user-select:none !important;-webkit-user-select:none !important;pointer-events:none;letter-spacing:0.06em;">' +
+          masked +
+        '</div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">' +
+          '<button id="nfc-write-tag" type="button" style="flex:1 1 100%;min-height:46px;padding:11px 14px;background:linear-gradient(135deg,var(--cyan),var(--green));color:var(--bg);border:none;border-radius:6px;font-size:12px;font-weight:700;letter-spacing:0.06em;cursor:pointer;">⌬ WRITE TO BLANK NFC TAG</button>' +
+        '</div>' +
+        '<div style="font-size:9.5px;color:var(--muted);margin-top:8px;line-height:1.55;">' +
+          'Web-NFC writers (Android Chrome) write directly to a held blank tag · the URL never appears on screen. On iPhone, the URL is handed off to the OS share sheet so you can route it to a writing app like NFC Tools without WireIP displaying it.' +
+        '</div>' +
       '</div>' +
       // Already-tapped section · for users with a programmed tag.
       '<div style="margin-top:10px;padding:10px;background:var(--panel-2);border:1px dashed var(--border);border-radius:6px;">' +
@@ -25436,95 +25416,79 @@ function openNFCScanner() {
         '<div style="font-size:10.5px;color:var(--muted);">Hit <strong>Deploy Asset</strong> below to simulate the tap and continue this session.</div>' +
       '</div>' +
       '</div>';
-    // Wire all the buttons (after innerHTML so elements exist).
+    // Wire the Write-to-Tag button. URL is read from the cached
+    // _secureCardUrl property; never assembled from anything visible.
     setTimeout(() => {
       try {
-        // ===== Copy URL =====
-        const copyBtn = document.getElementById('nfc-copy-url');
-        if (copyBtn) {
-          copyBtn.addEventListener('click', async () => {
-            const restore = () => {
-              copyBtn.textContent = '📋 Copy URL';
-              copyBtn.style.background = 'var(--cyan)';
-            };
-            const showOk = () => {
-              copyBtn.textContent = '✓ Copied · paste in NFC Tools';
-              copyBtn.style.background = 'var(--green)';
-              setTimeout(restore, 2400);
-              toast('URL copied · open NFC Tools to program your tag', 'ok', 4500);
-              // Mark as programmed once they've copied (so next time the modal
-              // shows the "tap to verify" instructions instead of "first time").
-              state.settings.secureCardProgrammed = true;
-              try { saveSettings && saveSettings(); } catch (e) {}
-            };
-            // Try modern clipboard API first.
+        const writeBtn = document.getElementById('nfc-write-tag');
+        if (writeBtn && !writeBtn._wtBound) {
+          writeBtn._wtBound = true;
+          writeBtn.addEventListener('click', async () => {
+            const m = document.getElementById('modal-nfc');
+            const url = (m && m._secureCardUrl) || null;
+            if (!url) { toast('Tap URL unavailable · close + re-open the modal', 'err'); return; }
+            writeBtn.textContent = '⌬ HOLD BLANK TAG TO PHONE…';
+            writeBtn.disabled = true;
             try {
-              await navigator.clipboard.writeText(realUrl);
-              showOk();
-            } catch (e) {
-              // Fallback for older Safari · select + execCommand copy.
-              try {
-                const link = document.getElementById('nfc-url-link');
-                if (link) {
-                  const range = document.createRange();
-                  range.selectNodeContents(link);
-                  const sel = window.getSelection();
-                  sel.removeAllRanges(); sel.addRange(range);
-                  const ok = document.execCommand('copy');
-                  if (ok) showOk();
-                  else throw new Error('execCommand failed');
+              // Path A · Web-NFC Writer (Chrome on Android with HTTPS).
+              if (typeof window.NDEFReader !== 'undefined') {
+                try {
+                  const writer = new window.NDEFReader();
+                  await writer.write({
+                    records: [{ recordType: 'url', data: url }]
+                  });
+                  state.settings.secureCardProgrammed = true;
+                  try { saveSettings && saveSettings(); } catch (e) {}
+                  writeBtn.textContent = '✓ TAG WRITTEN';
+                  writeBtn.style.background = 'var(--green)';
+                  toast('Tag written successfully · URL never displayed', 'ok', 5500);
+                  setTimeout(() => {
+                    writeBtn.textContent = '⌬ WRITE TO ANOTHER TAG';
+                    writeBtn.disabled = false;
+                    writeBtn.style.background = '';
+                  }, 3000);
+                  return;
+                } catch (e) {
+                  // Fall through to share/handoff path
+                  console.warn('Web NFC write failed:', e);
                 }
-              } catch (e2) {
-                toast('Copy failed · long-press the URL above to select + copy manually', 'warn', 5000);
               }
-            }
-          });
-        }
-        // ===== Share via native iOS share sheet =====
-        const shareBtn = document.getElementById('nfc-share-url');
-        if (shareBtn) {
-          shareBtn.addEventListener('click', async () => {
-            try {
+              // Path B · iOS / non-NFC-capable browsers · hand off to the
+              // share sheet. The URL is passed to the OS without being
+              // displayed by WireIP. User picks NFC Tools (or similar)
+              // from the share sheet, which receives the URL and writes
+              // it to the tag.
               if (navigator.share) {
                 await navigator.share({
-                  title: 'WireIP SecureCard™ ' + card.id,
-                  text: 'Tap URL for my WireIP SecureCard™. Write this to an NFC tag (NFC Tools → Write → URL).',
-                  url: realUrl,
+                  title: 'WireIP SecureCard™ Tag URL',
+                  text: 'Write this URL to a blank NFC tag (URL record).',
+                  url: url,
                 });
                 state.settings.secureCardProgrammed = true;
                 try { saveSettings && saveSettings(); } catch (e) {}
+                writeBtn.textContent = '✓ HANDED TO OS';
+                writeBtn.style.background = 'var(--green)';
+                toast('URL handed to OS share sheet · pick NFC Tools to write the tag', 'ok', 5500);
+                setTimeout(() => {
+                  writeBtn.textContent = '⌬ WRITE TO TAG';
+                  writeBtn.disabled = false;
+                  writeBtn.style.background = '';
+                }, 3000);
               } else {
-                // Fallback · open mailto with URL prefilled
-                location.href = 'mailto:?subject=' + encodeURIComponent('WireIP SecureCard ' + card.id) +
-                                '&body=' + encodeURIComponent('Tap URL for my WireIP SecureCard:\n\n' + realUrl + '\n\nWrite to an NFC tag using NFC Tools (URL record).');
+                toast('Direct tag writing unavailable on this browser · use Android Chrome (Web-NFC) or open WireIP on iOS Safari + use the share sheet', 'warn', 7000);
+                writeBtn.textContent = '⌬ WRITE TO BLANK NFC TAG';
+                writeBtn.disabled = false;
               }
             } catch (e) {
-              if (e && e.name !== 'AbortError') {
-                toast('Share failed: ' + (e.message || e), 'warn');
+              const msg = (e && e.message) || String(e);
+              if (e && e.name === 'AbortError') {
+                writeBtn.textContent = '⌬ WRITE TO BLANK NFC TAG';
+                writeBtn.disabled = false;
+                return;
               }
-            }
-          });
-        }
-        // ===== Test Tap · loads the URL in-page so the user can verify the
-        //  flow works without programming a physical tag yet.
-        const testBtn = document.getElementById('nfc-test-tap');
-        if (testBtn) {
-          testBtn.addEventListener('click', () => {
-            // Re-load this page with the SecureCard params · same path the
-            // physical tag would trigger. Use history.replaceState to keep
-            // history clean, then reload to pick up the params.
-            location.href = realUrl;
-          });
-        }
-        // ===== Anchor click · also copies (long-press still works for select) =====
-        const link = document.getElementById('nfc-url-link');
-        if (link) {
-          link.addEventListener('click', (ev) => {
-            ev.preventDefault();
-            if (navigator.clipboard) {
-              navigator.clipboard.writeText(realUrl).then(() => {
-                toast('URL copied · tap "Test Tap" to verify the flow', 'ok', 3500);
-              }).catch(() => {});
+              toast('Write failed: ' + msg, 'err', 5500);
+              writeBtn.textContent = '⌬ WRITE TO BLANK NFC TAG';
+              writeBtn.disabled = false;
             }
           });
         }
@@ -33181,10 +33145,11 @@ function latLngToVec3(lat, lng, radius) {
 
 function refreshGlobeMarkers() {
   if (!globe.initialized) return;
-  // Remove existing
+  // Remove existing markers + their labels
   for (const m of globe.markers) {
     globe.earth.remove(m);
     if (m.haloMesh) globe.earth.remove(m.haloMesh);
+    if (m.labelSprite) globe.earth.remove(m.labelSprite);
   }
   globe.markers = [];
   const mode = state.globeMode || 'all';
@@ -33231,8 +33196,139 @@ function refreshGlobeMarkers() {
     halo.position.copy(pos);
     globe.earth.add(halo);
     marker.haloMesh = halo;
+    // ===== City name label · 3D sprite with canvas-painted text =====
+    // Renders the city/country name next to each validator marker. The
+    // sprite uses HTMLCanvasElement to draw the text, then wraps it in a
+    // Three.js Sprite so it always faces the camera. Hubs + flagships get
+    // a larger, gold label; regular validators get a smaller cyan label.
+    const cityLabel = (v.location.city || '') + (v.location.country && v.location.city !== v.location.country ? ', ' + v.location.country : '');
+    if (cityLabel) {
+      const isFlagship = !!v.flagship;
+      const isHub      = !!v.location.isHub;
+      const sprite = makeCityLabelSprite(cityLabel, {
+        accent: '#' + color.toString(16).padStart(6, '0'),
+        emphasis: isFlagship ? 'flagship' : isHub ? 'hub' : 'normal',
+      });
+      // Position the sprite slightly above + outward from the marker so
+      // it doesn't overlap the marker dot itself.
+      const offsetMul = 1 + (size + (isFlagship ? 3.5 : isHub ? 2.5 : 2.0)) / 80;
+      sprite.position.copy(pos.clone().multiplyScalar(offsetMul));
+      // Scale relative to globe radius · keeps labels readable at distance
+      const sx = isFlagship ? 18 : isHub ? 14 : 11;
+      const sy = isFlagship ? 5.4 : isHub ? 4.2 : 3.3;
+      sprite.scale.set(sx, sy, 1);
+      sprite.renderOrder = 10;
+      globe.earth.add(sprite);
+      marker.labelSprite = sprite;
+    }
     globe.markers.push(marker);
   }
+}
+
+// ===== City labels toggle ·  globe button =====
+(function wireGlobeLabelsToggle() {
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('#globe-toggle-labels');
+    if (!btn) return;
+    state.globeLabelsHidden = !state.globeLabelsHidden;
+    try {
+      if (globe && globe.markers) {
+        for (const m of globe.markers) {
+          if (m.labelSprite) m.labelSprite.visible = !state.globeLabelsHidden;
+        }
+      }
+    } catch (er) {}
+    btn.textContent = state.globeLabelsHidden ? '🏷 Labels: OFF' : '🏷 Labels: ON';
+    btn.style.background = state.globeLabelsHidden ? 'transparent' : 'rgba(74,222,128,0.10)';
+    btn.style.borderColor = state.globeLabelsHidden ? 'var(--border)' : 'var(--green)';
+    btn.style.color = state.globeLabelsHidden ? 'var(--muted)' : 'var(--green)';
+  });
+})();
+
+// ============================================================
+// CITY LABEL SPRITE GENERATOR · canvas-painted text → THREE.Sprite
+// ============================================================
+// Builds a 2D canvas with the city name + a subtle backdrop, then wraps
+// it in a THREE.Sprite so it always faces the camera. Cached per-label so
+// re-rendering the markers doesn't allocate redundant textures.
+const _cityLabelCache = new Map();
+function makeCityLabelSprite(text, opts) {
+  const accent = (opts && opts.accent) || '#f0c419';
+  const emphasis = (opts && opts.emphasis) || 'normal'; // normal | hub | flagship
+  const key = text + '|' + accent + '|' + emphasis;
+  let texture = _cityLabelCache.get(key);
+  if (!texture) {
+    const canvas = document.createElement('canvas');
+    // Higher pixel density for sharpness on retina + zoom-in
+    const W = 512, H = 144;
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    // Background pill · semi-transparent dark with accent border
+    const padX = 26, padY = 20;
+    const fontSize = emphasis === 'flagship' ? 56 : emphasis === 'hub' ? 48 : 40;
+    ctx.font = 'bold ' + fontSize + 'px "IBM Plex Mono", ui-monospace, "Courier New", monospace';
+    const metrics = ctx.measureText(text.toUpperCase());
+    const tw = Math.min(W - padX * 2, metrics.width);
+    const pillW = tw + padX * 2;
+    const pillH = fontSize + padY * 2;
+    const pillX = (W - pillW) / 2;
+    const pillY = (H - pillH) / 2;
+    // Drop shadow
+    ctx.shadowColor = 'rgba(0,0,0,0.85)';
+    ctx.shadowBlur = 16;
+    ctx.shadowOffsetY = 2;
+    // Fill rounded rect
+    ctx.fillStyle = 'rgba(8,9,10,0.90)';
+    const r = 18;
+    ctx.beginPath();
+    ctx.moveTo(pillX + r, pillY);
+    ctx.lineTo(pillX + pillW - r, pillY);
+    ctx.quadraticCurveTo(pillX + pillW, pillY, pillX + pillW, pillY + r);
+    ctx.lineTo(pillX + pillW, pillY + pillH - r);
+    ctx.quadraticCurveTo(pillX + pillW, pillY + pillH, pillX + pillW - r, pillY + pillH);
+    ctx.lineTo(pillX + r, pillY + pillH);
+    ctx.quadraticCurveTo(pillX, pillY + pillH, pillX, pillY + pillH - r);
+    ctx.lineTo(pillX, pillY + r);
+    ctx.quadraticCurveTo(pillX, pillY, pillX + r, pillY);
+    ctx.closePath();
+    ctx.fill();
+    // Reset shadow for stroke + text
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+    // Border
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = emphasis === 'flagship' ? 4 : emphasis === 'hub' ? 3 : 2;
+    ctx.stroke();
+    // Connector dot · little tick mark hanging below the pill toward the marker
+    ctx.beginPath();
+    ctx.arc(W / 2, pillY + pillH + 6, 4, 0, Math.PI * 2);
+    ctx.fillStyle = accent;
+    ctx.fill();
+    // Text
+    ctx.fillStyle = accent;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // For really long city names, scale down to fit
+    let drawText = text.toUpperCase();
+    let drawFont = fontSize;
+    while (ctx.measureText(drawText).width > W - padX * 2 - 8 && drawFont > 18) {
+      drawFont -= 2;
+      ctx.font = 'bold ' + drawFont + 'px "IBM Plex Mono", ui-monospace, "Courier New", monospace';
+    }
+    // Subtle glow on the text
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = 12;
+    ctx.fillText(drawText, W / 2, H / 2);
+    texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    _cityLabelCache.set(key, texture);
+  }
+  const material = new THREE.SpriteMaterial({
+    map: texture, transparent: true, depthWrite: false, depthTest: false,
+  });
+  const sprite = new THREE.Sprite(material);
+  return sprite;
 }
 
 function handleHover(e) {
