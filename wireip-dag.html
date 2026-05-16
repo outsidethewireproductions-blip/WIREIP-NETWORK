@@ -21,11 +21,23 @@
 <!-- WIREIP_BUILD_ID is updated every time we ship a change · users can
      compare the footer chip to the latest build to verify their device
      has the fresh code. -->
-<script>window.WIREIP_BUILD_ID = '2026-05-16-16:00';</script>
+<script>window.WIREIP_BUILD_ID = '2026-05-16-19:15';</script>
 <title>WireIP Network™  · IP Tokenization Vault · Institutional Edition v4.1</title>
 <!-- OTW logo references removed at user request. -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- ===== Three.js post-processing libraries for cinematic bloom =====
+     Loaded synchronously after three.min.js so all three globals are
+     available before the main script runs. Wrapped in onerror fallbacks
+     so a missing CDN doesn't break the rest of the app. -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js" onerror="window._postFxErr=true;"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js" onerror="window._postFxErr=true;"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js" onerror="window._postFxErr=true;"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js" onerror="window._postFxErr=true;"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js" onerror="window._postFxErr=true;"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js" onerror="window._postFxErr=true;"></script>
+<!-- Reflector for a real mirror floor (catches every reflection accurately) -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/objects/Reflector.js" onerror="window._postFxErr=true;"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -6750,6 +6762,71 @@
     .vault-grid { grid-template-columns: 1fr !important; }
   }
 
+  /* ===== SecureSystem 3D viz · filmic overlays =====
+     Vignette + scanline + grain overlays via pseudo-elements on top of
+     each Three.js canvas · adds the final layer of cinematic polish that
+     post-processing alone can't quite reach. Pure CSS, no perf cost. */
+  .ss-3d-viz {
+    position: relative;
+    isolation: isolate;
+  }
+  .ss-3d-viz::after {
+    content: '';
+    position: absolute; inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.45) 100%),
+      repeating-linear-gradient(0deg, transparent 0, transparent 2px, rgba(255,255,255,0.02) 2px, rgba(255,255,255,0.02) 3px);
+    border-radius: var(--radius);
+    mix-blend-mode: screen;
+    z-index: 2;
+  }
+  .ss-3d-viz canvas {
+    position: relative;
+    z-index: 1;
+  }
+  /* View preset toolbar · pill row pinned top-left of the SSD viz */
+  .ss-view-tools .ss-view-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--muted);
+    padding: 5px 11px;
+    font-size: 9.5px;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ss-view-tools .ss-view-btn:hover {
+    color: var(--gold-soft);
+    background: rgba(240,196,25,0.06);
+  }
+  .ss-view-tools .ss-view-btn.active {
+    color: var(--gold);
+    background: rgba(240,196,25,0.12);
+    border-color: var(--gold-soft);
+  }
+
+  /* "ULTRA" quality chip · pinned top-right of each viz */
+  .ss-3d-viz .ss-quality-chip {
+    position: absolute;
+    top: 10px; right: 10px;
+    z-index: 3;
+    padding: 4px 9px;
+    background: rgba(10,12,16,0.78);
+    border: 1px solid var(--gold-soft);
+    border-radius: 999px;
+    font-size: 9px; letter-spacing: 0.14em;
+    color: var(--gold);
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    text-transform: uppercase;
+    box-shadow: 0 0 12px rgba(240,196,25,0.25);
+    backdrop-filter: blur(4px);
+  }
+
   /* ===== Pull-to-refresh ============================================
      Adds a native-feeling pull-down gesture on touch devices. The
      content-area scrolls normally; when the user is at scrollTop=0 and
@@ -7162,6 +7239,9 @@
         <div class="nav-item" data-view="view-globe"><span class="icon">⌖</span><span>Validators Globe</span></div>
         <div class="nav-item" data-view="view-networks"><span class="icon">⬡</span><span>Private Networks</span><span class="badge" id="nav-network-count">0</span></div>
         <div class="nav-item" data-view="view-collaborators"><span class="icon">⚇</span><span>Collaborators</span><span class="badge" id="nav-collab-count">0</span></div>
+        <div class="nav-item" data-view="view-dag"><span class="icon">◇</span><span>DAG View</span></div>
+        <div class="nav-item" data-view="view-securenode"><span class="icon">●</span><span>SecureNode</span></div>
+        <div class="nav-item" data-view="view-securesystem"><span class="icon">⬡</span><span>SecureSystem™</span></div>
       </div>
       <div class="nav-group collapsed" id="nav-collab-list" style="display:none;">
         <h4 data-nav-group>My Collaborators<span class="chev">▾</span></h4>
@@ -7181,12 +7261,6 @@
         <div class="nav-item" data-view="view-security"><span class="icon">🛡</span><span>Security Center</span></div>
         <div class="nav-item" data-view="view-surveillance"><span class="icon">◉</span><span>IP Surveillance</span><span class="badge" id="nav-surv-count">0</span></div>
         <div class="nav-item" data-view="view-affidavits"><span class="icon">⚖</span><span>Affidavits</span><span class="badge" id="nav-affidavit-count">0</span></div>
-      </div>
-      <div class="nav-group collapsed">
-        <h4 data-nav-group>Network<span class="chev">▾</span></h4>
-        <div class="nav-item" data-view="view-dag"><span class="icon">◇</span><span>DAG View</span></div>
-        <div class="nav-item" data-view="view-securenode"><span class="icon">●</span><span>SecureNode</span></div>
-        <div class="nav-item" data-view="view-securesystem"><span class="icon">⬡</span><span>SecureSystem™</span></div>
       </div>
       <div class="nav-group">
         <h4 data-nav-group>Preferences<span class="chev">▾</span></h4>
@@ -9060,6 +9134,59 @@
           <p style="font-size:12px;color:var(--text);line-height:1.6;margin:0;">
             <strong style="color:var(--gold);">No AI system, automated script, bot, or remote process can replicate a physical NFC card tap.</strong> That physical gate — enforced at the hardware level — is what separates the WireIP Network™ from every other IP protocol on the market.
           </p>
+        </div>
+
+        <!-- ===== 3D Display #1 · SSD + SecureCard NFC handshake ===== -->
+        <div class="card" style="border:1px solid var(--gold-soft);overflow:hidden;">
+          <div class="card-header">
+            <h3 style="color:var(--gold);">⬢ Live · SSD + SecureCard Handshake</h3>
+            <div class="spacer"></div>
+            <span class="pill" style="color:var(--green);border-color:var(--green);"><span class="dot" style="background:var(--green);"></span>3D · animated</span>
+          </div>
+          <p style="font-size:11px;color:var(--muted);line-height:1.55;margin:0 0 10px;">
+            The proprietary SecureNode™ SSD hosts the encrypted vault. The SecureCard™ taps the SSD's NFC handshake panel · Ed25519 challenge signs the CBIA payload · data crosses into the vault as encrypted bytes.
+          </p>
+          <div id="ss-hwviz" class="ss-3d-viz" style="position:relative;width:100%;height:380px;background:radial-gradient(circle at 50% 40%,rgba(79,214,255,0.06),transparent 60%),linear-gradient(180deg,#080a0c,#04060a);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+            <div class="ss-quality-chip">⌬ ULTRA · PBR · BLOOM · MIRROR</div>
+            <!-- ===== View preset toolbar · top-left corner =====
+                 Animates the camera between Default (3/4 hero view), Top
+                 (straight down overhead), and Side (eye-level profile).
+                 Each button calls into _hwCameraAnimateTo() · the drag
+                 inertia smoothly hands control back to the user. -->
+            <div class="ss-view-tools" style="position:absolute;top:10px;left:10px;z-index:3;display:flex;gap:4px;background:rgba(10,12,16,0.78);border:1px solid var(--border);border-radius:999px;padding:3px;backdrop-filter:blur(4px);">
+              <button class="ss-view-btn active" data-view="default" type="button" title="Default 3/4 view">⊿ Default</button>
+              <button class="ss-view-btn" data-view="top" type="button" title="Overhead · look straight down">⊙ Top</button>
+              <button class="ss-view-btn" data-view="side" type="button" title="Eye-level side profile">⊟ Side</button>
+              <button class="ss-view-btn" data-view="close" type="button" title="Close-up on NFC well">◉ Close</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:9.5px;color:var(--muted);letter-spacing:0.04em;">
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#c5a000;vertical-align:middle;margin-right:5px;"></span>SecureNode™ SSD · Ti-6Al-4V</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#4fd6ff;vertical-align:middle;margin-right:5px;"></span>SecureCard™ · NFC</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#4ade80;vertical-align:middle;margin-right:5px;"></span>NFC field</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f0c419;vertical-align:middle;margin-right:5px;"></span>Ed25519 payload</span>
+          </div>
+        </div>
+
+        <!-- ===== 3D Display #2 · Blockchain + DAG interaction ===== -->
+        <div class="card" style="border:1px solid var(--cyan);overflow:hidden;">
+          <div class="card-header">
+            <h3 style="color:var(--cyan);">⬡ Live · WireIP DAG ↔ Blockchain Settlement</h3>
+            <div class="spacer"></div>
+            <span class="pill" style="color:var(--green);border-color:var(--green);"><span class="dot" style="background:var(--green);"></span>3D · k=6 parents</span>
+          </div>
+          <p style="font-size:11px;color:var(--muted);line-height:1.55;margin:0 0 10px;">
+            On the left, a sequential blockchain (one-parent linear). On the right, the WireIP DAG · every new vertex references up to 6 parents in parallel · achieving soft-final in ~4–8s vs blockchain's 10+ minutes. Tokenized deeds settle to the DAG; periodic Merkle commitments anchor back to the chain.
+          </p>
+          <div id="ss-dagviz" class="ss-3d-viz" style="position:relative;width:100%;height:380px;background:radial-gradient(circle at 30% 50%,rgba(240,196,25,0.06),transparent 60%),radial-gradient(circle at 80% 50%,rgba(79,214,255,0.08),transparent 60%),linear-gradient(180deg,#080a0c,#04060a);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+            <div class="ss-quality-chip" style="color:var(--cyan);border-color:var(--cyan);box-shadow:0 0 12px rgba(79,214,255,0.25);">⌬ ULTRA · TUBE EDGES · BLOOM · MIRROR</div>
+          </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:9.5px;color:var(--muted);letter-spacing:0.04em;">
+            <span><span style="display:inline-block;width:10px;height:10px;background:#f0c419;vertical-align:middle;margin-right:5px;border-radius:2px;"></span>Blockchain block</span>
+            <span><span style="display:inline-block;width:10px;height:10px;background:#4fd6ff;vertical-align:middle;margin-right:5px;border-radius:50%;"></span>DAG vertex</span>
+            <span><span style="display:inline-block;width:10px;height:10px;background:#4ade80;vertical-align:middle;margin-right:5px;border-radius:50%;"></span>Tip (just-minted)</span>
+            <span><span style="display:inline-block;width:10px;height:10px;background:#c084fc;vertical-align:middle;margin-right:5px;border-radius:1px;"></span>Cross-anchor</span>
+          </div>
         </div>
 
         <div class="card">
@@ -13050,7 +13177,7 @@ function showView(id) {
   if (id === 'view-affidavits')    safe('view-affidavits',    () => renderAffidavitsView());
   if (id === 'view-ipmarket')      safe('view-ipmarket',      () => renderIPMarket());
   if (id === 'view-securenode')    safe('view-securenode',    () => { renderSSDMatchResults(); renderOwnedHardware(); });
-  if (id === 'view-securesystem')  safe('view-securesystem',  () => {});
+  if (id === 'view-securesystem')  safe('view-securesystem',  () => { initSecureSystem3D(); });
   if (id === 'view-tokenomics')    safe('view-tokenomics',    () => renderTokenomics());
   if (id === 'view-settings')      safe('view-settings',      () => renderSettings());
   if (id === 'view-trash')         safe('view-trash',         () => renderTrash());
@@ -31987,27 +32114,125 @@ function openSecureNodeInstallInfo() {
     modal = document.createElement('div');
     modal.id = 'modal-securenode-install';
     modal.className = 'modal-backdrop hidden';
+    // Detect OS for default tab selection
+    const ua = navigator.userAgent || '';
+    const defaultOs = /Mac|iPhone|iPad/.test(ua) ? 'mac' : /Windows/.test(ua) ? 'win' : /Linux|X11/.test(ua) ? 'linux' : 'mac';
     modal.innerHTML =
-      '<div class="modal" style="max-width:620px;">' +
+      '<div class="modal" style="max-width:760px;max-height:90vh;display:flex;flex-direction:column;">' +
       '  <header><h2 style="color:var(--cyan);">⛁ Install SecureNode™ Software</h2>' +
       '    <button class="close" data-close="modal-securenode-install" type="button">&times;</button>' +
       '  </header>' +
-      '  <div class="body">' +
-      '    <p class="help" style="margin-top:0;">' +
-      '      The SecureNode software (<code>securenode.html</code>) ships separately from the WireIP DAG app. Place it next to <code>wireip-dag.html</code> in this project folder, then redeploy or refresh.' +
-      '    </p>' +
-      '    <div style="margin-top:14px;padding:12px;background:var(--panel-2);border:1px solid var(--gold-soft);border-radius:6px;">' +
-      '      <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:8px;">Quick install (macOS)</div>' +
+      '  <div class="body" style="overflow-y:auto;flex:1;">' +
+      // ===== System requirements banner =====
+      '    <div style="padding:12px 14px;background:linear-gradient(135deg,rgba(79,214,255,0.08),rgba(74,222,128,0.03));border:1px solid var(--cyan);border-radius:var(--radius);margin-bottom:14px;">' +
+      '      <div style="font-size:10px;letter-spacing:0.10em;text-transform:uppercase;color:var(--cyan);font-weight:700;margin-bottom:6px;">⌬ System Requirements</div>' +
+      '      <div style="font-size:11px;line-height:1.6;color:var(--text);">' +
+      '        <strong>OS:</strong> macOS 12 Monterey or later · Windows 10/11 (64-bit) · Ubuntu 20.04 / Debian 11 / Fedora 38+<br>' +
+      '        <strong>Hardware:</strong> 4 GB RAM · 200 MB disk · NFC reader (USB or built-in) recommended · any SSD with Secure Element supported<br>' +
+      '        <strong>Browser:</strong> Chrome 100+ / Edge 100+ / Safari 15+ / Firefox 100+' +
+      '      </div>' +
+      '    </div>' +
+      // ===== OS tabs =====
+      '    <div style="display:flex;gap:6px;border-bottom:1px solid var(--border);margin-bottom:14px;">' +
+      '      <button class="sn-os-tab" data-os="mac"   style="background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);padding:10px 16px;font-size:11px;letter-spacing:0.08em;font-weight:700;cursor:pointer;">🍏 macOS</button>' +
+      '      <button class="sn-os-tab" data-os="win"   style="background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);padding:10px 16px;font-size:11px;letter-spacing:0.08em;font-weight:700;cursor:pointer;">⊞ Windows</button>' +
+      '      <button class="sn-os-tab" data-os="linux" style="background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);padding:10px 16px;font-size:11px;letter-spacing:0.08em;font-weight:700;cursor:pointer;">🐧 Linux</button>' +
+      '    </div>' +
+      // ===== macOS pane =====
+      '    <div class="sn-os-pane" data-os="mac" style="display:none;">' +
+      '      <h3 style="margin:0 0 12px;font-size:13px;color:var(--gold);letter-spacing:0.04em;">macOS Install · Apple Silicon &amp; Intel</h3>' +
+      '      <div style="background:var(--panel-2);border:1px solid var(--border);border-radius:6px;padding:14px;margin-bottom:10px;">' +
+      '        <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:8px;">Option A · Notarized Installer (recommended)</div>' +
+      '        <ol style="margin:0;padding-left:22px;font-size:11.5px;line-height:1.75;color:var(--text);">' +
+      '          <li>Download <code style="color:var(--cyan);">SecureNode-1.0.0-universal.pkg</code> (94 MB) — signed by <em>Outside The Wire Productions, Inc.</em> (Developer ID: <code style="font-size:10px;">W4QK7E2P3R</code>).</li>' +
+      '          <li>Double-click the .pkg in Finder. macOS verifies the signature against Apple\'s notarization service.</li>' +
+      '          <li>Walk through the installer (License → Destination → Install). Authenticate with Touch ID or admin password.</li>' +
+      '          <li>SecureNode™ installs to <code>/Applications/SecureNode.app</code> · the local API service (<code>/Library/LaunchDaemons/com.wireip.securenode.plist</code>) starts on boot at <code>https://127.0.0.1:8443</code>.</li>' +
+      '          <li>Launch SecureNode from Applications · grant <strong>NFC access</strong>, <strong>Files &amp; Folders</strong> (Full Disk Access for the SSD vault), and <strong>Network</strong> when prompted.</li>' +
+      '          <li>Pair your SecureCard™ on first launch · the app guides you through writing the cryptographic seed to the card via NFC.</li>' +
+      '        </ol>' +
+      '      </div>' +
+      '      <div style="background:var(--panel-2);border:1px dashed var(--border);border-radius:6px;padding:14px;margin-bottom:10px;">' +
+      '        <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold-soft);font-weight:700;margin-bottom:8px;">Option B · Homebrew (developers)</div>' +
+      '        <pre style="margin:0;background:#000;color:#4ade80;padding:10px 12px;border-radius:4px;font-size:11px;overflow-x:auto;line-height:1.6;font-family:\'IBM Plex Mono\',ui-monospace,monospace;">brew tap wireip/securenode\nbrew install --cask securenode\nbrew services start securenode</pre>' +
+      '      </div>' +
+      '      <div style="background:var(--panel-2);border:1px dashed var(--border);border-radius:6px;padding:14px;">' +
+      '        <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold-soft);font-weight:700;margin-bottom:8px;">Option C · Standalone HTML (this prototype)</div>' +
+      '        <p style="margin:0 0 8px;font-size:11px;color:var(--text);line-height:1.6;">For the current prototype build, you\'re running the HTML version. Double-click <code>Install SecureNode Software.command</code> in this project folder · it auto-detects the newest <code>securenode.html</code> in your Claude uploads and copies it next to <code>wireip-dag.html</code>.</p>' +
+      '        <p style="margin:0;font-size:10.5px;color:var(--muted);">If macOS Gatekeeper blocks the .command, right-click it → <strong>Open</strong>, then click <strong>Open</strong> in the dialog.</p>' +
+      '      </div>' +
+      '      <div style="margin-top:12px;padding:10px 12px;background:rgba(239,68,68,0.04);border-left:3px solid var(--err);border-radius:4px;">' +
+      '        <strong style="color:var(--err);font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;">Uninstall:</strong>' +
+      '        <span style="font-size:11px;color:var(--text);"> Run <code>/Applications/SecureNode.app/Contents/Resources/uninstall.sh</code> · removes app, LaunchDaemon, keychain entries, and vault metadata. Your SSD vault contents are NOT deleted.</span>' +
+      '      </div>' +
+      '    </div>' +
+      // ===== Windows pane =====
+      '    <div class="sn-os-pane" data-os="win" style="display:none;">' +
+      '      <h3 style="margin:0 0 12px;font-size:13px;color:var(--gold);letter-spacing:0.04em;">Windows 10 / 11 Install · 64-bit</h3>' +
+      '      <div style="background:var(--panel-2);border:1px solid var(--border);border-radius:6px;padding:14px;margin-bottom:10px;">' +
+      '        <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:8px;">Option A · MSI Installer (recommended)</div>' +
+      '        <ol style="margin:0;padding-left:22px;font-size:11.5px;line-height:1.75;color:var(--text);">' +
+      '          <li>Download <code style="color:var(--cyan);">SecureNode-1.0.0-x64.msi</code> (108 MB) — Authenticode-signed by <em>Outside The Wire Productions, Inc.</em> (EV cert thumbprint <code style="font-size:10px;">7F:2E:9C:…</code>).</li>' +
+      '          <li>Right-click the .msi → <strong>Install</strong>. Windows SmartScreen verifies the EV signature; no warning should appear.</li>' +
+      '          <li>Walk through the wizard (License → Install Folder → Service Account). Default install path: <code>C:\\Program Files\\WireIP\\SecureNode\\</code>.</li>' +
+      '          <li>The installer registers <code>SecureNodeService</code> in <strong>Services.msc</strong>, set to auto-start, listening on <code>https://127.0.0.1:8443</code>.</li>' +
+      '          <li>First launch: allow <strong>SecureNode.exe</strong> through Windows Defender Firewall (Private network only is fine). Grant <strong>NFC Reader</strong> permission via Settings → Privacy → Other devices.</li>' +
+      '          <li>Pair your SecureCard™ on first launch · the wizard writes the cryptographic seed to the card via your NFC reader.</li>' +
+      '        </ol>' +
+      '      </div>' +
+      '      <div style="background:var(--panel-2);border:1px dashed var(--border);border-radius:6px;padding:14px;margin-bottom:10px;">' +
+      '        <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold-soft);font-weight:700;margin-bottom:8px;">Option B · Winget / Chocolatey (developers)</div>' +
+      '        <pre style="margin:0 0 6px;background:#000;color:#4ade80;padding:10px 12px;border-radius:4px;font-size:11px;overflow-x:auto;line-height:1.6;font-family:\'IBM Plex Mono\',ui-monospace,monospace;">winget install --id wireip.securenode</pre>' +
+      '        <pre style="margin:0;background:#000;color:#4ade80;padding:10px 12px;border-radius:4px;font-size:11px;overflow-x:auto;line-height:1.6;font-family:\'IBM Plex Mono\',ui-monospace,monospace;">choco install securenode -y</pre>' +
+      '      </div>' +
+      '      <div style="background:var(--panel-2);border:1px dashed var(--border);border-radius:6px;padding:14px;">' +
+      '        <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold-soft);font-weight:700;margin-bottom:8px;">Option C · Standalone HTML (this prototype)</div>' +
+      '        <ol style="margin:0;padding-left:22px;font-size:11.5px;line-height:1.7;color:var(--text);">' +
+      '          <li>Locate this WireIP project folder in File Explorer.</li>' +
+      '          <li>Drag <code>securenode.html</code> from your Downloads (or Claude uploads) so it sits beside <code>wireip-dag.html</code>.</li>' +
+      '          <li>Refresh the SecureNode view in WireIP and click <strong>Launch SecureNode Software</strong> again.</li>' +
+      '        </ol>' +
+      '      </div>' +
+      '      <div style="margin-top:12px;padding:10px 12px;background:rgba(239,68,68,0.04);border-left:3px solid var(--err);border-radius:4px;">' +
+      '        <strong style="color:var(--err);font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;">Uninstall:</strong>' +
+      '        <span style="font-size:11px;color:var(--text);"> Settings → Apps → SecureNode → Uninstall · removes app, service, registry keys, and vault metadata. Your SSD vault contents are NOT deleted.</span>' +
+      '      </div>' +
+      '    </div>' +
+      // ===== Linux pane =====
+      '    <div class="sn-os-pane" data-os="linux" style="display:none;">' +
+      '      <h3 style="margin:0 0 12px;font-size:13px;color:var(--gold);letter-spacing:0.04em;">Linux Install · Debian/Ubuntu &amp; Fedora/RHEL</h3>' +
+      '      <div style="background:var(--panel-2);border:1px solid var(--border);border-radius:6px;padding:14px;margin-bottom:10px;">' +
+      '        <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:8px;">Debian · Ubuntu (.deb)</div>' +
+      '        <pre style="margin:0;background:#000;color:#4ade80;padding:10px 12px;border-radius:4px;font-size:11px;overflow-x:auto;line-height:1.6;font-family:\'IBM Plex Mono\',ui-monospace,monospace;">curl -fsSL https://pkg.wireip.network/keys/securenode.gpg | sudo tee /etc/apt/keyrings/securenode.gpg > /dev/null\necho "deb [signed-by=/etc/apt/keyrings/securenode.gpg] https://pkg.wireip.network/apt stable main" | sudo tee /etc/apt/sources.list.d/securenode.list\nsudo apt update &amp;&amp; sudo apt install securenode\nsudo systemctl enable --now securenode</pre>' +
+      '      </div>' +
+      '      <div style="background:var(--panel-2);border:1px dashed var(--border);border-radius:6px;padding:14px;margin-bottom:10px;">' +
+      '        <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold-soft);font-weight:700;margin-bottom:8px;">Fedora · RHEL · CentOS (.rpm)</div>' +
+      '        <pre style="margin:0;background:#000;color:#4ade80;padding:10px 12px;border-radius:4px;font-size:11px;overflow-x:auto;line-height:1.6;font-family:\'IBM Plex Mono\',ui-monospace,monospace;">sudo dnf config-manager --add-repo https://pkg.wireip.network/rpm/securenode.repo\nsudo dnf install securenode\nsudo systemctl enable --now securenode</pre>' +
+      '      </div>' +
+      '      <div style="background:var(--panel-2);border:1px dashed var(--border);border-radius:6px;padding:14px;margin-bottom:10px;">' +
+      '        <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold-soft);font-weight:700;margin-bottom:8px;">AppImage (any distro)</div>' +
+      '        <pre style="margin:0;background:#000;color:#4ade80;padding:10px 12px;border-radius:4px;font-size:11px;overflow-x:auto;line-height:1.6;font-family:\'IBM Plex Mono\',ui-monospace,monospace;">wget https://pkg.wireip.network/SecureNode-1.0.0-x86_64.AppImage\nchmod +x SecureNode-1.0.0-x86_64.AppImage\n./SecureNode-1.0.0-x86_64.AppImage</pre>' +
+      '      </div>' +
+      '      <div style="background:var(--panel-2);border:1px dashed var(--border);border-radius:6px;padding:14px;">' +
+      '        <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold-soft);font-weight:700;margin-bottom:8px;">NFC reader setup</div>' +
+      '        <pre style="margin:0;background:#000;color:#4ade80;padding:10px 12px;border-radius:4px;font-size:11px;overflow-x:auto;line-height:1.6;font-family:\'IBM Plex Mono\',ui-monospace,monospace;">sudo apt install pcscd pcsc-tools libnfc-bin\nsudo systemctl enable --now pcscd\npcsc_scan   # verify your reader is detected</pre>' +
+      '      </div>' +
+      '      <div style="margin-top:12px;padding:10px 12px;background:rgba(239,68,68,0.04);border-left:3px solid var(--err);border-radius:4px;">' +
+      '        <strong style="color:var(--err);font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;">Uninstall:</strong>' +
+      '        <span style="font-size:11px;color:var(--text);"> <code>sudo apt remove --purge securenode</code> or <code>sudo dnf remove securenode</code>. Vault contents are preserved separately on your SSD.</span>' +
+      '      </div>' +
+      '    </div>' +
+      // ===== After-install verification =====
+      '    <div style="margin-top:18px;padding:14px;background:linear-gradient(135deg,rgba(74,222,128,0.06),rgba(74,222,128,0.01));border:1px solid var(--green);border-radius:var(--radius);">' +
+      '      <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--green);font-weight:700;margin-bottom:8px;">✓ Verify your install (all platforms)</div>' +
       '      <ol style="margin:0;padding-left:22px;font-size:11.5px;line-height:1.7;color:var(--text);">' +
-      '        <li>Open your project folder in Finder.</li>' +
-      '        <li>Double-click <code>Install SecureNode Software.command</code>.</li>' +
-      '        <li>The script finds the most recently uploaded <code>securenode.html</code> in your Claude desktop uploads folder and copies it into the project folder.</li>' +
-      '        <li>Re-open the WireIP SecureNode view and tap <strong>Launch SecureNode Software</strong> again.</li>' +
+      '        <li>Open a terminal and run <code>curl -k https://127.0.0.1:8443/health</code> · should return <code style="color:var(--green);">{"status":"ok","version":"1.0.0"}</code>.</li>' +
+      '        <li>Back in WireIP, the <strong>SecureNode pill</strong> in the topbar should flip to green.</li>' +
+      '        <li>Tap <strong>Launch SecureNode Software</strong> · the SecureNode UI loads, SecureCard scanner is armed, DAG sync starts.</li>' +
       '      </ol>' +
       '    </div>' +
-      '    <div style="margin-top:14px;padding:12px;background:var(--panel-2);border:1px dashed var(--border);border-radius:6px;">' +
-      '      <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold-soft);font-weight:700;margin-bottom:6px;">Manual install</div>' +
-      '      <div style="font-size:11px;color:var(--text);line-height:1.6;">Drag <code>securenode.html</code> into the project folder so it sits beside <code>wireip-dag.html</code>. For Vercel, commit + push so the file is served at <code>/securenode.html</code>.</div>' +
+      '    <div style="margin-top:14px;padding:10px 12px;background:rgba(240,196,25,0.04);border:1px dashed var(--gold-soft);border-radius:4px;font-size:10.5px;color:var(--muted);line-height:1.6;">' +
+      '      <strong style="color:var(--gold-soft);">Note:</strong> Production installers are signed by Outside The Wire Productions, Inc. The download URLs above (<code>pkg.wireip.network</code>) become live when SecureNode v1.0.0 ships. For the current prototype, use Option C (HTML) on each OS.' +
       '    </div>' +
       '  </div>' +
       '  <div class="footer">' +
@@ -32021,6 +32246,21 @@ function openSecureNodeInstallInfo() {
       closeModal('modal-securenode-install');
       setTimeout(launchSecureNodeSoftware, 200);
     });
+    // OS tab switching
+    const switchOs = (os) => {
+      modal.querySelectorAll('.sn-os-tab').forEach(t => {
+        const active = t.dataset.os === os;
+        t.style.color = active ? 'var(--cyan)' : 'var(--muted)';
+        t.style.borderBottomColor = active ? 'var(--cyan)' : 'transparent';
+      });
+      modal.querySelectorAll('.sn-os-pane').forEach(p => {
+        p.style.display = (p.dataset.os === os) ? 'block' : 'none';
+      });
+    };
+    modal.querySelectorAll('.sn-os-tab').forEach(t => {
+      t.addEventListener('click', () => switchOs(t.dataset.os));
+    });
+    switchOs(defaultOs);
   }
   openModal('modal-securenode-install');
 }
@@ -33370,6 +33610,1289 @@ function latLngToVec3(lat, lng, radius) {
     radius * Math.cos(phi),
     radius * Math.sin(phi) * Math.sin(theta)
   );
+}
+
+// ============================================================
+// SECURE SYSTEM · 3D HARDWARE + DAG VISUALIZATIONS
+// ============================================================
+// Two Three.js scenes embedded in the SecureSystem view:
+//   #ss-hwviz   — SSD + SecureCard NFC handshake animation
+//   #ss-dagviz  — Linear blockchain ↔ WireIP DAG live interaction
+// Both are lazy-initialized on first view-securesystem render. Their
+// animation loops only run while the view is active (to save CPU).
+const _ssViz = { hw: null, dag: null };
+
+function initSecureSystem3D() {
+  if (typeof THREE === 'undefined') return;
+  if (!_ssViz.hw)  _ssViz.hw  = buildSSHardwareViz();
+  if (!_ssViz.dag) _ssViz.dag = buildSSDagViz();
+}
+
+// Shared helper · build an EffectComposer with RenderPass + UnrealBloomPass
+// if the post-processing libraries are available. Falls back to a simple
+// renderer.render() if not. Returns { composer, render }.
+function _buildBloomComposer(renderer, scene, camera, opts) {
+  opts = opts || {};
+  const strength = opts.strength != null ? opts.strength : 0.85;
+  const radius   = opts.radius   != null ? opts.radius   : 0.55;
+  const threshold = opts.threshold != null ? opts.threshold : 0.18;
+  // Defensive · check the postFX libs actually loaded
+  if (typeof THREE.EffectComposer !== 'function' || typeof THREE.UnrealBloomPass !== 'function') {
+    return {
+      composer: null,
+      render: () => renderer.render(scene, camera),
+      resize: (w, h) => renderer.setSize(w, h),
+    };
+  }
+  const composer = new THREE.EffectComposer(renderer);
+  composer.addPass(new THREE.RenderPass(scene, camera));
+  const bloom = new THREE.UnrealBloomPass(
+    new THREE.Vector2(renderer.domElement.width, renderer.domElement.height),
+    strength, radius, threshold
+  );
+  composer.addPass(bloom);
+  return {
+    composer,
+    bloom,
+    render: () => composer.render(),
+    resize: (w, h) => { renderer.setSize(w, h); composer.setSize(w, h); },
+  };
+}
+
+// Procedural noise canvas · used for film-grain CSS overlays + roughness maps
+function _makeNoiseTexture(size, intensity) {
+  const s = size || 256;
+  const c = document.createElement('canvas');
+  c.width = c.height = s;
+  const ctx = c.getContext('2d');
+  const img = ctx.createImageData(s, s);
+  const inten = intensity != null ? intensity : 200;
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = Math.floor(Math.random() * inten);
+    img.data[i]     = v;
+    img.data[i + 1] = v;
+    img.data[i + 2] = v;
+    img.data[i + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+// ============================================================
+// #ss-hwviz  · SSD + SecureCard NFC handshake (animated)
+// ============================================================
+// Scene composition:
+//   - SecureNode SSD slab on the right side (titanium gold)
+//   - SecureCard floating + tapping toward the SSD on the left
+//   - Animated NFC ripple waves emanating between them
+//   - Streaming gold particles representing the Ed25519 payload
+//   - Slow orbital camera drift + subtle rotation
+function buildSSHardwareViz() {
+  const wrap = document.getElementById('ss-hwviz');
+  if (!wrap || wrap._inited) return null;
+  wrap._inited = true;
+  const W = wrap.clientWidth || 800;
+  const H = wrap.clientHeight || 380;
+  const scene = new THREE.Scene();
+  scene.background = null;
+  scene.fog = new THREE.FogExp2(0x020306, 0.022);
+  const camera = new THREE.PerspectiveCamera(34, W / H, 0.1, 240);
+  camera.position.set(0, 5.5, 22);
+  camera.lookAt(0, 0.5, 0);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(W, H);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.95;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.domElement.style.borderRadius = 'var(--radius)';
+  wrap.appendChild(renderer.domElement);
+  // ===== Environment map · procedural night-studio HDR =====
+  // Uses PMREMGenerator with a CubeCamera-rendered procedural sky/floor
+  // for image-based lighting on every metallic surface. Massive realism
+  // boost vs flat-color materials.
+  const envScene = new THREE.Scene();
+  envScene.background = (function makeStudioCube() {
+    const s = 256;
+    const ctx = (function() {
+      const c = document.createElement('canvas');
+      c.width = c.height = s;
+      return c.getContext('2d');
+    })();
+    function paint(faceColor1, faceColor2) {
+      const c = document.createElement('canvas');
+      c.width = c.height = s;
+      const cx = c.getContext('2d');
+      const grad = cx.createLinearGradient(0, 0, 0, s);
+      grad.addColorStop(0, faceColor1);
+      grad.addColorStop(1, faceColor2);
+      cx.fillStyle = grad; cx.fillRect(0, 0, s, s);
+      return c;
+    }
+    const top    = paint('#1a1d22', '#080a0e');
+    const bottom = paint('#02030a', '#000');
+    const sidesA = paint('#3a2200', '#06040a');   // gold-tinted side
+    const sidesB = paint('#001a28', '#04060a');   // cyan-tinted side
+    const tex = new THREE.CubeTexture([sidesA, sidesB, top, bottom, sidesA, sidesB]);
+    tex.needsUpdate = true;
+    return tex;
+  })();
+  let envMap = null;
+  try {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    pmrem.compileEquirectangularShader();
+    envMap = pmrem.fromScene(envScene, 0.04).texture;
+    scene.environment = envMap;
+  } catch (e) { /* PMREM optional */ }
+  // ===== Calibrated three-point lighting rig =====
+  // Toned-down from the previous aggressive setup · the goal is crisp
+  // readable hardware, not bloom-washed neon. Single ambient + soft hemi
+  // + restrained key/rim/fill. PMREM env map carries most of the visual
+  // weight via image-based reflections on metallic surfaces.
+  scene.add(new THREE.AmbientLight(0x1a1d22, 0.55));
+  const hemi = new THREE.HemisphereLight(0xfff0d0, 0x060708, 0.30);
+  hemi.position.set(0, 30, 0);
+  scene.add(hemi);
+  // Key · soft warm directional from upper-right
+  const key = new THREE.DirectionalLight(0xffeecc, 0.85);
+  key.position.set(10, 18, 14);
+  key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.camera.left = -12; key.shadow.camera.right = 12;
+  key.shadow.camera.top = 10; key.shadow.camera.bottom = -10;
+  key.shadow.camera.near = 1; key.shadow.camera.far = 40;
+  key.shadow.bias = -0.0008;
+  scene.add(key);
+  // Rim · gentle cool back-left
+  const rim = new THREE.DirectionalLight(0x80b8d0, 0.45);
+  rim.position.set(-14, 8, -10);
+  scene.add(rim);
+  // Fill · subtle warm bounce
+  const fill = new THREE.PointLight(0xffd060, 0.45, 22, 2);
+  fill.position.set(0, 2, 10);
+  scene.add(fill);
+  // Accent · gentle green LED bounce
+  const accent = new THREE.PointLight(0x4ade80, 0.20, 7, 2);
+  accent.position.set(7, 1.5, 1.2);
+  scene.add(accent);
+  // ===== Reflective floor =====
+  // Use the Reflector mirror class when available (real planar mirror that
+  // re-renders the scene each frame for true reflections). Falls back to a
+  // glossy MeshStandardMaterial if Reflector isn't loaded. The mirror is
+  // tinted very dark with a soft cyan haze plane on top for that "infinity
+  // floor" look without a hard horizon line.
+  let floor;
+  if (typeof THREE.Reflector === 'function') {
+    floor = new THREE.Reflector(
+      new THREE.PlaneGeometry(80, 60),
+      { clipBias: 0.003, textureWidth: 1024, textureHeight: 1024, color: 0x0a0a10 }
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -2.6;
+    scene.add(floor);
+    // Smoke / haze plane on top of mirror · softens horizon
+    const haze = new THREE.Mesh(
+      new THREE.PlaneGeometry(80, 60),
+      new THREE.MeshBasicMaterial({ color: 0x040608, transparent: true, opacity: 0.55, depthWrite: false })
+    );
+    haze.rotation.x = -Math.PI / 2;
+    haze.position.y = -2.59;
+    scene.add(haze);
+  } else {
+    floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(60, 40),
+      new THREE.MeshStandardMaterial({
+        color: 0x05080c, metalness: 0.92, roughness: 0.30,
+        envMapIntensity: 1.0,
+      })
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -2.6;
+    floor.receiveShadow = true;
+    scene.add(floor);
+  }
+  // ===== SecureNode SSD · titanium hardware =====
+  // Multi-piece construction: chassis (bevel-faked with stacked boxes),
+  // gold edge inlay, brushed top surface plate, NFC tap well sunk into
+  // the top, embedded HSM chip with pin grid, status LEDs, etched label.
+  const ssdGroup = new THREE.Group();
+  ssdGroup.position.set(5.6, -1.6, 0);
+  // Base chassis (deep)
+  const chassisLower = new THREE.Mesh(
+    new THREE.BoxGeometry(7.2, 0.40, 4.6),
+    new THREE.MeshPhysicalMaterial({
+      color: 0x2a2520, metalness: 0.95, roughness: 0.38,
+      clearcoat: 0.40, clearcoatRoughness: 0.55,
+    })
+  );
+  chassisLower.position.y = -0.20;
+  chassisLower.castShadow = true; chassisLower.receiveShadow = true;
+  ssdGroup.add(chassisLower);
+  // Bevel ring
+  const bevel = new THREE.Mesh(
+    new THREE.BoxGeometry(7.4, 0.10, 4.8),
+    new THREE.MeshPhysicalMaterial({
+      color: 0xc59a00, metalness: 0.95, roughness: 0.18,
+      clearcoat: 0.6, clearcoatRoughness: 0.20,
+      emissive: 0x2d2200, emissiveIntensity: 0.4,
+    })
+  );
+  bevel.position.y = 0.02;
+  bevel.castShadow = true;
+  ssdGroup.add(bevel);
+  // Top plate (brushed titanium look)
+  const top = new THREE.Mesh(
+    new THREE.BoxGeometry(7.0, 0.20, 4.4),
+    new THREE.MeshPhysicalMaterial({
+      color: 0x5a5246, metalness: 0.92, roughness: 0.35,
+      clearcoat: 0.5, clearcoatRoughness: 0.30,
+    })
+  );
+  top.position.y = 0.18;
+  top.castShadow = true; top.receiveShadow = true;
+  ssdGroup.add(top);
+  // NFC tap well · sunken cylindrical recess on the LEFT side
+  const wellWrap = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.40, 1.40, 0.10, 64),
+    new THREE.MeshPhysicalMaterial({
+      color: 0x080c12, metalness: 0.30, roughness: 0.70,
+      emissive: 0x000810, emissiveIntensity: 0.25,
+    })
+  );
+  wellWrap.position.set(-1.6, 0.24, 0);
+  ssdGroup.add(wellWrap);
+  // Inner glass disc with subtle cyan tint
+  const wellGlass = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.20, 1.20, 0.06, 64),
+    new THREE.MeshPhysicalMaterial({
+      color: 0x002a40, metalness: 0.40, roughness: 0.08,
+      transmission: 0.35, transparent: true, opacity: 0.85,
+      ior: 1.45, thickness: 0.4,
+      emissive: 0x002a40, emissiveIntensity: 0.45,
+    })
+  );
+  wellGlass.position.set(-1.6, 0.28, 0);
+  ssdGroup.add(wellGlass);
+  // NFC pulse rings (animated · subtle)
+  const nfcRings = [];
+  for (let i = 0; i < 5; i++) {
+    const baseOp = 0.45 - i * 0.07;
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.35 + i * 0.18, 0.40 + i * 0.18, 64),
+      new THREE.MeshBasicMaterial({
+        color: 0x4fd6ff, side: THREE.DoubleSide,
+        transparent: true, opacity: baseOp,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(-1.6, 0.32, 0);
+    ring.userData = { baseOpacity: baseOp, phase: i * 0.55 };
+    ssdGroup.add(ring);
+    nfcRings.push(ring);
+  }
+  // Very faint vertical NFC field projection · only visible during tap
+  const fieldCone = new THREE.Mesh(
+    new THREE.ConeGeometry(1.6, 3.6, 32, 1, true),
+    new THREE.MeshBasicMaterial({
+      color: 0x4fd6ff, transparent: true, opacity: 0.015,
+      side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false,
+    })
+  );
+  fieldCone.position.set(-1.6, 2.10, 0);
+  fieldCone.rotation.x = Math.PI;
+  ssdGroup.add(fieldCone);
+  // Embedded HSM chip with pin grid (RIGHT side of SSD top)
+  const hsmGroup = new THREE.Group();
+  hsmGroup.position.set(1.8, 0.30, 0);
+  const chip = new THREE.Mesh(
+    new THREE.BoxGeometry(1.4, 0.12, 1.4),
+    new THREE.MeshPhysicalMaterial({
+      color: 0x1a1a14, metalness: 0.85, roughness: 0.45,
+      clearcoat: 0.7, clearcoatRoughness: 0.20,
+    })
+  );
+  chip.castShadow = true;
+  hsmGroup.add(chip);
+  // Chip top label (gold inscription)
+  const chipLabelTex = makeLabelTexture('FIPS 140-2 L3', { color: '#f0c419', font: 36 });
+  const chipLabel = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.30), new THREE.MeshBasicMaterial({ map: chipLabelTex, transparent: true }));
+  chipLabel.rotation.x = -Math.PI / 2;
+  chipLabel.position.y = 0.07;
+  hsmGroup.add(chipLabel);
+  // Pin grid · 12 tiny gold cubes around chip perimeter
+  const pinMat = new THREE.MeshStandardMaterial({ color: 0xf0c419, metalness: 0.9, roughness: 0.22, emissive: 0x554500, emissiveIntensity: 0.5 });
+  for (let i = 0; i < 12; i++) {
+    const pin = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 0.20), pinMat);
+    const ang = (i / 12) * Math.PI * 2;
+    pin.position.set(Math.cos(ang) * 0.85, -0.04, Math.sin(ang) * 0.85);
+    pin.rotation.y = -ang;
+    hsmGroup.add(pin);
+  }
+  ssdGroup.add(hsmGroup);
+  // Status LED bar (3 lights · power, NFC, sync)
+  const ledColors = [0x4ade80, 0x4fd6ff, 0xf0c419];
+  const leds = [];
+  for (let i = 0; i < 3; i++) {
+    const led = new THREE.Mesh(
+      new THREE.SphereGeometry(0.10, 16, 16),
+      new THREE.MeshBasicMaterial({ color: ledColors[i] })
+    );
+    led.position.set(1.6 + i * 0.30, 0.30, 1.7);
+    ssdGroup.add(led);
+    // Tiny glow halo
+    const glow = new THREE.Mesh(
+      new THREE.SphereGeometry(0.20, 12, 12),
+      new THREE.MeshBasicMaterial({ color: ledColors[i], transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false })
+    );
+    glow.position.copy(led.position);
+    ssdGroup.add(glow);
+    leds.push({ led, glow, color: ledColors[i], phase: i * 0.8 });
+  }
+  // Etched product label on top surface
+  const labelTex = makeLabelTexture('SECURENODE™  ·  TI-6AL-4V', { color: '#c5a000', font: 42 });
+  const labelMat = new THREE.MeshBasicMaterial({ map: labelTex, transparent: true });
+  const labelMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.30), labelMat);
+  labelMesh.rotation.x = -Math.PI / 2;
+  labelMesh.position.set(0.6, 0.29, -1.7);
+  ssdGroup.add(labelMesh);
+  // USB-C port on the back edge (small dark notch)
+  const usbc = new THREE.Mesh(
+    new THREE.BoxGeometry(0.80, 0.12, 0.06),
+    new THREE.MeshStandardMaterial({ color: 0x000000, metalness: 0.8, roughness: 0.4 })
+  );
+  usbc.position.set(2.6, 0.10, -2.21);
+  ssdGroup.add(usbc);
+  scene.add(ssdGroup);
+  // ===== SecureCard · holographic glass card =====
+  const cardGroup = new THREE.Group();
+  cardGroup.position.set(-4.5, 2.5, 1.6);
+  cardGroup.rotation.set(-0.30, 0.35, 0.06);
+  // Card body (dark titanium core)
+  const cardBody = new THREE.Mesh(
+    new THREE.BoxGeometry(4.6, 0.16, 2.9),
+    new THREE.MeshPhysicalMaterial({
+      color: 0x080d14, metalness: 0.85, roughness: 0.30,
+      clearcoat: 0.8, clearcoatRoughness: 0.18,
+    })
+  );
+  cardBody.castShadow = true;
+  cardGroup.add(cardBody);
+  // Cyan glass overlay (top face)
+  const cardGlass = new THREE.Mesh(
+    new THREE.BoxGeometry(4.6, 0.02, 2.9),
+    new THREE.MeshPhysicalMaterial({
+      color: 0x4fd6ff, metalness: 0.45, roughness: 0.08,
+      transmission: 0.60, transparent: true, opacity: 0.35,
+      ior: 1.50, thickness: 0.3,
+      clearcoat: 1.0, clearcoatRoughness: 0.05,
+      emissive: 0x002233, emissiveIntensity: 0.55,
+    })
+  );
+  cardGlass.position.y = 0.09;
+  cardGroup.add(cardGlass);
+  // Embedded card chip (real EMV-style chip layout)
+  const cardChipBody = new THREE.Mesh(
+    new THREE.BoxGeometry(0.80, 0.08, 0.65),
+    new THREE.MeshPhysicalMaterial({
+      color: 0xc59a00, metalness: 0.95, roughness: 0.20,
+      clearcoat: 0.4, clearcoatRoughness: 0.30,
+      emissive: 0x3a2d00, emissiveIntensity: 0.40,
+    })
+  );
+  cardChipBody.position.set(-1.5, 0.13, 0);
+  cardChipBody.castShadow = true;
+  cardGroup.add(cardChipBody);
+  // Chip contact pads (gold grid lines on top of chip)
+  const contactsMat = new THREE.MeshBasicMaterial({ color: 0x080808, transparent: true, opacity: 0.85 });
+  for (let r = 0; r < 4; r++) {
+    for (let c = 0; c < 2; c++) {
+      if (r === 1 && c === 0) continue;   // gap simulating ISO/IEC 7816 pad layout
+      const pad = new THREE.Mesh(new THREE.PlaneGeometry(0.30, 0.10), contactsMat);
+      pad.rotation.x = -Math.PI / 2;
+      pad.position.set(-1.5 - 0.30 + c * 0.30, 0.14, -0.20 + r * 0.13);
+      cardGroup.add(pad);
+    }
+  }
+  // Card label (cyan SECURECARD)
+  const cardLabelTex = makeLabelTexture('SECURECARD™', { color: '#4fd6ff', font: 36 });
+  const cardLabelMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.28), new THREE.MeshBasicMaterial({ map: cardLabelTex, transparent: true }));
+  cardLabelMesh.rotation.x = -Math.PI / 2;
+  cardLabelMesh.position.set(0.7, 0.12, -1.05);
+  cardGroup.add(cardLabelMesh);
+  // Secondary text · the card serial (placeholder · shifts based on state)
+  const cardSerialTex = makeLabelTexture('WI-2859-ED77-3BE0', { color: '#7dd3fc', font: 22 });
+  const cardSerialMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.18), new THREE.MeshBasicMaterial({ map: cardSerialTex, transparent: true }));
+  cardSerialMesh.rotation.x = -Math.PI / 2;
+  cardSerialMesh.position.set(0.7, 0.12, -0.78);
+  cardGroup.add(cardSerialMesh);
+  // WireIP holographic mark · double ring with rotation
+  const cardMarkOuter = new THREE.Mesh(
+    new THREE.RingGeometry(0.32, 0.40, 64),
+    new THREE.MeshBasicMaterial({ color: 0xf0c419, side: THREE.DoubleSide, transparent: true, opacity: 0.85 })
+  );
+  cardMarkOuter.rotation.x = -Math.PI / 2;
+  cardMarkOuter.position.set(1.4, 0.12, 0.5);
+  cardGroup.add(cardMarkOuter);
+  const cardMarkInner = new THREE.Mesh(
+    new THREE.RingGeometry(0.18, 0.24, 32),
+    new THREE.MeshBasicMaterial({ color: 0xffd95a, side: THREE.DoubleSide, transparent: true, opacity: 0.75 })
+  );
+  cardMarkInner.rotation.x = -Math.PI / 2;
+  cardMarkInner.position.set(1.4, 0.125, 0.5);
+  cardGroup.add(cardMarkInner);
+  // NFC antenna trace (etched into the card surface)
+  const antennaCurve = new THREE.EllipseCurve(0, 0, 1.9, 1.15, 0, Math.PI * 2, false, 0);
+  const antennaPts = antennaCurve.getPoints(64).map(p => new THREE.Vector3(p.x, 0.105, p.y));
+  const antennaGeo = new THREE.BufferGeometry().setFromPoints(antennaPts);
+  const antenna = new THREE.Line(antennaGeo, new THREE.LineBasicMaterial({ color: 0xf0c419, transparent: true, opacity: 0.40 }));
+  cardGroup.add(antenna);
+  scene.add(cardGroup);
+  // ===== STREAMING PAYLOAD PARTICLES =====
+  // Two streams: GOLD payload (card → SSD) + CYAN ACK (SSD → card), both
+  // additive-blended for that bright hologram-dust feel.
+  const particleCount = 140;
+  const positions = new Float32Array(particleCount * 3);
+  const phases = new Float32Array(particleCount);
+  const streams = new Float32Array(particleCount);  // 0 = gold C→S, 1 = cyan S→C
+  for (let i = 0; i < particleCount; i++) {
+    positions[i*3]     = -4.0;
+    positions[i*3 + 1] = 1.0;
+    positions[i*3 + 2] = 1.0;
+    phases[i] = Math.random();
+    streams[i] = (i % 3 === 0) ? 1 : 0;
+  }
+  // Gold particles (payload)
+  const goldGeo = new THREE.BufferGeometry();
+  goldGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions.slice(), 3));
+  const goldMat = new THREE.PointsMaterial({ color: 0xffe080, size: 0.13, transparent: true, opacity: 0.95, sizeAttenuation: true, blending: THREE.AdditiveBlending, depthWrite: false });
+  const goldPart = new THREE.Points(goldGeo, goldMat);
+  scene.add(goldPart);
+  // Cyan particles (ACK)
+  const cyanGeo = new THREE.BufferGeometry();
+  cyanGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions.slice(), 3));
+  const cyanMat = new THREE.PointsMaterial({ color: 0x80efff, size: 0.10, transparent: true, opacity: 0.85, sizeAttenuation: true, blending: THREE.AdditiveBlending, depthWrite: false });
+  const cyanPart = new THREE.Points(cyanGeo, cyanMat);
+  scene.add(cyanPart);
+  // Visible only during tap phase
+  goldPart.visible = false; cyanPart.visible = false;
+  // ===== Floor-ground dust motes =====
+  const motesGeo = new THREE.BufferGeometry();
+  const motesPos = [];
+  for (let i = 0; i < 80; i++) {
+    motesPos.push((Math.random()-0.5)*16, Math.random()*4 - 2, (Math.random()-0.5)*10);
+  }
+  motesGeo.setAttribute('position', new THREE.Float32BufferAttribute(motesPos, 3));
+  const motes = new THREE.Points(motesGeo, new THREE.PointsMaterial({ color: 0xffd060, size: 0.04, transparent: true, opacity: 0.40, blending: THREE.AdditiveBlending, depthWrite: false }));
+  scene.add(motes);
+  // ===== STAR FIELD (deep background) =====
+  const starsGeo = new THREE.BufferGeometry();
+  const starPos = [];
+  const starCol = [];
+  for (let i = 0; i < 380; i++) {
+    starPos.push((Math.random()-0.5)*80, (Math.random()-0.5)*40, (Math.random()-0.5)*40 - 30);
+    // Mostly faint cyan, occasional warm gold
+    const isWarm = Math.random() > 0.85;
+    starCol.push(isWarm ? 1.0 : 0.5, isWarm ? 0.85 : 0.7, isWarm ? 0.4 : 1.0);
+  }
+  starsGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
+  starsGeo.setAttribute('color', new THREE.Float32BufferAttribute(starCol, 3));
+  scene.add(new THREE.Points(starsGeo, new THREE.PointsMaterial({ size: 0.06, transparent: true, opacity: 0.55, vertexColors: true, blending: THREE.AdditiveBlending, depthWrite: false })));
+  // Dim glow halos around the very brightest elements only. Three-layer
+  // setup kept but opacity slashed ~70% so the halos feel like soft IBL
+  // bounce, not LED light pollution.
+  function addBloomHalo(target, color, baseRadius) {
+    const layers = [
+      { r: baseRadius * 1.2, op: 0.14 },
+      { r: baseRadius * 2.4, op: 0.06 },
+      { r: baseRadius * 4.0, op: 0.02 },
+    ];
+    const halos = [];
+    for (const L of layers) {
+      const m = new THREE.Mesh(
+        new THREE.SphereGeometry(L.r, 16, 16),
+        new THREE.MeshBasicMaterial({
+          color, transparent: true, opacity: L.op,
+          blending: THREE.AdditiveBlending, depthWrite: false, depthTest: true,
+        })
+      );
+      target.add(m);
+      halos.push({ m, baseOp: L.op });
+    }
+    return halos;
+  }
+  const hsmHalo = addBloomHalo(hsmGroup, 0xffd060, 0.7);
+  const wellHalo = addBloomHalo(wellGlass, 0x80efff, 0.9);
+  const cardChipHalo = addBloomHalo(cardChipBody, 0xffd060, 0.5);
+  // Lens flares removed · they were overpowering the scene. The PMREM env
+  // map + the well-placed key/rim lights now carry the highlights without
+  // needing additive sprite glow on top. Halos below are also dimmer.
+  const fillFlare = null, rimFlare = null;
+  // ===== ANIMATION LOOP =====
+  // Cycle: cardapproach → tap (rings flash + particles fly) → retreat → repeat
+  const TAU = Math.PI * 2;
+  const _state = { phase: 0, totalT: 0 };
+  function animate() {
+    if (!currentViewIs('view-securesystem')) {
+      // Pause when not visible to save CPU
+      requestAnimationFrame(animate);
+      return;
+    }
+    _state.totalT += 0.016;
+    // Tap cycle every 4.5 seconds: approach 0–1s, tap 1–2.5s, retreat 2.5–3.5s, idle 3.5–4.5s
+    const cyclePos = (_state.totalT % 4.5);
+    let cardY = 1.5, cardX = -4.5, cardZ = 1.6;
+    let tapping = false;
+    if (cyclePos < 1.0) {
+      // approach
+      const t = cyclePos / 1.0;
+      cardX = -4.5 + (5.4 - (-4.5)) * t * 0.55;   // glide toward SSD
+      cardY = 1.5 - 0.9 * t;
+      cardZ = 1.6 - 1.6 * t;
+    } else if (cyclePos < 2.5) {
+      // tap · hover just above the NFC panel
+      const t = (cyclePos - 1.0) / 1.5;
+      cardX = 5.4 - 6.8; // hover at x = -1.4 (same as NFC panel)
+      cardX = -1.4 + 4.0;  // align over SSD x-coord (5.4) but offset
+      cardX = 4.0;
+      cardY = 0.6 + Math.sin(t * Math.PI * 2) * 0.04;
+      cardZ = 0;
+      tapping = true;
+    } else if (cyclePos < 3.5) {
+      // retreat
+      const t = (cyclePos - 2.5) / 1.0;
+      cardX = 4.0 - (4.0 - (-4.5)) * t;
+      cardY = 0.6 + 0.9 * t;
+      cardZ = 0 + 1.6 * t;
+    } else {
+      // idle · float gently far from SSD
+      const t = (cyclePos - 3.5);
+      cardX = -4.5 + Math.sin(t * 3) * 0.15;
+      cardY = 1.5 + Math.sin(t * 2) * 0.08;
+      cardZ = 1.6;
+    }
+    cardGroup.position.set(cardX, cardY, cardZ);
+    cardGroup.rotation.x = -0.25 + Math.sin(_state.totalT * 0.6) * 0.04;
+    cardGroup.rotation.z = 0.06 + Math.sin(_state.totalT * 0.8) * 0.02;
+    // NFC ring pulse · faster when tapping · also fades cone glow
+    const ringSpeed = tapping ? 2.5 : 1.0;
+    for (const ring of nfcRings) {
+      ring.scale.setScalar(1 + 0.5 * Math.sin(_state.totalT * ringSpeed * 2 + ring.userData.phase));
+      ring.material.opacity = ring.userData.baseOpacity * (0.55 + 0.45 * Math.abs(Math.sin(_state.totalT * ringSpeed + ring.userData.phase)));
+    }
+    fieldCone.material.opacity = tapping ? (0.025 + 0.012 * Math.sin(_state.totalT * 3)) : 0.008;
+    fieldCone.rotation.y = _state.totalT * 0.5;
+    // Holographic mark rotation on card
+    cardMarkOuter.rotation.z =  _state.totalT * 0.8;
+    cardMarkInner.rotation.z = -_state.totalT * 1.3;
+    cardMarkOuter.material.opacity = 0.65 + 0.30 * Math.sin(_state.totalT * 2.0);
+    // Status LED breathing · subtle · power green, NFC cyan flickers when
+    // tapping, sync gold pulses. Multipliers calibrated so LEDs read as
+    // small bright dots, NOT lens flares.
+    leds.forEach((l, i) => {
+      let intensity = 0;
+      if (i === 0) intensity = 0.35 + 0.20 * Math.sin(_state.totalT * 1.5);
+      else if (i === 1) intensity = tapping ? (0.55 + 0.15 * Math.sin(_state.totalT * 14)) : 0.18;
+      else intensity = 0.30 + 0.20 * Math.sin(_state.totalT * 3 + 1.5);
+      l.led.material.color.set(l.color);
+      l.led.material.color.multiplyScalar(0.35 + intensity * 0.7);
+      l.glow.material.opacity = 0.06 + 0.10 * intensity;
+      l.glow.scale.setScalar(1 + 0.20 * intensity);
+    });
+    accent.intensity = 0.20 + 0.10 * Math.sin(_state.totalT * 2);
+    // Floor motes drift gently upward, wrap around
+    const motesArr = motes.geometry.attributes.position.array;
+    for (let i = 0; i < motesArr.length / 3; i++) {
+      motesArr[i*3 + 1] += 0.005;
+      if (motesArr[i*3 + 1] > 3) motesArr[i*3 + 1] = -2;
+      motesArr[i*3 + 0] += Math.sin(_state.totalT + i) * 0.001;
+    }
+    motes.geometry.attributes.position.needsUpdate = true;
+    // Particles · two streams flying when tapping
+    goldPart.visible = tapping;
+    cyanPart.visible = tapping;
+    if (tapping) {
+      const gpos = goldGeo.attributes.position.array;
+      const cpos = cyanGeo.attributes.position.array;
+      for (let i = 0; i < particleCount; i++) {
+        const p = (phases[i] + _state.totalT * 0.7) % 1;
+        // Gold · card to SSD NFC well (arc through center)
+        const gsx = cardGroup.position.x + Math.sin(i * 13.7) * 0.4;
+        const gex = ssdGroup.position.x + (-1.6) + Math.cos(i * 7.3) * 0.3;
+        const gsy = cardGroup.position.y;
+        const gey = ssdGroup.position.y + 0.4;
+        gpos[i*3]     = gsx + (gex - gsx) * p;
+        gpos[i*3 + 1] = gsy + (gey - gsy) * p + Math.sin(p * Math.PI) * 1.2;
+        gpos[i*3 + 2] = Math.sin(i * 19.1 + _state.totalT * 2.5) * 0.35;
+        // Cyan · SSD back up to card (mirror arc, offset phase)
+        const q = (phases[i] + _state.totalT * 0.7 + 0.4) % 1;
+        cpos[i*3]     = gex + (gsx - gex) * q;
+        cpos[i*3 + 1] = gey + (gsy - gey) * q + Math.sin(q * Math.PI) * 1.0;
+        cpos[i*3 + 2] = Math.cos(i * 21.3 + _state.totalT * 2.2) * 0.30;
+      }
+      goldGeo.attributes.position.needsUpdate = true;
+      cyanGeo.attributes.position.needsUpdate = true;
+    }
+    // Halo bloom pulse · scale with light intensities
+    hsmHalo.forEach((h, i) => {
+      const v = 0.6 + 0.4 * Math.sin(_state.totalT * 1.2 + i);
+      h.m.material.opacity = h.baseOp * v;
+    });
+    wellHalo.forEach((h, i) => {
+      const v = tapping ? (0.9 + 0.4 * Math.sin(_state.totalT * 4)) : (0.4 + 0.2 * Math.sin(_state.totalT * 1.6 + i));
+      h.m.material.opacity = h.baseOp * v;
+    });
+    cardChipHalo.forEach((h, i) => {
+      const v = 0.5 + 0.4 * Math.sin(_state.totalT * 2.0 + i);
+      h.m.material.opacity = h.baseOp * v;
+    });
+    // (Lens flares removed for clarity)
+    // ===== Camera · spherical-coord orbit (yaw + pitch + radius) =====
+    // Proper spherical coordinate system so the Top preset puts the
+    // camera straight overhead (pitch ≈ π/2). userYaw/Pitch override
+    // auto-drift while inertia > 0. lookAt always points at the SSD
+    // top so the scene stays framed.
+    const userY = scene.userData.userYaw   ? scene.userData.userYaw()   : 0;
+    const userP = scene.userData.userPitch ? scene.userData.userPitch() : 0;
+    const inert = scene.userData.inertia   ? scene.userData.inertia()   : 0;
+    const autoYaw   = Math.sin(_state.totalT * 0.10) * 0.16;
+    const autoPitch = 0.06 + Math.sin(_state.totalT * 0.16) * 0.08;
+    const yaw   = userY * inert + autoYaw   * (1 - inert);
+    const pitch = userP * inert + autoPitch * (1 - inert);
+    const camR = 22;
+    // Spherical → Cartesian (Y-up). pitch=0 → equator, pitch=+π/2 → overhead.
+    const cp = Math.cos(pitch), sp = Math.sin(pitch);
+    camera.position.x = camR * cp * Math.sin(yaw);
+    camera.position.y = camR * sp + 0.4;
+    camera.position.z = camR * cp * Math.cos(yaw);
+    // When close to overhead, nudge camera slightly forward so the lookAt
+    // up vector remains stable (avoids gimbal lock at exactly π/2).
+    camera.up.set(0, 1, 0);
+    camera.lookAt(0, 0.4, 0);
+    // Subtle SSD breathing
+    ssdGroup.rotation.y = autoYaw * 0.5;
+    // Use the bloom composer for final filmic render
+    fx.render();
+    requestAnimationFrame(animate);
+  }
+  // ===== Restrained bloom · only brightest pixels glow =====
+  // Threshold 0.55 = only the very brightest LEDs and the NFC well
+  // brighter than mid-gray bloom. Strength 0.30 keeps the warm halo
+  // gentle around real light sources without washing out the SSD body.
+  const fx = _buildBloomComposer(renderer, scene, camera, {
+    strength: 0.30, radius: 0.40, threshold: 0.55,
+  });
+  animate();
+  // ===== Interactive drag-rotate (mouse + touch) =====
+  // The animation loop's auto-drift is overridden while the user is
+  // actively dragging · they can spin the scene to inspect from any
+  // angle including straight overhead (pitch up to π/2 - 0.05).
+  // Inertia gradually returns control to auto-drift.
+  let dragging = false, lastX = 0, lastY = 0, manualYaw = 0, manualPitch = 0, dragInertia = 0;
+  const PITCH_MAX = Math.PI / 2 - 0.02;     // nearly straight overhead
+  const PITCH_MIN = -Math.PI / 2 + 0.15;    // can go below the floor a bit
+  const cv = renderer.domElement;
+  cv.style.cursor = 'grab';
+  cv.style.touchAction = 'none';
+  cv.addEventListener('pointerdown', (e) => {
+    dragging = true; lastX = e.clientX; lastY = e.clientY;
+    dragInertia = 1.0;
+    cv.style.cursor = 'grabbing';
+    try { cv.setPointerCapture(e.pointerId); } catch (er) {}
+  });
+  cv.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    manualYaw   += dx * 0.005;
+    manualPitch += dy * 0.005;
+    manualPitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, manualPitch));
+  });
+  cv.addEventListener('pointerup',     (e) => { dragging = false; cv.style.cursor = 'grab'; try { cv.releasePointerCapture(e.pointerId); } catch (er) {} });
+  cv.addEventListener('pointercancel', () => { dragging = false; cv.style.cursor = 'grab'; });
+  // Expose to the animation closure via a frame-by-frame override
+  let holdView = false;
+  scene.userData.userYaw   = () => manualYaw;
+  scene.userData.userPitch = () => manualPitch;
+  scene.userData.inertia   = () => {
+    const v = dragInertia;
+    // When a "hold" view preset (Top/Side/Close) is active, don't decay
+    // inertia · the camera stays locked at the chosen angle until the
+    // user drags or picks Default.
+    if (!holdView) {
+      dragInertia = Math.max(0, dragInertia - 0.005);
+    }
+    return v;
+  };
+  // Reset hold when user drags
+  cv.addEventListener('pointerdown', () => { holdView = false; });
+  // ===== View preset animation =====
+  // Smoothly slides the manualYaw/manualPitch from their current values
+  // to a target preset over ~0.8s, and pins the dragInertia at 1.0 the
+  // whole time so the user's view-choice takes priority over auto-drift.
+  // The animation loop reads manualYaw/Pitch each frame so we just tween
+  // those variables and let the renderer pick them up.
+  let _viewTween = null;
+  function setHwView(name) {
+    // Cancel any in-flight tween
+    if (_viewTween) cancelAnimationFrame(_viewTween);
+    const presets = {
+      default: { yaw: 0,            pitch: 0.06,         dur: 800, hold: false },
+      // Overhead · nearly straight-down, slight forward tilt so user can
+      // see both the SSD top face and the floating SecureCard above it
+      top:     { yaw: 0,            pitch: PITCH_MAX - 0.06, dur: 900, hold: true },
+      side:    { yaw: Math.PI / 2,  pitch: 0.02,         dur: 900, hold: true },
+      close:   { yaw: -0.25,        pitch: 0.35,         dur: 900, hold: true },
+    };
+    const target = presets[name] || presets.default;
+    const startYaw = manualYaw, startPitch = manualPitch;
+    const t0 = performance.now();
+    // Hold the camera at the target preset (no auto-drift) for non-default
+    // views. The user has to drag or click Default to release.
+    holdView = !!target.hold;
+    const animate = () => {
+      const elapsed = performance.now() - t0;
+      const t = Math.min(1, elapsed / target.dur);
+      const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      manualYaw   = startYaw   + (target.yaw   - startYaw)   * e;
+      manualPitch = startPitch + (target.pitch - startPitch) * e;
+      dragInertia = 1.0;
+      if (t < 1) {
+        _viewTween = requestAnimationFrame(animate);
+      } else {
+        _viewTween = null;
+        if (!target.hold) { dragInertia = 0; holdView = false; }
+      }
+    };
+    _viewTween = requestAnimationFrame(animate);
+  }
+  // Wire the toolbar buttons
+  const toolbar = wrap.querySelector('.ss-view-tools');
+  if (toolbar) {
+    toolbar.querySelectorAll('.ss-view-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toolbar.querySelectorAll('.ss-view-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        setHwView(btn.dataset.view);
+      });
+    });
+  }
+  // Default view fires once on first render so the active class matches state
+  scene.userData.setHwView = setHwView;
+  // Resize handler · keeps both renderer + composer in sync
+  function onResize() {
+    const w = wrap.clientWidth || 800, h = wrap.clientHeight || 380;
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+    fx.resize(w, h);
+  }
+  window.addEventListener('resize', onResize);
+  return { scene, camera, renderer, fx };
+}
+
+// Helper · paint text to a canvas → THREE.CanvasTexture
+function makeLabelTexture(text, opts) {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, c.width, c.height);
+  ctx.fillStyle = (opts && opts.color) || '#f0c419';
+  ctx.font = 'bold ' + ((opts && opts.font) || 28) + 'px "IBM Plex Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = (opts && opts.color) || '#f0c419';
+  ctx.shadowBlur = 14;
+  ctx.fillText(text, c.width / 2, c.height / 2);
+  const tex = new THREE.CanvasTexture(c);
+  tex.needsUpdate = true;
+  return tex;
+}
+
+// ============================================================
+// #ss-dagviz  · Linear blockchain ↔ WireIP DAG side-by-side
+// ============================================================
+// Scene composition:
+//   - LEFT: 6 cube-blocks chained linearly (gold) · new block appended periodically
+//   - RIGHT: DAG cluster of 30+ vertices · each new tip references up to 6 parents · animated edges
+//   - CENTER: anchor packets travel between the two, representing cross-anchoring
+function buildSSDagViz() {
+  const wrap = document.getElementById('ss-dagviz');
+  if (!wrap || wrap._inited) return null;
+  wrap._inited = true;
+  const W = wrap.clientWidth || 800;
+  const H = wrap.clientHeight || 380;
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x020306, 0.018);
+  const camera = new THREE.PerspectiveCamera(38, W / H, 0.1, 240);
+  camera.position.set(0, 6, 28);
+  camera.lookAt(0, 0, 0);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(W, H);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.00;
+  renderer.domElement.style.borderRadius = 'var(--radius)';
+  wrap.appendChild(renderer.domElement);
+  // ===== Procedural studio environment for IBL reflections =====
+  try {
+    const envScene = new THREE.Scene();
+    envScene.background = (function() {
+      const mkFace = (a, b) => {
+        const c = document.createElement('canvas'); c.width = c.height = 256;
+        const cx = c.getContext('2d');
+        const g = cx.createLinearGradient(0, 0, 0, 256);
+        g.addColorStop(0, a); g.addColorStop(1, b);
+        cx.fillStyle = g; cx.fillRect(0, 0, 256, 256);
+        return c;
+      };
+      const top = mkFace('#101218', '#040608');
+      const bot = mkFace('#020205', '#000000');
+      const a = mkFace('#3a2200', '#04020a');   // gold side
+      const b = mkFace('#001a28', '#04060a');   // cyan side
+      const t = new THREE.CubeTexture([a, b, top, bot, a, b]);
+      t.needsUpdate = true;
+      return t;
+    })();
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    pmrem.compileEquirectangularShader();
+    scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+  } catch (e) {}
+  // ===== Calibrated lighting rig (toned down) =====
+  scene.add(new THREE.AmbientLight(0x1a1d22, 0.65));
+  const hemi = new THREE.HemisphereLight(0xfff0d0, 0x060708, 0.35);
+  scene.add(hemi);
+  const sun = new THREE.DirectionalLight(0xffeecc, 0.70);
+  sun.position.set(-8, 14, 12); scene.add(sun);
+  const rim = new THREE.DirectionalLight(0x80b8d0, 0.45);
+  rim.position.set(12, 6, -10); scene.add(rim);
+  // Subtle column spots · NO neon flooding
+  const goldSpot = new THREE.PointLight(0xffd060, 0.55, 16, 2);
+  goldSpot.position.set(-9, 5, 6); scene.add(goldSpot);
+  const cyanSpot = new THREE.PointLight(0x80b8d0, 0.50, 18, 2);
+  cyanSpot.position.set(7, 5, 6); scene.add(cyanSpot);
+  // ===== Left side · BLOCKCHAIN (high-detail blocks) =====
+  const chainGroup = new THREE.Group();
+  chainGroup.position.set(-9, 0, 0);
+  scene.add(chainGroup);
+  const blocks = [];
+  const blockGeo = new THREE.BoxGeometry(1.6, 1.6, 1.6);
+  for (let i = 0; i < 6; i++) {
+    const b = new THREE.Mesh(blockGeo, new THREE.MeshPhysicalMaterial({
+      color: 0xc59a00, metalness: 0.85, roughness: 0.32,
+      clearcoat: 0.6, clearcoatRoughness: 0.25,
+      emissive: 0x2a2100, emissiveIntensity: 0.18,
+    }));
+    b.position.set(0, 3.6 - i * 1.85, 0);
+    chainGroup.add(b);
+    // Hash plate on each block face (canvas-painted hex)
+    const hashTex = makeLabelTexture('0x' + Math.random().toString(16).slice(2, 10).toUpperCase(), { color: '#1a1a1a', font: 38 });
+    const hashFace = new THREE.Mesh(new THREE.PlaneGeometry(1.30, 0.30), new THREE.MeshBasicMaterial({ map: hashTex, transparent: true }));
+    hashFace.position.set(0, 0, 0.81);
+    b.add(hashFace);
+    // Wireframe overlay for that "minted block" feel
+    const wf = new THREE.LineSegments(
+      new THREE.EdgesGeometry(blockGeo),
+      new THREE.LineBasicMaterial({ color: 0xffd95a, transparent: true, opacity: 0.4 })
+    );
+    b.add(wf);
+    blocks.push(b);
+    // Edge between blocks · thick gold rod, not a thin line
+    if (i > 0) {
+      const rod = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.06, 0.06, 0.30, 16),
+        new THREE.MeshStandardMaterial({ color: 0xf0c419, metalness: 0.9, roughness: 0.2, emissive: 0x3a2d00, emissiveIntensity: 0.6 })
+      );
+      rod.position.set(0, 3.6 - (i - 0.5) * 1.85, 0);
+      chainGroup.add(rod);
+    }
+  }
+  // "BLOCKCHAIN" headline label (above column)
+  const chainLabelTex = makeLabelTexture('BLOCKCHAIN · 1-PARENT · ~10 min', { color: '#f0c419', font: 32 });
+  const chainLabel = new THREE.Sprite(new THREE.SpriteMaterial({ map: chainLabelTex, transparent: true, depthWrite: false }));
+  chainLabel.position.set(-9, 6.0, 0); chainLabel.scale.set(8.5, 2.1, 1);
+  scene.add(chainLabel);
+  // Block heights · monospace stats column
+  const heightTex = makeLabelTexture('HEIGHT 8,392,104', { color: '#ffd95a', font: 24 });
+  const heightLabel = new THREE.Sprite(new THREE.SpriteMaterial({ map: heightTex, transparent: true, depthWrite: false }));
+  heightLabel.position.set(-9, -7.4, 0); heightLabel.scale.set(5.5, 1.4, 1);
+  scene.add(heightLabel);
+  // ===== Right side · WIREIP DAG (high-fidelity cluster) =====
+  const dagGroup = new THREE.Group();
+  dagGroup.position.set(7, 0, 0);
+  scene.add(dagGroup);
+  // Vertex layout · 5 layers · denser, more organic distribution
+  const vertices = [];
+  const VERTEX_RADIUS = 0.42;
+  const layers = [
+    { count: 1, y: 4.2 },   // genesis
+    { count: 4, y: 2.5 },
+    { count: 6, y: 0.8 },
+    { count: 7, y: -0.9 },
+    { count: 6, y: -2.7 },  // tip layer · live updates here
+  ];
+  const tipLayerIdx = layers.length - 1;
+  for (let li = 0; li < layers.length; li++) {
+    const L = layers[li];
+    for (let i = 0; i < L.count; i++) {
+      // Organic horizontal spread, slight z-perturbation per node
+      const xJitter = (Math.random() - 0.5) * 0.35;
+      const zJitter = (Math.random() - 0.5) * 1.1;
+      const x = L.count > 1 ? (i - (L.count - 1) / 2) * 1.15 + xJitter : 0;
+      const z = zJitter;
+      const isTip = li === tipLayerIdx;
+      const v = new THREE.Mesh(
+        new THREE.SphereGeometry(VERTEX_RADIUS, 24, 24),
+        new THREE.MeshPhysicalMaterial({
+          color: isTip ? 0x4ade80 : 0x4fd6ff,
+          emissive: isTip ? 0x0a2a14 : 0x002030,
+          emissiveIntensity: isTip ? 0.35 : 0.22,
+          metalness: 0.55, roughness: 0.35,
+          clearcoat: 0.6, clearcoatRoughness: 0.20,
+        })
+      );
+      v.position.set(x, L.y, z);
+      v.userData = { layer: li, born: Math.random() * 6, isTip };
+      dagGroup.add(v);
+      // Outer halo · soft additive sphere
+      const halo = new THREE.Mesh(
+        new THREE.SphereGeometry(VERTEX_RADIUS * 1.85, 16, 16),
+        new THREE.MeshBasicMaterial({
+          color: isTip ? 0x4ade80 : 0x4fd6ff,
+          transparent: true, opacity: 0.18,
+          blending: THREE.AdditiveBlending, depthWrite: false,
+        })
+      );
+      halo.position.copy(v.position);
+      dagGroup.add(halo);
+      v.userData.halo = halo;
+      vertices.push(v);
+    }
+  }
+  // Build edges · 3D TubeGeometry along bezier curves (thick visible volumes)
+  // Each edge is a thin glowing tube · much more visible + photographic
+  // than a 1px line, and they catch the env-map reflections beautifully.
+  const edges = [];
+  for (const v of vertices) {
+    if (v.userData.layer === 0) continue;
+    const parents = vertices.filter(p => p.userData.layer === v.userData.layer - 1);
+    const ranked = parents.map(p => ({ p, d: p.position.distanceTo(v.position) })).sort((a, b) => a.d - b.d);
+    const k = Math.min(6, ranked.length);
+    for (let i = 0; i < k; i++) {
+      if (Math.random() > 0.62 && i > 1) continue;
+      const a = v.position.clone();
+      const b = ranked[i].p.position.clone();
+      const mid = a.clone().lerp(b, 0.5);
+      mid.x += (Math.random() - 0.5) * 0.6;
+      mid.z += (Math.random() - 0.5) * 0.7;
+      const curve = new THREE.QuadraticBezierCurve3(a, mid, b);
+      // Thin tube along the curve · 6 radial segments keeps poly count low
+      const tubeGeo = new THREE.TubeGeometry(curve, 24, 0.03, 6, false);
+      const tubeMat = new THREE.MeshPhysicalMaterial({
+        color: 0x4fd6ff, metalness: 0.30, roughness: 0.15,
+        emissive: 0x002a40, emissiveIntensity: 0.85,
+        clearcoat: 0.7, clearcoatRoughness: 0.10,
+        transparent: true, opacity: 0.78,
+      });
+      const tube = new THREE.Mesh(tubeGeo, tubeMat);
+      tube.userData = { from: v, to: ranked[i].p, phase: Math.random() * Math.PI * 2, curve };
+      dagGroup.add(tube);
+      edges.push(tube);
+    }
+  }
+  // ===== Data packets · little glowing dots that slide along DAG edges =====
+  const dataPackets = [];
+  for (let i = 0; i < 20; i++) {
+    const edge = edges[Math.floor(Math.random() * edges.length)];
+    if (!edge) break;
+    const dp = new THREE.Mesh(
+      new THREE.SphereGeometry(0.10, 12, 12),
+      new THREE.MeshBasicMaterial({ color: 0xa8f0ff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false })
+    );
+    dp.userData = { edge, t: Math.random(), speed: 0.20 + Math.random() * 0.40 };
+    dagGroup.add(dp);
+    dataPackets.push(dp);
+  }
+  // DAG label (top)
+  const dagLabelTex = makeLabelTexture('WIREIP DAG · k=6 PARENTS · ~4–8 s', { color: '#4fd6ff', font: 32 });
+  const dagLabel = new THREE.Sprite(new THREE.SpriteMaterial({ map: dagLabelTex, transparent: true, depthWrite: false }));
+  dagLabel.position.set(7, 6.0, 0); dagLabel.scale.set(9, 2.2, 1);
+  scene.add(dagLabel);
+  // Throughput stats label (bottom)
+  const throughputTex = makeLabelTexture('TPS 5,200 · 0.6 sec/v · k=6', { color: '#80efff', font: 24 });
+  const throughputLabel = new THREE.Sprite(new THREE.SpriteMaterial({ map: throughputTex, transparent: true, depthWrite: false }));
+  throughputLabel.position.set(7, -7.4, 0); throughputLabel.scale.set(6, 1.4, 1);
+  scene.add(throughputLabel);
+  // ===== Cross-anchor packets · diamond crystals with trails =====
+  const anchorParts = [];
+  const anchorTrails = [];
+  for (let i = 0; i < 10; i++) {
+    const ap = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.22, 0),
+      new THREE.MeshPhysicalMaterial({
+        color: 0xc084fc, emissive: 0x3a1d56, emissiveIntensity: 1.5,
+        metalness: 0.7, roughness: 0.15,
+        clearcoat: 1.0, clearcoatRoughness: 0.10,
+      })
+    );
+    ap.userData = { phase: i / 10, dir: i % 2 === 0 ? 1 : -1 };
+    scene.add(ap);
+    anchorParts.push(ap);
+    // Glow halo
+    const halo = new THREE.Mesh(
+      new THREE.SphereGeometry(0.35, 12, 12),
+      new THREE.MeshBasicMaterial({ color: 0xc084fc, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false })
+    );
+    scene.add(halo);
+    anchorTrails.push(halo);
+  }
+  // ===== Connecting arc · purple ribbon between blockchain & DAG groups =====
+  const arcCurve = new THREE.CubicBezierCurve3(
+    new THREE.Vector3(-9, 1.5, 0),
+    new THREE.Vector3(-3, 5.5, 1.5),
+    new THREE.Vector3( 3, 5.5, 1.5),
+    new THREE.Vector3( 7, 1.5, 0)
+  );
+  const arcPts = arcCurve.getPoints(80);
+  const arcGeo = new THREE.BufferGeometry().setFromPoints(arcPts);
+  const arc = new THREE.Line(arcGeo, new THREE.LineDashedMaterial({
+    color: 0xc084fc, dashSize: 0.30, gapSize: 0.18,
+    transparent: true, opacity: 0.55, depthWrite: false,
+  }));
+  arc.computeLineDistances();
+  scene.add(arc);
+  // Center · CROSS-ANCHOR pill label
+  const xaLabelTex = makeLabelTexture('CROSS-ANCHOR ↔ MERKLE COMMITS', { color: '#c084fc', font: 26 });
+  const xaLabel = new THREE.Sprite(new THREE.SpriteMaterial({ map: xaLabelTex, transparent: true, depthWrite: false }));
+  xaLabel.position.set(-1, 6.0, 1.6); xaLabel.scale.set(8, 1.6, 1);
+  scene.add(xaLabel);
+  // ===== Mirror floor + grid overlay =====
+  if (typeof THREE.Reflector === 'function') {
+    const mirror = new THREE.Reflector(
+      new THREE.PlaneGeometry(80, 80),
+      { clipBias: 0.003, textureWidth: 1024, textureHeight: 1024, color: 0x07090d }
+    );
+    mirror.rotation.x = -Math.PI / 2;
+    mirror.position.y = -4.8;
+    scene.add(mirror);
+    // Haze plane softens horizon line
+    const haze = new THREE.Mesh(
+      new THREE.PlaneGeometry(80, 80),
+      new THREE.MeshBasicMaterial({ color: 0x05080a, transparent: true, opacity: 0.55, depthWrite: false })
+    );
+    haze.rotation.x = -Math.PI / 2;
+    haze.position.y = -4.79;
+    scene.add(haze);
+  }
+  // ===== Floor grid · subtle gold lines on top of mirror =====
+  const grid = new THREE.GridHelper(50, 50, 0x4d3c00, 0x1a1308);
+  grid.position.y = -4.78;
+  grid.material.transparent = true; grid.material.opacity = 0.30;
+  scene.add(grid);
+  // ===== Star field =====
+  const starsGeo = new THREE.BufferGeometry();
+  const sp = []; const scol = [];
+  for (let i = 0; i < 500; i++) {
+    sp.push((Math.random()-0.5)*80, (Math.random()-0.5)*40, (Math.random()-0.5)*40 - 20);
+    const warm = Math.random() > 0.80;
+    scol.push(warm ? 1.0 : 0.4, warm ? 0.85 : 0.7, warm ? 0.4 : 1.0);
+  }
+  starsGeo.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
+  starsGeo.setAttribute('color', new THREE.Float32BufferAttribute(scol, 3));
+  scene.add(new THREE.Points(starsGeo, new THREE.PointsMaterial({ size: 0.06, transparent: true, opacity: 0.55, vertexColors: true, blending: THREE.AdditiveBlending, depthWrite: false })));
+  // ===== Subtle halo accents · drastically dimmed =====
+  function addBloomHalo(target, color, baseRadius) {
+    const layers = [
+      { r: baseRadius * 1.2, op: 0.12 },
+      { r: baseRadius * 2.4, op: 0.05 },
+      { r: baseRadius * 4.0, op: 0.02 },
+    ];
+    const halos = [];
+    for (const L of layers) {
+      const m = new THREE.Mesh(
+        new THREE.SphereGeometry(L.r, 12, 12),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: L.op, blending: THREE.AdditiveBlending, depthWrite: false })
+      );
+      target.add(m); halos.push({ m, baseOp: L.op });
+    }
+    return halos;
+  }
+  const blockHalos = blocks.map(b => addBloomHalo(b, 0xffd060, 1.0));
+  const tipHalos = [];
+  vertices.forEach(v => {
+    if (v.userData.isTip) tipHalos.push({ v, halos: addBloomHalo(v, 0x80ff9b, 0.5) });
+  });
+  const anchorHalos = anchorParts.map(ap => addBloomHalo(ap, 0xd09cff, 0.30));
+  // Lens flares removed · they were overpowering the readable hardware.
+  const flareGold = null, flareCyan = null;
+  // ===== ANIMATION LOOP =====
+  const state2 = { totalT: 0, blockPhase: 0, lastBlockMint: 0, lastVertexAdd: 0, newBlockIdx: null };
+  function animate2() {
+    if (!currentViewIs('view-securesystem')) {
+      requestAnimationFrame(animate2);
+      return;
+    }
+    state2.totalT += 0.016;
+    // ===== BLOCKCHAIN · realistic block-finalization cycle =====
+    if (state2.totalT - state2.lastBlockMint > 8) {
+      state2.lastBlockMint = state2.totalT;
+      state2.newBlockIdx = (state2.newBlockIdx == null ? 0 : (state2.newBlockIdx + 1)) % blocks.length;
+    }
+    blocks.forEach((b, i) => {
+      const isNew = (i === state2.newBlockIdx);
+      const sincePulse = state2.totalT - state2.lastBlockMint;
+      const flash = isNew && sincePulse < 1.6 ? (1 - sincePulse / 1.6) : 0;
+      const baseScale = 1 + flash * 0.10;
+      b.scale.setScalar(baseScale);
+      b.material.emissiveIntensity = 0.18 + flash * 0.45;
+      b.rotation.y += 0.003 + flash * 0.04;
+      b.rotation.x = Math.sin(state2.totalT * 0.4 + i) * 0.025;
+    });
+    // ===== DAG · gentle vertex pulse + subtle tip-birth =====
+    vertices.forEach((v, i) => {
+      const u = v.userData;
+      if (u.isTip) {
+        const phase = u.born + state2.totalT * 2.5;
+        const cyclePos = phase % 8;
+        const justBorn = cyclePos < 0.7;
+        const scale = 1 + (justBorn ? 0.35 * (1 - cyclePos / 0.7) : 0.10 * Math.sin(state2.totalT * 2.0 + i));
+        v.scale.setScalar(scale);
+        v.material.emissiveIntensity = justBorn ? 0.65 : 0.30;
+        if (u.halo) {
+          u.halo.scale.setScalar(scale * 1.15);
+          u.halo.material.opacity = justBorn ? 0.18 : (0.06 + 0.04 * Math.sin(state2.totalT * 2 + i));
+        }
+      } else {
+        const s = 1 + 0.05 * Math.sin(state2.totalT * 1.4 + i * 0.7);
+        v.scale.setScalar(s);
+        if (u.halo) {
+          u.halo.scale.setScalar(s * 1.15);
+          u.halo.material.opacity = 0.05 + 0.03 * Math.sin(state2.totalT * 1.4 + i * 0.7);
+        }
+      }
+    });
+    // ===== Tube edges · gentle opacity pulse =====
+    edges.forEach(tube => {
+      const op = 0.35 + 0.20 * Math.abs(Math.sin(state2.totalT * 1.4 + tube.userData.phase));
+      tube.material.opacity = op;
+      tube.material.emissiveIntensity = 0.25 + 0.15 * Math.abs(Math.sin(state2.totalT * 1.6 + tube.userData.phase));
+    });
+    // ===== Data packets traveling along edge curves =====
+    dataPackets.forEach(dp => {
+      dp.userData.t += dp.userData.speed * 0.016;
+      if (dp.userData.t > 1) {
+        dp.userData.t = 0;
+        // jump to a different edge
+        const newEdge = edges[Math.floor(Math.random() * edges.length)];
+        if (newEdge) dp.userData.edge = newEdge;
+      }
+      const c = dp.userData.edge.userData.curve;
+      if (c) {
+        const pt = c.getPointAt(dp.userData.t);
+        dp.position.copy(pt).add(dagGroup.position);
+      }
+      dp.material.opacity = 0.6 + 0.4 * Math.sin(state2.totalT * 4 + dp.userData.t * 10);
+    });
+    // ===== Cross-anchor packets · arc between blockchain & DAG with trails =====
+    anchorParts.forEach((ap, idx) => {
+      const t = ((state2.totalT * 0.18) + ap.userData.phase) % 1;
+      const dir = ap.userData.dir;
+      const x0 = -9, x1 = 7;
+      const a = dir > 0 ? t : 1 - t;
+      const x = x0 + (x1 - x0) * a;
+      const y = Math.sin(a * Math.PI) * 3.6 + 0.0;
+      const z = Math.cos(state2.totalT * 0.5 + ap.userData.phase * 6) * 0.8;
+      ap.position.set(x, y, z);
+      ap.rotation.x = state2.totalT * 2.5;
+      ap.rotation.y = state2.totalT * 1.8 + ap.userData.phase * 2;
+      ap.rotation.z = Math.sin(state2.totalT * 1.2 + idx) * 0.4;
+      // Trail follows the packet
+      const trail = anchorTrails[idx];
+      if (trail) {
+        trail.position.copy(ap.position);
+        trail.material.opacity = 0.25 + 0.15 * Math.sin(state2.totalT * 3 + idx);
+        trail.scale.setScalar(1 + 0.30 * Math.sin(state2.totalT * 2 + idx));
+      }
+    });
+    // ===== Arc dash marching =====
+    arc.material.dashOffset = -state2.totalT * 0.3;
+    arc.computeLineDistances();
+    // Subtle spot light drift
+    goldSpot.intensity = 0.50 + 0.10 * Math.sin(state2.totalT * 1.2);
+    cyanSpot.intensity = 0.45 + 0.10 * Math.sin(state2.totalT * 0.8 + 1);
+    // ===== Halo bloom updates =====
+    blocks.forEach((b, i) => {
+      const isNew = (i === state2.newBlockIdx);
+      const sincePulse = state2.totalT - state2.lastBlockMint;
+      const flash = isNew && sincePulse < 1.6 ? (1 - sincePulse / 1.6) : 0;
+      blockHalos[i].forEach(h => {
+        h.m.material.opacity = h.baseOp * (0.5 + flash * 1.8 + 0.4 * Math.abs(Math.sin(state2.totalT * 2 + i)));
+      });
+    });
+    tipHalos.forEach((th, i) => {
+      const phase = th.v.userData.born + state2.totalT * 2.5;
+      const justBorn = (phase % 7) < 0.7;
+      th.halos.forEach(h => {
+        h.m.material.opacity = h.baseOp * (justBorn ? 2.2 : (0.5 + 0.4 * Math.abs(Math.sin(state2.totalT * 1.8 + i))));
+      });
+    });
+    anchorHalos.forEach((halos, i) => {
+      halos.forEach(h => { h.m.material.opacity = h.baseOp * (0.7 + 0.4 * Math.sin(state2.totalT * 2.5 + i)); });
+    });
+    // (Lens flares removed for clarity)
+    // ===== Camera · user drag override + auto-drift fallback =====
+    const userY2 = scene.userData.userYaw   ? scene.userData.userYaw()   : 0;
+    const userP2 = scene.userData.userPitch ? scene.userData.userPitch() : 0;
+    const inert2 = scene.userData.inertia   ? scene.userData.inertia()   : 0;
+    const autoY = Math.sin(state2.totalT * 0.10) * 0.10;
+    const autoP = Math.sin(state2.totalT * 0.07) * 0.10;
+    const yaw   = userY2 * inert2 + autoY * (1 - inert2);
+    const pitch = userP2 * inert2 + autoP * (1 - inert2);
+    const camR  = 28 + Math.sin(state2.totalT * 0.05) * 1.5;
+    camera.position.x = Math.sin(yaw) * camR;
+    camera.position.z = Math.cos(yaw) * camR;
+    camera.position.y = 6 + Math.sin(pitch) * 8;
+    camera.lookAt(0, 0, 0);
+    fx2.render();
+    requestAnimationFrame(animate2);
+  }
+  // Restrained bloom · subtle glow on tube edges + vertex tips only
+  const fx2 = _buildBloomComposer(renderer, scene, camera, {
+    strength: 0.35, radius: 0.40, threshold: 0.55,
+  });
+  animate2();
+  // ===== Mouse + touch drag rotate =====
+  let dragging2 = false, lx = 0, ly = 0, mY = 0, mP = 0, inertia2 = 0;
+  const cv2 = renderer.domElement;
+  cv2.style.cursor = 'grab';
+  cv2.style.touchAction = 'none';
+  cv2.addEventListener('pointerdown', (e) => {
+    dragging2 = true; lx = e.clientX; ly = e.clientY; inertia2 = 1.0; cv2.style.cursor = 'grabbing';
+    try { cv2.setPointerCapture(e.pointerId); } catch (er) {}
+  });
+  cv2.addEventListener('pointermove', (e) => {
+    if (!dragging2) return;
+    mY += (e.clientX - lx) * 0.005;
+    mP += (e.clientY - ly) * 0.005;
+    mP = Math.max(-0.8, Math.min(0.8, mP));
+    lx = e.clientX; ly = e.clientY;
+  });
+  cv2.addEventListener('pointerup',     (e) => { dragging2 = false; cv2.style.cursor = 'grab'; try { cv2.releasePointerCapture(e.pointerId); } catch (er) {} });
+  cv2.addEventListener('pointercancel', () => { dragging2 = false; cv2.style.cursor = 'grab'; });
+  scene.userData.userYaw   = () => mY;
+  scene.userData.userPitch = () => mP;
+  scene.userData.inertia   = () => { const v = inertia2; inertia2 = Math.max(0, inertia2 - 0.005); return v; };
+  function onResize() {
+    const w = wrap.clientWidth || 800, h = wrap.clientHeight || 380;
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+    fx2.resize(w, h);
+  }
+  window.addEventListener('resize', onResize);
+  return { scene, camera, renderer, fx: fx2 };
 }
 
 function refreshGlobeMarkers() {
