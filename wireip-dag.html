@@ -21,7 +21,7 @@
 <!-- WIREIP_BUILD_ID is updated every time we ship a change · users can
      compare the footer chip to the latest build to verify their device
      has the fresh code. -->
-<script>window.WIREIP_BUILD_ID = '2026-05-16-19:45';</script>
+<script>window.WIREIP_BUILD_ID = '2026-05-16-20:15';</script>
 <title>WireIP Network™  · IP Tokenization Vault · Institutional Edition v4.1</title>
 <!-- OTW logo references removed at user request. -->
 
@@ -2068,7 +2068,7 @@
      Selectors cover both .viz-asset-overlay img AND img.viz-logo.
      The optional --viz-fx-i custom property (set live by the Effect
      Intensity slider, 0..2) wraps each filter chain in a
-     `saturate(--viz-fx-i)` multiplier when present — gives the user a
+     `saturate(--viz-fx-i)` multiplier when present ·gives the user a
      0-200% strength scrub on the whole effect. */
   :root { --viz-fx-i: 1; --viz-anim-speed: 1; --viz-anim-amplitude: 1; }
   .visualizer[class*="viz-fx-"] { filter-strength: var(--viz-fx-i, 1); }
@@ -4487,14 +4487,28 @@
     }
     .globe-stats { flex-wrap: wrap; gap: 10px; padding: 8px 10px; font-size: 9px; }
     .globe-stats .gs-item .gs-val { font-size: 12px; }
-    /* Reserve space for the globe itself below the static control bar. */
+    /* Reserve space for the globe itself below the static control bar.
+       max-width:100% + overflow:hidden so the WebGL canvas can never
+       extend past the viewport edge (was bleeding off to the right when
+       its internal aspect-ratio assumed a wider container). */
     .globe-canvas-wrap {
       position: relative !important; inset: auto !important;
-      width: 100%; height: 52vh; min-height: 320px;
+      width: 100% !important;
+      max-width: 100vw !important;
+      height: 52vh; min-height: 320px;
       flex: 1 1 auto;
+      overflow: hidden !important;
+      box-sizing: border-box !important;
     }
-    .globe-labels { position: absolute !important; inset: 0 !important; }
+    .globe-canvas-wrap canvas {
+      max-width: 100% !important;
+      width: 100% !important;
+      display: block !important;
+    }
+    .globe-labels { position: absolute !important; inset: 0 !important; max-width: 100% !important; overflow: hidden !important; }
     .globe-tooltip { position: absolute !important; }
+    .globe-shell { overflow: hidden !important; max-width: 100% !important; box-sizing: border-box !important; }
+    #view-globe { overflow-x: hidden !important; }
     .globe-overlay-bottom {
       position: static !important; inset: auto !important;
       padding: 8px 10px 12px;
@@ -6785,6 +6799,61 @@
     position: relative;
     z-index: 1;
   }
+  /* ===== Read-aloud TTS floating button =====
+     Fixed bottom-right corner. Click to start reading the current view's
+     visible text aloud via the Web Speech API. Click again to stop. */
+  .read-aloud-btn {
+    position: fixed;
+    right: 18px;
+    bottom: 96px;
+    z-index: 99998;
+    width: 54px; height: 54px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold), var(--gold-soft));
+    color: var(--bg);
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.45), 0 0 14px rgba(240,196,25,0.40);
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    -webkit-tap-highlight-color: rgba(240,196,25,0.35);
+  }
+  .read-aloud-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(0,0,0,0.5), 0 0 20px rgba(240,196,25,0.55); }
+  .read-aloud-btn:active { transform: scale(0.95); }
+  .read-aloud-btn.speaking {
+    background: linear-gradient(135deg, var(--green), #5fe89c);
+    animation: readAloudPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes readAloudPulse {
+    0%, 100% { box-shadow: 0 8px 20px rgba(0,0,0,0.45), 0 0 14px rgba(74,222,128,0.45); }
+    50%      { box-shadow: 0 8px 20px rgba(0,0,0,0.45), 0 0 28px rgba(74,222,128,0.85); }
+  }
+  body[data-reduce-motion="on"] .read-aloud-btn.speaking { animation: none; }
+  /* Highlighted sentence being read */
+  .read-aloud-active {
+    background: linear-gradient(180deg, transparent 60%, rgba(74,222,128,0.22) 60%) !important;
+    transition: background 0.3s ease;
+    border-radius: 4px;
+  }
+  /* Optional small label hovering above the button */
+  .read-aloud-btn .ra-label {
+    position: absolute; top: -28px; right: 0;
+    background: rgba(10,12,16,0.92);
+    border: 1px solid var(--gold-soft);
+    color: var(--gold);
+    font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 999px;
+    white-space: nowrap;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.18s ease;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+  .read-aloud-btn:hover .ra-label { opacity: 1; }
+  @media (max-width: 720px) {
+    .read-aloud-btn { right: 12px; bottom: 80px; width: 50px; height: 50px; font-size: 20px; }
+  }
+
   /* View preset toolbar · pill row pinned top-left of the SSD viz */
   .ss-view-tools .ss-view-btn {
     background: transparent;
@@ -6974,7 +7043,7 @@
          is populated dynamically by bootstrapLogoFromBlackPaper() once the
          Black Paper PDF cover image is extracted (via pdf.js) and cached.
          If no Black Paper PDF is present in the deployment, the splash
-         shows the wordmark only — never the deleted artwork. -->
+         shows the wordmark only ·never the deleted artwork. -->
     <img id="wireip-mark-img" alt="WireIP Network logo"
          style="width:180px;height:180px;display:none;object-fit:contain;filter:drop-shadow(0 0 18px rgba(240,196,25,0.55));"
          onerror="this.style.display='none';">
@@ -7283,7 +7352,8 @@
           <div class="rh-lede">⌬ WireIP Network™ · Settlement Rail v4.1</div>
           <h2>The Plumbing of Intellectual Property Value</h2>
           <div class="rh-tagline">
-            WireIP is the foundational protocol for intellectual property ownership, verification, and settlement — built on an asynchronous BFT DAG, anchored by Proof of Agency™, and backed by $WIP and the OTW Treasury's hard-asset reserves. Creators tokenize their IP as CBIA™ Digital Deeds, establish immutable on-chain provenance, and access stablecoin liquidity against verified real-world assets. Royalty splits, licensing, cross-border IP commerce, and institutional lending all settle through the same sovereign infrastructure — with the throughput of a card network and the custody standards of a digital commodity. In a stablecoin failure, $WIP deploys as the last-resort backstop · par redemption for every tokenized creator.
+            <p style="margin:0 0 12px;">WireIP is the foundational protocol for intellectual property ownership, verification, and settlement · built on an asynchronous BFT DAG, anchored by Proof of Agency™, and backed by $WIP and the OTW Treasury's hard-asset reserves. Creators tokenize their IP as CBIA™ Digital Deeds, establish immutable on-chain provenance, and access stablecoin liquidity against verified real-world assets.</p>
+            <p style="margin:0;">Royalty splits, licensing, cross-border IP commerce, and institutional lending all settle through the same sovereign infrastructure · with the throughput of a card network and the custody standards of a digital commodity. In a stablecoin failure, $WIP deploys as the last-resort backstop · par redemption for every tokenized creator.</p>
           </div>
           <div class="rail-tpv">
             <div class="rt-tile"><div class="rt-lab">TOTAL IP VOLUME PROCESSED</div><div class="rt-val" id="rh-tpv">$0</div><div class="rt-sub" id="rh-tpv-chg"> · since genesis</div></div>
@@ -8461,7 +8531,7 @@
       <section class="view" id="view-wallet">
         <h1>Wallet &amp; Stablecoins</h1>
         <div class="lede">
-          Connect a Web3 wallet to pay collaborators, hire service providers, and execute smart-contract escrows. WireIP settles all transactions in audited stablecoins. The protocol is designed to support multiple stablecoin rails — USDC, USDT, USDP, and additional stablecoins as they achieve institutional-grade audit status and network adoption. No single stablecoin represents more than 50% of the lending pool at any time, ensuring the network is never exposed to a single-issuer depeg event. $WIP is the underlying hard-asset commodity backing tokenized IP value. In the event of a stablecoin failure or depeg, the protocol auto-deploys $WIP to settle outstanding obligations at par — ensuring every tokenized creator is made whole regardless of stablecoin market conditions.
+          Connect a Web3 wallet to pay collaborators, hire service providers, and execute smart-contract escrows. WireIP settles all transactions in audited stablecoins. The protocol is designed to support multiple stablecoin rails ·USDC, USDT, USDP, and additional stablecoins as they achieve institutional-grade audit status and network adoption. No single stablecoin represents more than 50% of the lending pool at any time, ensuring the network is never exposed to a single-issuer depeg event. $WIP is the underlying hard-asset commodity backing tokenized IP value. In the event of a stablecoin failure or depeg, the protocol auto-deploys $WIP to settle outstanding obligations at par ·ensuring every tokenized creator is made whole regardless of stablecoin market conditions.
         </div>
 
         <div class="card" id="wallet-not-connected">
@@ -8927,9 +8997,9 @@
         </div>
         <div class="aff-stats">
           <div class="aff-stat"><div class="as-lab">Total Affidavits</div><div class="as-val" id="aff-stat-total">0</div></div>
-          <div class="aff-stat"><div class="as-lab">Latest Sworn</div><div class="as-val" id="aff-stat-latest">—</div></div>
+          <div class="aff-stat"><div class="as-lab">Latest Sworn</div><div class="as-val" id="aff-stat-latest">·</div></div>
           <div class="aff-stat"><div class="as-lab">KYC Binding</div><div class="as-val" id="aff-stat-kyc">Anonymous</div></div>
-          <div class="aff-stat"><div class="as-lab">Latest Hash</div><div class="as-val mono" id="aff-stat-hash">—</div></div>
+          <div class="aff-stat"><div class="as-lab">Latest Hash</div><div class="as-val mono" id="aff-stat-hash">·</div></div>
         </div>
         <div class="aff-toolbar">
           <button id="aff-new" class="primary" type="button">+ New Affidavit · Re-Accept Terms</button>
@@ -9139,7 +9209,7 @@
       <section class="view" id="view-securesystem">
         <h1>SecureSystem™ · The Sovereign Hardware &amp; Software Suite</h1>
         <div class="lede">
-          The complete human-verification layer of the WireIP Network™ — deployed as an integrated unit. It pairs the SecureCard™ NFC physical authorization instrument with the SecureNode™ software interface, creating an unbreakable chain of human presence, cryptographic identity, and sovereign custody from the moment of creation to the moment of on-chain settlement.
+          The complete human-verification layer of the WireIP Network™ ·deployed as an integrated unit. It pairs the SecureCard™ NFC physical authorization instrument with the SecureNode™ software interface, creating an unbreakable chain of human presence, cryptographic identity, and sovereign custody from the moment of creation to the moment of on-chain settlement.
         </div>
         <!-- ===== Big launch banner for the SecureNode software ===== -->
         <div class="card" style="border:1px solid var(--cyan);background:linear-gradient(135deg,rgba(79,214,255,0.10),rgba(240,196,25,0.04));box-shadow:0 0 24px rgba(79,214,255,0.18);">
@@ -9159,7 +9229,7 @@
 
         <div class="card" style="border-left:4px solid var(--gold);background:linear-gradient(135deg,rgba(240,196,25,0.05),rgba(79,214,255,0.02));">
           <p style="font-size:12px;color:var(--text);line-height:1.6;margin:0;">
-            <strong style="color:var(--gold);">No AI system, automated script, bot, or remote process can replicate a physical NFC card tap.</strong> That physical gate — enforced at the hardware level — is what separates the WireIP Network™ from every other IP protocol on the market.
+            <strong style="color:var(--gold);">No AI system, automated script, bot, or remote process can replicate a physical NFC card tap.</strong> That physical gate ·enforced at the hardware level ·is what separates the WireIP Network™ from every other IP protocol on the market.
           </p>
         </div>
 
@@ -9223,7 +9293,7 @@
         <div class="card" style="border-left:4px solid var(--cyan);">
           <div class="card-header"><h3>⚿ SecureCard™ NFC · The Physical Human Gate</h3></div>
           <p style="font-size:11.5px;color:var(--text);line-height:1.65;">
-            The SecureCard™ is an NFC-enabled physical verification card. Every time a creator initiates a tokenization event, governance action, or protocol interaction, SecureNode™ prompts a SecureCard™ tap. The card signs the transaction payload with its on-card Ed25519 private key via a FIPS 140-2 Level 3 Secure Element — proving that a human being is physically present and deliberately authorizing the action. Near Field Communication requires deliberate physical contact; it cannot be spoofed remotely or replicated programmatically.
+            The SecureCard™ is an NFC-enabled physical verification card. Every time a creator initiates a tokenization event, governance action, or protocol interaction, SecureNode™ prompts a SecureCard™ tap. The card signs the transaction payload with its on-card Ed25519 private key via a FIPS 140-2 Level 3 Secure Element ·proving that a human being is physically present and deliberately authorizing the action. Near Field Communication requires deliberate physical contact; it cannot be spoofed remotely or replicated programmatically.
           </p>
           <div style="margin-top:10px;padding:12px 14px;background:var(--panel-2);border:1px solid var(--border);border-radius:var(--radius);">
             <div style="font-size:10px;letter-spacing:0.10em;text-transform:uppercase;color:var(--cyan);font-weight:700;margin-bottom:6px;">Specifications</div>
@@ -9239,7 +9309,7 @@
         <div class="card" style="border-left:4px solid var(--gold);">
           <div class="card-header"><h3>⛁ SecureNode™ Software Interface · The Vault Bridge</h3></div>
           <p style="font-size:11.5px;color:var(--text);line-height:1.65;">
-            SecureNode™ is the local software service that runs on your machine and bridges the WireIP DAG to your encrypted SSD vault. It connects to any user-chosen compliant SSD meeting two protocol requirements: <strong>NFC capability</strong> and a <strong>Secure Element chip</strong>. No OTW-manufactured hardware is required. The protocol is hardware-agnostic at the vault layer by design — consistent with the WireIP UNIX philosophy of openness and portability.
+            SecureNode™ is the local software service that runs on your machine and bridges the WireIP DAG to your encrypted SSD vault. It connects to any user-chosen compliant SSD meeting two protocol requirements: <strong>NFC capability</strong> and a <strong>Secure Element chip</strong>. No OTW-manufactured hardware is required. The protocol is hardware-agnostic at the vault layer by design ·consistent with the WireIP UNIX philosophy of openness and portability.
           </p>
           <p style="font-size:11.5px;color:var(--text);line-height:1.65;">
             When SecureNode™ links to a compliant SSD, the device's embedded Secure Element stores the user's private keys, signs tokenization transactions, and manages the cryptographic identity of the asset owner within the protocol. The SSD's NFC interface acts as the physical human authorization channel, requiring deliberate physical interaction to authorize any asset registration, governance vote, or protocol transaction.
@@ -9247,24 +9317,24 @@
           <div style="margin-top:10px;padding:14px;background:var(--panel-2);border:1px solid var(--border);border-radius:var(--radius);">
             <div style="font-size:10px;letter-spacing:0.10em;text-transform:uppercase;color:var(--gold-soft);font-weight:700;margin-bottom:8px;">How SecureNode™ Interacts with the Device</div>
             <ol style="margin:0;padding-left:22px;font-size:11px;line-height:1.7;color:var(--text);">
-              <li>The creator uploads an asset file. SecureNode™ generates a SHA-256 hash of the asset locally in the browser — original bytes never leave the device unencrypted.</li>
+              <li>The creator uploads an asset file. SecureNode™ generates a SHA-256 hash of the asset locally in the browser ·original bytes never leave the device unencrypted.</li>
               <li>SecureNode™ wraps the asset payload with AES-256-GCM encryption using a key derived from the Secure Element on the compliant SSD.</li>
               <li>The encrypted payload is written to the SSD vault's encrypted NVMe storage. CBIA™ metadata hashes and Merkle proofs are stored locally and linked to the WireIP DAG via deterministic key derivation.</li>
-              <li>When the creator initiates a mint, SecureNode™ issues a challenge to the SecureCard™ via NFC. The SecureCard™ signs the CBIA payload hash with its on-card Ed25519 private key — this is <strong>Proof of Agency™</strong>.</li>
+              <li>When the creator initiates a mint, SecureNode™ issues a challenge to the SecureCard™ via NFC. The SecureCard™ signs the CBIA payload hash with its on-card Ed25519 private key ·this is <strong>Proof of Agency™</strong>.</li>
               <li>SecureNode™ assembles the <strong>Signed Intent Packet (SIP)</strong>: the asset hash, metadata, PoA™ signature, hardware-verified timestamp, and author public key. The SIP is a legally and cryptographically complete Digital Deed.</li>
               <li>When connectivity is available, SecureNode™ broadcasts the SIP to the nearest WireIP DAG node. The DAG verifies the Ed25519 signature and PoA™ timestamp, anchors the vertex with k=6 parent references, and changes the deed status from <strong>Local Pending</strong> to <strong>Global Finalized</strong>.</li>
-              <li>If connectivity is unavailable, the SIP remains stored on the SSD vault and broadcasts automatically at the next connectivity window — via satellite, mesh, or terrestrial connection. The act of creation is captured at the moment of human authorization, not at the moment of internet connection.</li>
+              <li>If connectivity is unavailable, the SIP remains stored on the SSD vault and broadcasts automatically at the next connectivity window ·via satellite, mesh, or terrestrial connection. The act of creation is captured at the moment of human authorization, not at the moment of internet connection.</li>
             </ol>
           </div>
           <div style="margin-top:10px;padding:12px 14px;background:var(--panel-2);border:1px solid var(--border);border-radius:var(--radius);">
             <div style="font-size:10px;letter-spacing:0.10em;text-transform:uppercase;color:var(--gold-soft);font-weight:700;margin-bottom:6px;">Specifications</div>
             <ul style="margin:0;padding-left:20px;font-size:11px;line-height:1.6;color:var(--text);">
               <li>AES-256-GCM disk encryption</li>
-              <li>Local API on 127.0.0.1:8443 — no data leaves the device without user initiation</li>
+              <li>Local API on 127.0.0.1:8443 ·no data leaves the device without user initiation</li>
               <li>Compatible with macOS · Windows · Linux</li>
               <li>BLAKE3 vertex anchoring to the WireIP DAG</li>
               <li>Auto-updates via signed firmware channel</li>
-              <li>No passive broadcast or emission — all sync is user-initiated</li>
+              <li>No passive broadcast or emission ·all sync is user-initiated</li>
             </ul>
           </div>
         </div>
@@ -9281,7 +9351,7 @@
             <div style="padding:14px;background:linear-gradient(135deg,rgba(240,196,25,0.06),rgba(240,196,25,0.02));border:1px solid var(--gold-soft);border-radius:var(--radius);">
               <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:6px;">Phase 2 · Forging (Coming)</div>
               <p style="font-size:11px;color:var(--text);line-height:1.65;margin:0;">
-                The proprietary SecureNode™ SSD is a purpose-built sovereign hardware vault — Ti-6Al-4V Grade 5 titanium enclosure, gold-plated, EMP-resistant, FIPS 140-2 Level 3 HSM module, AES-256 encrypted NVMe (512 GB), embedded NFC, TPM 2.0 attestation chip, standalone battery, and full air-gap capability. <strong>It is an upgrade, not a requirement.</strong> Phase 1 creators using their own compliant SSDs are full and equal network participants in every respect.
+                The proprietary SecureNode™ SSD is a purpose-built sovereign hardware vault ·Ti-6Al-4V Grade 5 titanium enclosure, gold-plated, EMP-resistant, FIPS 140-2 Level 3 HSM module, AES-256 encrypted NVMe (512 GB), embedded NFC, TPM 2.0 attestation chip, standalone battery, and full air-gap capability. <strong>It is an upgrade, not a requirement.</strong> Phase 1 creators using their own compliant SSDs are full and equal network participants in every respect.
               </p>
               <p style="font-size:11px;color:var(--text);line-height:1.65;margin-top:8px;">
                 The SecureCard™ physical NFC verification instrument is also deployed in Phase 2 alongside the proprietary hardware.
@@ -9407,7 +9477,7 @@
             <span class="lbl"><span class="name">Tax ID / EIN / VAT (private, encrypted)</span></span>
             <input type="text" id="set-profile-taxId" placeholder="Used for royalty reporting · never indexed" autocomplete="off">
           </label>
-          <!-- ===== Business / industry filing codes — auto-fill trademark + patent applications -->
+          <!-- ===== Business / industry filing codes ·auto-fill trademark + patent applications -->
           <div style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);">
             <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--gold-soft);margin-bottom:8px;">
               Business Filing Codes · auto-fill on every IP application
@@ -10263,11 +10333,11 @@
           </label>
         </div>
 
-        <!-- LOCK & SAVE — final confirmation banner -->
+        <!-- LOCK & SAVE ·final confirmation banner -->
         <div class="card" id="set-lock-card" style="border-left:3px solid var(--gold);">
           <div class="card-header"><span class="step-num">⚿</span><h3>Lock &amp; Save Preferences</h3></div>
           <p class="help" style="margin-top:0;">
-            Every change above auto-saves to this browser the moment you make it. Use <strong>Lock &amp; Save</strong> below to formally confirm the current configuration — a timestamp is recorded, the banner flips to <strong>Locked · Confirmed</strong>, and a verify chime fires. Unlocking re-enables idle editing without losing values.
+            Every change above auto-saves to this browser the moment you make it. Use <strong>Lock &amp; Save</strong> below to formally confirm the current configuration ·a timestamp is recorded, the banner flips to <strong>Locked · Confirmed</strong>, and a verify chime fires. Unlocking re-enables idle editing without losing values.
           </p>
           <div id="set-lock-status" style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;padding:10px 14px;background:var(--panel-2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;color:var(--muted);">
             Status: Unlocked  ·  Preferences saving live to this browser
@@ -10342,7 +10412,7 @@
     <span id="status-msg">Ready</span>
     <span style="flex:1"></span>
     <span id="last-saved">Not saved</span>
-    <span style="color:var(--muted)">© 2026 Outside The Wire Productions · v4.1 · <span id="build-id" style="font-family:'IBM Plex Mono',ui-monospace,monospace;color:var(--gold-soft);">build —</span></span>
+    <span style="color:var(--muted)">© 2026 Outside The Wire Productions · v4.1 · <span id="build-id" style="font-family:'IBM Plex Mono',ui-monospace,monospace;color:var(--gold-soft);">build ·</span></span>
   </footer>
 </div>
 
@@ -11497,7 +11567,7 @@ const state = {
         telegram: '', farcaster: '',
       },
     },
-    // Settings lock state — when locked, the Lock & Save banner shows
+    // Settings lock state ·when locked, the Lock & Save banner shows
     // "Locked / Confirmed" and edits in Settings refresh the timestamp.
     settingsLocked: false,
     settingsLockedAt: null,
@@ -11514,7 +11584,7 @@ const state = {
     sounds: 'on',                      // on | off
     volume: 0.7,                       // 0..1
     // Privacy & security
-    // Default is MAXIMUM PRIVACY at user request — every new asset starts
+    // Default is MAXIMUM PRIVACY at user request ·every new asset starts
     // with every field private + the most restrictive sharing posture.
     defaultPrivacyMode: 'maximum',     // public | selective | maximum
     defaultMetadataPrivacy: 'maximum', // public | selective | maximum
@@ -11976,7 +12046,7 @@ function openTOSModal(context) {
         try { saveSettings && saveSettings(); } catch (e) {}
         // Generate + persist the formal affidavit (sworn document). Async
         // because the hash uses crypto.subtle. We don't await for the UI to
-        // close — the affidavit lands in state.settings.affidavits[] when
+        // close ·the affidavit lands in state.settings.affidavits[] when
         // ready.
         try {
           const rec = await persistAffidavit({
@@ -12659,7 +12729,7 @@ function openSelfAttestModal(reason) {
       '  </header>' +
       '  <div class="body">' +
       '    <p class="help" style="margin-top:0;">' +
-      '      No Google account needed. Enter your name + email — WireIP will mark your identity as ' +
+      '      No Google account needed. Enter your name + email ·WireIP will mark your identity as ' +
       '      <strong>self-attested</strong> (not third-party verified). You can upgrade to Google sign-in any time.' +
       '    </p>' +
       '    <label class="field"><span class="lbl"><span class="name req">Full Name</span></span>' +
@@ -13190,7 +13260,35 @@ function showView(id) {
   if (id === 'view-dag')           safe('view-dag',           () => { renderDag(); fitView(); updateDagHUD(); });
   if (id === 'view-collaborators') safe('view-collaborators', () => renderCollaborators());
   if (id === 'view-networks')      safe('view-networks',      () => renderNetworks());
-  if (id === 'view-globe')         safe('view-globe',         () => initGlobe());
+  if (id === 'view-globe')         safe('view-globe',         () => {
+    initGlobe();
+    // Force the globe renderer to re-measure after the view becomes
+    // visible · ResizeObserver sometimes fires before the parent has
+    // finalized its width, leaving the canvas wider than the viewport.
+    setTimeout(() => {
+      try {
+        const wrap = document.getElementById('globe-canvas-wrap');
+        if (wrap && globe && globe.renderer && globe.camera) {
+          const ww = wrap.clientWidth, hh = wrap.clientHeight;
+          if (ww > 0 && hh > 0) {
+            globe.camera.aspect = ww / hh;
+            globe.camera.updateProjectionMatrix();
+            globe.renderer.setSize(ww, hh, true);
+          }
+        }
+      } catch (e) {}
+    }, 50);
+    setTimeout(() => {
+      try {
+        const wrap = document.getElementById('globe-canvas-wrap');
+        if (wrap && globe && globe.renderer && globe.camera) {
+          const ww = wrap.clientWidth, hh = wrap.clientHeight;
+          globe.camera.aspect = ww / hh; globe.camera.updateProjectionMatrix();
+          globe.renderer.setSize(ww, hh, true);
+        }
+      } catch (e) {}
+    }, 400);
+  });
   if (id === 'view-wallet')        safe('view-wallet',        () => {
     renderWalletView();
     if (state.walletConnected && state.walletAddr) {
@@ -13344,7 +13442,7 @@ window.addEventListener('storage', (e) => {
     for (const fn of _marketplaceListeners) { try { fn(evt); } catch (er) {} }
   } catch (er) {}
 });
-// Optional WebSocket relay — set localStorage.wireip_relay_url to a wss://…
+// Optional WebSocket relay ·set localStorage.wireip_relay_url to a wss://…
 // endpoint to receive marketplace events from other users / devices.
 (function initRelayWs() {
   try {
@@ -13411,7 +13509,7 @@ function applyAllSettings() {
     b.dataset.toastPos      = s.toastPosition || 'bottom-right';
     b.dataset.hideWallet    = (s.hideWalletInTopbar === true || s.hideWalletInTopbar === 'true') ? 'on' : 'off';
   }
-  // Custom hex accent — when accent === 'custom', drive --gold + --gold-soft
+  // Custom hex accent ·when accent === 'custom', drive --gold + --gold-soft
   // directly from the user-picked hex. Derives the soft variant by darkening.
   if (s.accent === 'custom' && typeof s.accentCustomHex === 'string' && /^#[0-9A-Fa-f]{6}$/.test(s.accentCustomHex)) {
     const hex = s.accentCustomHex;
@@ -13643,7 +13741,7 @@ function renderSettings() {
   bind('set-theme',                    'theme');
   bind('set-density',                  'density');
   bind('set-accent',                   'accent');
-  // Custom hex accent — show/hide the inputs, sync color picker + text field,
+  // Custom hex accent ·show/hide the inputs, sync color picker + text field,
   // commit to state.settings.accentCustomHex with validation.
   const accentSel  = document.getElementById('set-accent');
   const accentWrap = document.getElementById('set-accent-custom-wrap');
@@ -14182,7 +14280,7 @@ function updateTrashBadge() {
   } catch (e) {}
 }
 // ============================================================
-// IP REGISTRATION STATUS — unified audit view across every filing
+// IP REGISTRATION STATUS ·unified audit view across every filing
 // ============================================================
 let _regStatusFilter = 'all';
 function renderRegStatus() {
@@ -14921,7 +15019,7 @@ function renderClauseLib() {
   }
   // ===== Browse mode · grouped + collapsible by category =====
   // Pre-group clauses (filtered by the active chip). Each category becomes
-  // a <details> with a count + chevron — saves vertical space while showing
+  // a <details> with a count + chevron ·saves vertical space while showing
   // the full taxonomy at a glance.
   const byCategory = {};
   const all = CLAUSE_LIBRARY.filter(c => activeClauseCat === 'All' || c.cat === activeClauseCat);
@@ -15958,12 +16056,12 @@ function renderAffidavitsView() {
   document.getElementById('aff-stat-total').textContent = list.length;
   document.getElementById('aff-stat-latest').textContent = list[0]
     ? new Date(list[0].acceptedAt).toLocaleString()
-    : '—';
+    : '·';
   document.getElementById('aff-stat-kyc').textContent =
     s.kycVerified ? (s.kycName || s.kycEmail || 'Verified') : 'Anonymous';
   document.getElementById('aff-stat-hash').textContent = list[0]
-    ? (list[0].hash || '—').slice(0, 32) + (list[0].hash && list[0].hash.length > 32 ? '…' : '')
-    : '—';
+    ? (list[0].hash || '·').slice(0, 32) + (list[0].hash && list[0].hash.length > 32 ? '…' : '')
+    : '·';
   // Nav badge
   const nb = document.getElementById('nav-affidavit-count');
   if (nb) nb.textContent = list.length ? String(list.length) : '';
@@ -17614,7 +17712,7 @@ function refreshAssetPlaybackPreview(file) {
       try {
         const pdfjsLib = window['pdfjs-dist/build/pdf'] || window.pdfjsLib;
         if (!pdfjsLib || !pdfjsLib.getDocument) {
-          // No pdf.js available — fall back to the embedded iframe view.
+          // No pdf.js available ·fall back to the embedded iframe view.
           const stage = card.querySelector('#lux-pdf-stage');
           if (stage) {
             stage.innerHTML = '<iframe src="' + url + '#toolbar=0&navpanes=0" style="width:100%;height:100%;border:0;background:#fff;"></iframe>';
@@ -17653,7 +17751,7 @@ function refreshAssetPlaybackPreview(file) {
     })();
     return;
   }
-  // ---- TEXT preview (.txt / .md / .rtf) — show first ~1200 chars in a card ----
+  // ---- TEXT preview (.txt / .md / .rtf) ·show first ~1200 chars in a card ----
   if (mt.startsWith('text/') || /^(txt|md|markdown|rtf|csv|tsv|html|xml|json|yml|yaml)$/.test(ext)) {
     const card = document.createElement('div');
     card.className = 'lux-media';
@@ -20282,7 +20380,7 @@ function buildVisualizerSVG(viz, creatorName, options = {}) {
     const logoSizePct = (typeof viz.logoScale === 'number') ? Math.max(1, Math.min(100, viz.logoScale)) : 60;
     img.style.maxWidth = logoSizePct + '%';
     img.style.maxHeight = logoSizePct + '%';
-    // Logo opacity — default 100%, slider 0-100.
+    // Logo opacity ·default 100%, slider 0-100.
     const logoAlpha = (typeof viz.logoOpacity === 'number') ? Math.max(0, Math.min(100, viz.logoOpacity)) : 100;
     img.style.opacity = (logoAlpha / 100).toFixed(2);
     img.src = viz.logoDataURL;
@@ -20427,7 +20525,7 @@ function buildVisualizerSVG(viz, creatorName, options = {}) {
 //      scrolls past the visualizer card's natural top.
 //   3. The clone updates content whenever the source preview changes.
 //   4. As soon as the user scrolls back above the visualizer, the clone
-//      hides — the user sees the in-flow preview again.
+//      hides ·the user sees the in-flow preview again.
 // This guarantees the preview is ALWAYS visible while scrolling settings,
 // without removing the original from the grid (so no layout shift).
 (function () {
@@ -21139,12 +21237,12 @@ document.addEventListener('input', scheduleStepProgression, true);
 document.addEventListener('click', scheduleStepProgression, true);
 
 // ============================================================
-// AUTOSAVE — current asset is continuously checkpointed into state.drafts
+// AUTOSAVE ·current asset is continuously checkpointed into state.drafts
 // ============================================================
 // Behavior: every time the user changes a field / picks a type / toggles
 // privacy / runs the visualizer randomizer, debounce 800 ms and then
 // upsert state.current into state.drafts under a stable id. This means
-// REFRESHING THE PAGE NEVER LOSES WORK — the draft is always present in
+// REFRESHING THE PAGE NEVER LOSES WORK ·the draft is always present in
 // My Vault → Drafts on the next load. Removed only when (a) user
 // explicitly deletes the draft, OR (b) the asset is successfully minted.
 let _autosaveTimer = 0;
@@ -21170,14 +21268,14 @@ function scheduleAutosaveDraft() {
       const idx = state.drafts.findIndex(d => d && d.id === id);
       if (idx >= 0) state.drafts[idx] = snap; else state.drafts.push(snap);
       try { save(); } catch (e) { console.warn('Autosave write failed:', e); }
-      // Light-touch — don't re-render the vault on every keystroke; the
+      // Light-touch ·don't re-render the vault on every keystroke; the
       // user only sees the autosaved draft when they navigate there.
     } catch (e) { /* never throw out of autosave */ }
   }, 800);
 }
 document.addEventListener('input',  scheduleAutosaveDraft, true);
 document.addEventListener('change', scheduleAutosaveDraft, true);
-// Also flush autosave on visibility hide / beforeunload — captures the
+// Also flush autosave on visibility hide / beforeunload ·captures the
 // last keystroke before a refresh or tab close.
 window.addEventListener('beforeunload', () => {
   try {
@@ -21715,7 +21813,7 @@ async function preprocessForHandwritingOCR(file) {
     i.onerror = reject;
     i.src = URL.createObjectURL(file);
   });
-  // Decide upscale factor — Tesseract needs strokes that are at least ~30 px
+  // Decide upscale factor ·Tesseract needs strokes that are at least ~30 px
   // tall to read confidently. Target ≈ 2000 px on the long edge for
   // 8.5x11 documents shot from a phone camera.
   const long = Math.max(img.width, img.height);
@@ -23189,7 +23287,7 @@ if (_vizLogoScale) {
   });
 }
 
-// ===== Logo Opacity slider — alpha for the branded logo overlay =====
+// ===== Logo Opacity slider ·alpha for the branded logo overlay =====
 const _vizLogoOpacity = document.getElementById('viz-logo-opacity');
 const _vizLogoOpacityVal = document.getElementById('viz-logo-opacity-val');
 if (_vizLogoOpacity) {
@@ -23463,7 +23561,7 @@ if (vizPatternOpacity) {
   });
 }
 
-// ===== Effect intensity slider — multiplies the active CSS filter strength.
+// ===== Effect intensity slider ·multiplies the active CSS filter strength.
 // 0% disables the FX, 100% is the standard preset look, 200% pushes it hard.
 const vizFxIntensity = $('#viz-fx-intensity');
 const vizFxIntensityVal = $('#viz-fx-intensity-val');
@@ -23479,7 +23577,7 @@ if (vizFxIntensity) {
   });
 }
 
-// ===== Animation intensity slider — multiplies the active animation's
+// ===== Animation intensity slider ·multiplies the active animation's
 // speed + amplitude. 0% freezes; 100% standard; 200% double-speed / 2x amp.
 const vizAnimIntensity = $('#viz-anim-intensity');
 const vizAnimIntensityVal = $('#viz-anim-intensity-val');
@@ -23489,7 +23587,7 @@ if (vizAnimIntensity) {
     state.current.visualizer.animIntensity = Number(vizAnimIntensity.value);
     if (vizAnimIntensityVal) vizAnimIntensityVal.textContent = vizAnimIntensity.value + '%';
     // Drive both speed (animation-duration scale) and amplitude (transform
-    // scale) via CSS variables — the .viz-anim-* classes pick these up.
+    // scale) via CSS variables ·the .viz-anim-* classes pick these up.
     const i = Math.max(0.001, Number(vizAnimIntensity.value) / 100);
     document.documentElement.style.setProperty('--viz-anim-speed',     (1 / i).toFixed(3));
     document.documentElement.style.setProperty('--viz-anim-amplitude', i.toFixed(3));
@@ -23533,7 +23631,7 @@ if (vizHexInput) vizHexInput.addEventListener('keydown', (e) => {
 });
 if (vizHexInput) vizHexInput.addEventListener('blur', applyHexFromInput);
 
-// ===== Background Color CHIPS — white / black / custom (parallel to Font Color) =====
+// ===== Background Color CHIPS ·white / black / custom (parallel to Font Color) =====
 document.querySelectorAll('.viz-bg-chip').forEach(chip => {
   chip.addEventListener('click', () => {
     if (!state.current.visualizer) state.current.visualizer = defaultViz();
@@ -23553,7 +23651,7 @@ document.querySelectorAll('.viz-bg-chip').forEach(chip => {
   });
 });
 
-// ===== Background Color EYE DROPPER — sample any pixel on screen =====
+// ===== Background Color EYE DROPPER ·sample any pixel on screen =====
 // Uses the native EyeDropper API (Chromium-based browsers, Edge, Brave,
 // recent Chrome 95+). On unsupported browsers (Safari/Firefox) the button
 // triggers the native <input type="color"> picker as a fallback.
@@ -23573,7 +23671,7 @@ if (_vizBgEyedrop) {
       }
     }
     if (!pickedHex) {
-      // Fallback — a hidden <input type="color"> opens the OS color picker.
+      // Fallback ·a hidden <input type="color"> opens the OS color picker.
       let hidden = document.getElementById('viz-bg-eyedropper-fallback');
       if (!hidden) {
         hidden = document.createElement('input');
@@ -25397,7 +25495,7 @@ $('#btn-save-draft').addEventListener('click', () => {
   draft.createdAt = draft.createdAt || new Date().toISOString();
   draft.updatedAt = new Date().toISOString();
   // If this asset was originally resumed from a previous draft, UPDATE
-  // that draft in-place instead of pushing a new one — otherwise every
+  // that draft in-place instead of pushing a new one ·otherwise every
   // re-save creates a duplicate.
   const fromId = state.current && state.current._resumedFromDraftId;
   if (fromId) {
@@ -25986,10 +26084,10 @@ $('#nfc-simulate').addEventListener('click', async () => {
   if (btn) { btn.disabled = true; btn.textContent = '⌬ DEPLOYING…'; }
   stat.innerHTML = '⌬ VERIFYING PROOF · ANCHORING TO DAG…';
   try {
-    // Step 1 — confirm PoA. completeNFC marks state.current.poaSigned + pill
+    // Step 1 ·confirm PoA. completeNFC marks state.current.poaSigned + pill
     // green + auto-closes the modal + shows the floating submit bar.
     completeNFC(true, ed25519Like((state.current.cbiaHash || 'unsigned') + '-' + Date.now()));
-    // Step 2 — kick off the actual mint. mintCurrentAsset() does the full
+    // Step 2 ·kick off the actual mint. mintCurrentAsset() does the full
     // pipeline (hash → encrypt → vault upload → DAG vertex) and on success
     // routes to the vault view.
     await new Promise(r => setTimeout(r, 1100));   // let the modal animations settle
@@ -26001,7 +26099,7 @@ $('#nfc-simulate').addEventListener('click', async () => {
       const mint = document.getElementById('btn-mint');
       if (mint && !mint.disabled) mint.click();
     }
-    // Step 3 — navigate to vault. mintCurrentAsset usually opens the deed
+    // Step 3 ·navigate to vault. mintCurrentAsset usually opens the deed
     // certificate modal first; the "View in Vault" button there is the
     // canonical path. We belt-and-suspender by waiting briefly then
     // explicitly switching the view.
@@ -26111,7 +26209,7 @@ function _onFloatSubmitTap(e) {
   if (c.originality && c.originality.blocked) return toast('Originality check is blocking submission  · review Step 3', 'err', 5000);
   // ===== AI DISCLOSURE GATE =====
   // Fully-AI-generated works can never be tokenized as private IP. The
-  // user can still upload them, but only as CC0 public references — never
+  // user can still upload them, but only as CC0 public references ·never
   // marked private. Block the mint entirely if the disclosure flag is set
   // to fully-AI-generated unless the privacy mode is "public".
   const aiDisc = (c.fields && c.fields.ai_disclosure && c.fields.ai_disclosure.value) || '';
@@ -26319,7 +26417,7 @@ $('#btn-mint').addEventListener('click', async () => {
     asset.status = 'minted';
     state.assets.unshift(asset);
     lastMintedAsset = asset;
-    // Real-time marketplace broadcast — every tab / device on the relay
+    // Real-time marketplace broadcast ·every tab / device on the relay
     // sees the new asset land instantly.
     try {
       broadcastMarketplaceEvent({
@@ -26332,7 +26430,7 @@ $('#btn-mint').addEventListener('click', async () => {
         cbia_hash: asset.cbiaHash,
       });
     } catch (e) {}
-    // Prune the originating draft (if any) — successful mint means the
+    // Prune the originating draft (if any) ·successful mint means the
     // draft has graduated into a real asset, no longer needs to live in
     // the Drafts list.
     try {
@@ -27220,7 +27318,7 @@ function renderVault() {
     }
   } catch (e) {}
   if (Array.isArray(state.drafts) && state.drafts.length > 0) {
-    // Prominent banner so the user can't miss saved drafts — gold left bar,
+    // Prominent banner so the user can't miss saved drafts ·gold left bar,
     // gold-tinted background gradient, larger heading.
     const draftsCard = el('div', { class: 'card', style: 'border:1px solid var(--gold);border-left:5px solid var(--gold);background:linear-gradient(180deg,rgba(240,196,25,0.06),rgba(240,196,25,0.02));box-shadow:0 0 16px rgba(240,196,25,0.18);margin-bottom:18px;' });
     const head = el('div', { class: 'card-header' });
@@ -27276,14 +27374,14 @@ function renderVault() {
       ].filter(Boolean).join(' · ');
       info.appendChild(el('div', { style: 'font-size:10px;color:var(--muted);margin-top:3px;letter-spacing:0.06em;' }, meta));
       row.appendChild(info);
-      // Resume — load the draft back into state.current AND repopulate every
+      // Resume ·load the draft back into state.current AND repopulate every
       // form input so editing continues where the user left off. Just
       // restoring state.current isn't enough; the form fields are DOM nodes
       // that only render when the asset-type tile is selected.
       const resume = el('button', { class: 'primary', type: 'button' }, 'Resume');
       resume.addEventListener('click', () => {
         try {
-          // CRITICAL — do NOT splice the draft out of state.drafts on resume.
+          // CRITICAL ·do NOT splice the draft out of state.drafts on resume.
           // The previous behavior pulled the draft out the instant the user
           // clicked Resume; if they then refreshed the page (or closed the
           // tab) before completing the mint, the draft was gone forever.
@@ -27549,7 +27647,7 @@ function showAssetDetail(a) {
     banner.style.marginBottom = '14px';
     body.appendChild(banner);
   }
-  // ===== POV ATTACH PANEL — add new proof-of-value docs to a minted asset.
+  // ===== POV ATTACH PANEL ·add new proof-of-value docs to a minted asset.
   // When attached, computeAssetValue() re-runs and the vault summary tiles +
   // search results + nav badges all reflect the new value in real time.
   const povCard = el('div', { style: 'margin-bottom:14px;padding:12px;border:1px solid var(--gold-soft);border-radius:var(--radius);background:var(--panel-2);' });
@@ -28211,7 +28309,7 @@ function computeAssetValue(a) {
       weighted += Number(v.value_usd || 0) * 0.5;
     }
   }
-  // ===== Proof-of-Value contribution — the verified PoV totals from Step 4
+  // ===== Proof-of-Value contribution ·the verified PoV totals from Step 4
   // documents flow into the asset's running valuation. Updating PoV in the
   // asset detail panel triggers a live re-render of the vault summary tiles
   // and every search result + nav badge that displays the asset's USD value.
@@ -31142,7 +31240,7 @@ function jaccardSimilarity(a, b) {
 // strand to create a chasing color wave, the rungs pulse, and a soft glow
 // drifts behind the helix.
 //
-// The visualization is deterministic — characters from the input text seed
+// The visualization is deterministic ·characters from the input text seed
 // the rung positions + base-letter labels (A/T/C/G) so identical content
 // produces identical helices, making side-by-side similarity visible.
 function buildCodeDNAStrand(text) {
@@ -31188,7 +31286,7 @@ function buildCodeDNAStrand(text) {
     rungSvg += '<circle cx="' + x.toFixed(2) + '" cy="' + y1.toFixed(2) + '" r="2.2" fill="' + color + '"/>';
     rungSvg += '<circle cx="' + x.toFixed(2) + '" cy="' + y2.toFixed(2) + '" r="2.2" fill="' + color + '"/>';
   }
-  // Build SVG. Two gradients (one per strand) — animated via CSS keyframes.
+  // Build SVG. Two gradients (one per strand) ·animated via CSS keyframes.
   const svg =
     '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
       '<defs>' +
@@ -32172,7 +32270,7 @@ function openSecureNodeInstallInfo() {
       '      <div style="background:var(--panel-2);border:1px solid var(--border);border-radius:6px;padding:14px;margin-bottom:10px;">' +
       '        <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:8px;">Option A · Notarized Installer (recommended)</div>' +
       '        <ol style="margin:0;padding-left:22px;font-size:11.5px;line-height:1.75;color:var(--text);">' +
-      '          <li>Download <code style="color:var(--cyan);">SecureNode-1.0.0-universal.pkg</code> (94 MB) — signed by <em>Outside The Wire Productions, Inc.</em> (Developer ID: <code style="font-size:10px;">W4QK7E2P3R</code>).</li>' +
+      '          <li>Download <code style="color:var(--cyan);">SecureNode-1.0.0-universal.pkg</code> (94 MB) ·signed by <em>Outside The Wire Productions, Inc.</em> (Developer ID: <code style="font-size:10px;">W4QK7E2P3R</code>).</li>' +
       '          <li>Double-click the .pkg in Finder. macOS verifies the signature against Apple\'s notarization service.</li>' +
       '          <li>Walk through the installer (License → Destination → Install). Authenticate with Touch ID or admin password.</li>' +
       '          <li>SecureNode™ installs to <code>/Applications/SecureNode.app</code> · the local API service (<code>/Library/LaunchDaemons/com.wireip.securenode.plist</code>) starts on boot at <code>https://127.0.0.1:8443</code>.</li>' +
@@ -32200,7 +32298,7 @@ function openSecureNodeInstallInfo() {
       '      <div style="background:var(--panel-2);border:1px solid var(--border);border-radius:6px;padding:14px;margin-bottom:10px;">' +
       '        <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:8px;">Option A · MSI Installer (recommended)</div>' +
       '        <ol style="margin:0;padding-left:22px;font-size:11.5px;line-height:1.75;color:var(--text);">' +
-      '          <li>Download <code style="color:var(--cyan);">SecureNode-1.0.0-x64.msi</code> (108 MB) — Authenticode-signed by <em>Outside The Wire Productions, Inc.</em> (EV cert thumbprint <code style="font-size:10px;">7F:2E:9C:…</code>).</li>' +
+      '          <li>Download <code style="color:var(--cyan);">SecureNode-1.0.0-x64.msi</code> (108 MB) ·Authenticode-signed by <em>Outside The Wire Productions, Inc.</em> (EV cert thumbprint <code style="font-size:10px;">7F:2E:9C:…</code>).</li>' +
       '          <li>Right-click the .msi → <strong>Install</strong>. Windows SmartScreen verifies the EV signature; no warning should appear.</li>' +
       '          <li>Walk through the wizard (License → Install Folder → Service Account). Default install path: <code>C:\\Program Files\\WireIP\\SecureNode\\</code>.</li>' +
       '          <li>The installer registers <code>SecureNodeService</code> in <strong>Services.msc</strong>, set to auto-start, listening on <code>https://127.0.0.1:8443</code>.</li>' +
@@ -33683,8 +33781,8 @@ function latLngToVec3(lat, lng, radius) {
 // SECURE SYSTEM · 3D HARDWARE + DAG VISUALIZATIONS
 // ============================================================
 // Two Three.js scenes embedded in the SecureSystem view:
-//   #ss-hwviz   — SSD + SecureCard NFC handshake animation
-//   #ss-dagviz  — Linear blockchain ↔ WireIP DAG live interaction
+//   #ss-hwviz   ·SSD + SecureCard NFC handshake animation
+//   #ss-dagviz  ·Linear blockchain ↔ WireIP DAG live interaction
 // Both are lazy-initialized on first view-securesystem render. Their
 // animation loops only run while the view is active (to save CPU).
 const _ssViz = { hw: null, dag: null };
@@ -36080,7 +36178,7 @@ async function _disabledBootstrapLogoFromBlackPaper() {
 };
 
 (async function initBrandLogo() {
-  // ---- HARD RESET — purge ANY old cached logo so the previous spray-paint
+  // ---- HARD RESET ·purge ANY old cached logo so the previous spray-paint
   // SVG / wireip-logo.png can never come back. Only a fresh extract from the
   // Black Paper cover is permitted to populate the splash. ----
   try {
@@ -36811,13 +36909,125 @@ function init() {
   // the very top so the hero is what the user sees on first load  · not
   // whatever scroll position the browser restored from a previous session.
   _safe('default-landing', () => {
-    document.querySelectorAll('section.view').forEach(v => v.classList.toggle('active', v.id === 'view-tokenize'));
+    document.querySelectorAll('section.view').forEach(v => v.classList.toggle('active', v.id === 'view-home'));
     const ca = document.querySelector('.content-area');
     if (ca) ca.scrollTop = 0;
     try { window.scrollTo(0, 0); } catch (e) {}
   });
 }
 init();
+
+// ============================================================
+// READ-ALOUD · Page-level text-to-speech via Web Speech API
+// ============================================================
+// Floating button (bottom-right) that reads the currently visible view's
+// text content aloud. Click once to start · click again to stop. As each
+// sentence speaks, the corresponding paragraph/heading is briefly
+// highlighted so users can follow along visually. Honors voice + rate
+// preferences (could be exposed in Settings later).
+(function initReadAloud() {
+  if (!('speechSynthesis' in window)) return; // browser doesn't support TTS
+  // Build the floating button
+  const btn = document.createElement('button');
+  btn.className = 'read-aloud-btn';
+  btn.id = 'read-aloud-btn';
+  btn.type = 'button';
+  btn.setAttribute('aria-label', 'Read page aloud');
+  btn.innerHTML = '🔊<span class="ra-label">Read aloud</span>';
+  document.body.appendChild(btn);
+  let speaking = false;
+  let utterances = [];
+  let highlightedEls = [];
+  function clearHighlights() {
+    highlightedEls.forEach(el => el && el.classList && el.classList.remove('read-aloud-active'));
+    highlightedEls = [];
+  }
+  function stopReading() {
+    try { window.speechSynthesis.cancel(); } catch (e) {}
+    utterances = [];
+    speaking = false;
+    btn.classList.remove('speaking');
+    btn.innerHTML = '🔊<span class="ra-label">Read aloud</span>';
+    clearHighlights();
+  }
+  // Walks the active view's DOM and collects readable text chunks paired
+  // with their source element (so we can highlight as we read).
+  function collectReadableChunks() {
+    const active = document.querySelector('.view.active');
+    if (!active) return [];
+    const chunks = [];
+    // Selectors that produce natural reading sentences. Order = reading order.
+    const sels = 'h1, h2, h3, h4, p, .lede, .help, .rh-tagline > p, .rh-tagline, blockquote, li';
+    active.querySelectorAll(sels).forEach(el => {
+      // Skip elements inside hidden sections or modals
+      if (el.closest('.hidden') || el.offsetParent === null) return;
+      const text = (el.innerText || '').replace(/\s+/g, ' ').trim();
+      if (text.length < 4) return;
+      // Skip if a parent was already added (avoid double-reading nested h1 inside a div etc.)
+      if (chunks.length && chunks[chunks.length - 1].el.contains(el)) return;
+      chunks.push({ el, text });
+    });
+    return chunks;
+  }
+  function startReading() {
+    stopReading();
+    const chunks = collectReadableChunks();
+    if (!chunks.length) {
+      try { toast && toast('No readable text on this view', 'warn', 2500); } catch (e) {}
+      return;
+    }
+    speaking = true;
+    btn.classList.add('speaking');
+    btn.innerHTML = '⏹<span class="ra-label">Stop reading</span>';
+    // Pick a voice · prefer English, prefer one labeled "Samantha", "Daniel",
+    // "Google US English", or any English voice. Falls back to default.
+    const voices = window.speechSynthesis.getVoices();
+    let voice = voices.find(v => /Samantha|Daniel|Google US English|Microsoft Aria|Microsoft Jenny/i.test(v.name));
+    if (!voice) voice = voices.find(v => /^en[-_]/i.test(v.lang));
+    chunks.forEach((c, idx) => {
+      const u = new SpeechSynthesisUtterance(c.text);
+      u.rate = 1.02;
+      u.pitch = 1.0;
+      u.volume = 1.0;
+      if (voice) u.voice = voice;
+      u.onstart = () => {
+        clearHighlights();
+        c.el.classList.add('read-aloud-active');
+        highlightedEls.push(c.el);
+        // Scroll into view if it's not visible
+        try {
+          const r = c.el.getBoundingClientRect();
+          if (r.top < 60 || r.bottom > window.innerHeight - 60) {
+            c.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        } catch (e) {}
+      };
+      u.onend = () => {
+        c.el.classList.remove('read-aloud-active');
+        if (idx === chunks.length - 1) stopReading();
+      };
+      u.onerror = () => { c.el.classList.remove('read-aloud-active'); };
+      utterances.push(u);
+      window.speechSynthesis.speak(u);
+    });
+  }
+  btn.addEventListener('click', () => {
+    if (speaking) stopReading();
+    else startReading();
+  });
+  // Stop reading when the user navigates away
+  window.addEventListener('hashchange', stopReading);
+  document.addEventListener('click', (e) => {
+    if (!speaking) return;
+    const t = e.target && e.target.closest && e.target.closest('.nav-item, .filter-chip, [data-view]');
+    if (t) stopReading();
+  });
+  // Some browsers need a getVoices() touch to populate the list
+  try { window.speechSynthesis.getVoices(); } catch (e) {}
+  if (window.speechSynthesis && typeof window.speechSynthesis.onvoiceschanged !== 'undefined') {
+    window.speechSynthesis.onvoiceschanged = () => { /* voices ready · no-op */ };
+  }
+})();
 </script>
 </body>
 </html>
