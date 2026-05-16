@@ -21,7 +21,7 @@
 <!-- WIREIP_BUILD_ID is updated every time we ship a change · users can
      compare the footer chip to the latest build to verify their device
      has the fresh code. -->
-<script>window.WIREIP_BUILD_ID = '2026-05-16-20:30';</script>
+<script>window.WIREIP_BUILD_ID = '2026-05-16-23:30';</script>
 <!-- ===== Default landing guard · runs BEFORE init =====
      Belt-and-suspenders pinning view-home as the active section the
      moment the DOM is ready, before any other script can flip it. Also
@@ -2460,7 +2460,7 @@ document.addEventListener('DOMContentLoaded', function() {
   .lux-media-meta {
     display: flex; align-items: baseline; justify-content: space-between;
     gap: 10px; padding: 10px 14px 8px;
-    border-top: 1px solid rgba(240,196,25,0.18);
+    /* horizontal divider removed at user request */
   }
   .lux-media-name {
     font-size: 11px; color: var(--text); font-weight: 600;
@@ -3336,6 +3336,50 @@ document.addEventListener('DOMContentLoaded', function() {
 
   /* Globe HTML labels (countries / hubs) */
   .globe-labels { position: absolute; inset: 0; pointer-events: none; z-index: 4; overflow: hidden; }
+  /* Street-level zoom hint pill (shown when far out) */
+  .globe-zoom-hint {
+    position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+    background: rgba(8, 10, 14, 0.78);
+    border: 1px solid rgba(240, 196, 25, 0.45);
+    color: var(--gold-soft);
+    padding: 7px 14px; border-radius: 999px;
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700;
+    pointer-events: none; z-index: 6;
+    box-shadow: 0 0 18px rgba(240,196,25,0.18);
+    opacity: 0.9;
+    transition: opacity 0.4s ease;
+  }
+  .globe-zoom-hint.hidden { opacity: 0; }
+  /* City badge that appears only at extreme zoom on a city */
+  .globe-city-badge {
+    position: absolute; left: 50%; top: 14px; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(8, 10, 14, 0.86);
+    border: 1px solid rgba(79, 214, 255, 0.55);
+    color: #e8f4ff;
+    padding: 8px 16px; border-radius: 999px;
+    font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 800;
+    pointer-events: none; z-index: 6;
+    box-shadow: 0 0 22px rgba(79,214,255,0.22);
+    opacity: 0;
+    transition: opacity 0.35s ease;
+  }
+  .globe-city-badge.visible { opacity: 1; }
+  .globe-city-badge .gcb-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 10px #4ade80;
+    animation: gcbPulse 1.6s ease-in-out infinite;
+  }
+  .globe-city-badge .gcb-meta {
+    font-size: 9.5px; letter-spacing: 0.22em; color: #4ade80;
+    border-left: 1px solid rgba(255,255,255,0.18);
+    padding-left: 10px;
+  }
+  @keyframes gcbPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50%      { transform: scale(1.4); opacity: 0.65; }
+  }
   .g-label {
     position: absolute; transform: translate(-50%, -50%);
     color: var(--gold-soft); font-size: 9.5px; letter-spacing: 0.18em;
@@ -4984,12 +5028,20 @@ document.addEventListener('DOMContentLoaded', function() {
          the second column underneath it on mobile. */
       align-self: start;
     }
-    /* The asset playback panel inside the sticky column shrinks on phones
-       so the preview + player together don't take more than ~50vh. */
-    #viz-asset-playback { max-height: 22vh; overflow: hidden; }
+    /* The asset playback panel must show ALL transport controls without
+       requiring the user to scroll inside it. Removed the max-height
+       clamp and overflow:hidden · player now sizes to its content. */
+    #viz-asset-playback { max-height: none; overflow: visible; }
     #viz-asset-playback-body audio,
     #viz-asset-playback-body video,
-    #viz-asset-playback-body img { max-height: 14vh !important; max-width: 100% !important; }
+    #viz-asset-playback-body img { max-height: 18vh !important; max-width: 100% !important; }
+    /* Compact the audio player on mobile so seek bar + transport row +
+       BPM row all fit · keeps Play/Back/Forward visible above the fold */
+    .lux-audio { padding: 4px 0 !important; }
+    .lux-audio .lux-media-meta { padding: 6px 12px 4px !important; }
+    .lux-progress { margin: 4px 12px !important; height: 30px !important; }
+    .lux-transport { padding: 4px 12px 8px !important; gap: 8px !important; }
+    .lux-bpm-row { padding: 4px 10px 4px !important; }
     /* Visualizer card itself must not clip vertically on mobile  · anything
        at viz-layout-grid level relied on overflow:hidden, but #visualizer-card
        has overflow:hidden too. Allow vertical sticky bleed there as well. */
@@ -6816,59 +6868,278 @@ document.addEventListener('DOMContentLoaded', function() {
     position: relative;
     z-index: 1;
   }
-  /* ===== Read-aloud TTS floating button =====
-     Fixed bottom-right corner. Click to start reading the current view's
-     visible text aloud via the Web Speech API. Click again to stop. */
-  .read-aloud-btn {
+  /* ============================================================
+     SENTINEL · Voice Assistant Orb (futuristic AI button)
+     ============================================================
+     Fixed bottom-right floating orb. SVG-based for crisp rendering.
+     States:
+       idle      · slow breathing aura · ready to invoke
+       listening · cyan iris + concentric ripples while mic is open
+       thinking  · brief gold spin while speech recognition processes
+       speaking  · green inner waves animate while reading text
+       paused    · hold orb (when user manually stops)
+     The orb has a distinct PERSONALITY · the user can name it (default
+     "SENTINEL"), and it pulses to its own heartbeat to feel alive. */
+  .ra-orb {
     position: fixed;
-    right: 18px;
+    right: 22px;
     bottom: 96px;
     z-index: 99998;
-    width: 54px; height: 54px;
+    width: 74px; height: 74px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--gold), var(--gold-soft));
-    color: var(--bg);
-    border: none;
-    font-size: 22px;
+    background: transparent;
+    border: none; padding: 0;
     cursor: pointer;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.45), 0 0 14px rgba(240,196,25,0.40);
-    display: flex; align-items: center; justify-content: center;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-    -webkit-tap-highlight-color: rgba(240,196,25,0.35);
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+    filter: drop-shadow(0 8px 24px rgba(0,0,0,0.55));
   }
-  .read-aloud-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(0,0,0,0.5), 0 0 20px rgba(240,196,25,0.55); }
-  .read-aloud-btn:active { transform: scale(0.95); }
-  .read-aloud-btn.speaking {
-    background: linear-gradient(135deg, var(--green), #5fe89c);
-    animation: readAloudPulse 1.6s ease-in-out infinite;
+  .ra-orb:hover { transform: translateY(-3px) scale(1.06); }
+  .ra-orb:active { transform: scale(0.92); }
+  /* Glass shell · outer ring */
+  .ra-orb-shell {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 30% 28%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 38%),
+      radial-gradient(circle at 50% 50%, rgba(79,214,255,0.20) 0%, rgba(8,10,14,0.95) 70%);
+    border: 1px solid rgba(79,214,255,0.50);
+    box-shadow:
+      0 0 0 2px rgba(79,214,255,0.10),
+      0 0 22px rgba(79,214,255,0.35),
+      inset 0 0 18px rgba(79,214,255,0.15);
+    overflow: hidden;
   }
-  @keyframes readAloudPulse {
-    0%, 100% { box-shadow: 0 8px 20px rgba(0,0,0,0.45), 0 0 14px rgba(74,222,128,0.45); }
-    50%      { box-shadow: 0 8px 20px rgba(0,0,0,0.45), 0 0 28px rgba(74,222,128,0.85); }
+  .ra-orb-svg {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
   }
-  body[data-reduce-motion="on"] .read-aloud-btn.speaking { animation: none; }
-  /* Highlighted sentence being read */
-  .read-aloud-active {
-    background: linear-gradient(180deg, transparent 60%, rgba(74,222,128,0.22) 60%) !important;
-    transition: background 0.3s ease;
-    border-radius: 4px;
+  /* Concentric breathing rings · sit OUTSIDE the orb */
+  .ra-orb-pulse {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(79,214,255,0.55);
+    pointer-events: none;
+    opacity: 0;
+    animation: raOrbPulse 3.4s ease-out infinite;
   }
-  /* Optional small label hovering above the button */
-  .read-aloud-btn .ra-label {
-    position: absolute; top: -28px; right: 0;
-    background: rgba(10,12,16,0.92);
-    border: 1px solid var(--gold-soft);
-    color: var(--gold);
-    font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
-    padding: 3px 8px; border-radius: 999px;
+  .ra-orb-pulse.p2 { animation-delay: 1.1s; }
+  .ra-orb-pulse.p3 { animation-delay: 2.2s; }
+  @keyframes raOrbPulse {
+    0%   { transform: scale(1);   opacity: 0.7; }
+    100% { transform: scale(2.0); opacity: 0;   }
+  }
+  body[data-reduce-motion="on"] .ra-orb-pulse { animation: none; }
+  /* Tooltip label above the orb */
+  .ra-orb-label {
+    position: absolute;
+    bottom: 100%; right: 50%; transform: translate(50%, -8px);
+    background: rgba(8,10,14,0.94);
+    border: 1px solid var(--cyan);
+    color: var(--cyan);
+    font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 999px;
     white-space: nowrap;
     opacity: 0; pointer-events: none;
-    transition: opacity 0.18s ease;
+    transition: opacity 0.20s ease, transform 0.20s ease;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+  .ra-orb:hover .ra-orb-label,
+  .ra-orb.listening .ra-orb-label,
+  .ra-orb.speaking .ra-orb-label {
+    opacity: 1;
+    transform: translate(50%, -14px);
+  }
+  /* ===== State · LISTENING (mic open) ===== */
+  .ra-orb.listening .ra-orb-shell {
+    border-color: rgba(79,214,255,0.95);
+    box-shadow:
+      0 0 0 3px rgba(79,214,255,0.30),
+      0 0 36px rgba(79,214,255,0.75),
+      inset 0 0 26px rgba(79,214,255,0.32);
+    background:
+      radial-gradient(circle at 30% 28%, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0) 38%),
+      radial-gradient(circle at 50% 50%, rgba(79,214,255,0.45) 0%, rgba(8,10,14,0.95) 70%);
+  }
+  .ra-orb.listening .ra-orb-pulse {
+    animation-duration: 1.6s;
+    border-color: rgba(79,214,255,0.80);
+  }
+  /* ===== State · SPEAKING (TTS playing) ===== */
+  .ra-orb.speaking .ra-orb-shell {
+    border-color: rgba(74,222,128,0.95);
+    box-shadow:
+      0 0 0 3px rgba(74,222,128,0.30),
+      0 0 36px rgba(74,222,128,0.75),
+      inset 0 0 26px rgba(74,222,128,0.32);
+    background:
+      radial-gradient(circle at 30% 28%, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0) 38%),
+      radial-gradient(circle at 50% 50%, rgba(74,222,128,0.45) 0%, rgba(8,10,14,0.95) 70%);
+  }
+  .ra-orb.speaking .ra-orb-pulse {
+    animation-duration: 1.4s;
+    border-color: rgba(74,222,128,0.80);
+  }
+  /* ===== State · THINKING (processing) ===== */
+  .ra-orb.thinking .ra-orb-shell {
+    border-color: rgba(240,196,25,0.95);
+    box-shadow:
+      0 0 0 3px rgba(240,196,25,0.30),
+      0 0 36px rgba(240,196,25,0.75),
+      inset 0 0 26px rgba(240,196,25,0.32);
+  }
+  /* The voice-wave bars inside the orb · 5 vertical bars (CSS-only) */
+  .ra-orb-wave {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    display: flex; gap: 3px; align-items: center;
+    height: 28px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+  .ra-orb.speaking .ra-orb-wave,
+  .ra-orb.listening .ra-orb-wave { opacity: 1; }
+  .ra-orb-wave .bar {
+    width: 4px; height: 100%;
+    background: linear-gradient(180deg, #fff, var(--cyan));
+    border-radius: 4px;
+    transform-origin: center;
+    animation: raOrbWave 0.9s ease-in-out infinite;
+    box-shadow: 0 0 6px var(--cyan);
+  }
+  .ra-orb-wave .bar:nth-child(1) { animation-delay: 0s;    }
+  .ra-orb-wave .bar:nth-child(2) { animation-delay: 0.15s; }
+  .ra-orb-wave .bar:nth-child(3) { animation-delay: 0.30s; }
+  .ra-orb-wave .bar:nth-child(4) { animation-delay: 0.45s; }
+  .ra-orb-wave .bar:nth-child(5) { animation-delay: 0.60s; }
+  .ra-orb.speaking .ra-orb-wave .bar {
+    background: linear-gradient(180deg, #fff, var(--green));
+    box-shadow: 0 0 6px var(--green);
+  }
+  @keyframes raOrbWave {
+    0%, 100% { transform: scaleY(0.30); }
+    50%      { transform: scaleY(1.0); }
+  }
+  body[data-reduce-motion="on"] .ra-orb-wave .bar { animation: none; transform: scaleY(0.5); }
+  /* The idle inner sigil · a stylized AI mark visible when not active */
+  .ra-orb-sigil {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 38px; height: 38px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.20s ease;
+  }
+  .ra-orb.speaking .ra-orb-sigil,
+  .ra-orb.listening .ra-orb-sigil { opacity: 0; }
+  /* Highlighted text being read */
+  .read-aloud-active {
+    background: linear-gradient(180deg, transparent 55%, rgba(74,222,128,0.30) 55%) !important;
+    transition: background 0.3s ease;
+    border-radius: 4px;
+    box-shadow: 0 0 12px rgba(74,222,128,0.20);
+  }
+  @media (max-width: 720px) {
+    .ra-orb { right: 14px; bottom: 84px; width: 64px; height: 64px; }
+    .ra-orb-sigil { width: 32px; height: 32px; }
+    .ra-orb-wave { height: 22px; }
+    .ra-orb-wave .bar { width: 3px; }
+  }
+  /* ===== Voice consent overlay (first-launch onboarding) =====
+     Slides in from the bottom-right · asks the user if they'd like
+     SENTINEL to read pages aloud. Has Yes / No buttons + a small voice
+     hint chip showing "Or say YES / NO" so the user knows verbal works. */
+  .ra-consent {
+    position: fixed;
+    right: 22px;
+    bottom: 188px;
+    z-index: 99999;
+    max-width: 340px;
+    background: linear-gradient(135deg, rgba(8,10,14,0.97), rgba(8,12,18,0.97));
+    border: 1px solid var(--cyan);
+    border-radius: 14px;
+    padding: 18px 18px 14px;
+    color: var(--text);
+    box-shadow:
+      0 14px 40px rgba(0,0,0,0.65),
+      0 0 28px rgba(79,214,255,0.30);
+    transform: translateY(20px) scale(0.92);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+    backdrop-filter: blur(8px);
+  }
+  .ra-consent.visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+  }
+  .ra-consent::before {
+    content: '';
+    position: absolute;
+    right: 28px; bottom: -8px;
+    width: 16px; height: 16px;
+    background: rgba(8,10,14,0.97);
+    border-right: 1px solid var(--cyan);
+    border-bottom: 1px solid var(--cyan);
+    transform: rotate(45deg);
+  }
+  .ra-consent-head {
+    font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--cyan); font-weight: 700;
+    margin-bottom: 6px;
     font-family: 'IBM Plex Mono', ui-monospace, monospace;
   }
-  .read-aloud-btn:hover .ra-label { opacity: 1; }
-  @media (max-width: 720px) {
-    .read-aloud-btn { right: 12px; bottom: 80px; width: 50px; height: 50px; font-size: 20px; }
+  .ra-consent-msg {
+    font-size: 12.5px; line-height: 1.55; color: var(--text);
+    margin-bottom: 12px;
+  }
+  .ra-consent-msg strong { color: var(--cyan); }
+  .ra-consent-actions {
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .ra-consent-actions button {
+    flex: 1; min-height: 40px; padding: 8px 14px;
+    border-radius: 8px; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.10em; text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+  }
+  .ra-consent-yes {
+    background: linear-gradient(135deg, var(--cyan), var(--green));
+    color: var(--bg); border: none;
+  }
+  .ra-consent-yes:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79,214,255,0.45); }
+  .ra-consent-no {
+    background: transparent; color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .ra-consent-no:hover { color: var(--text); border-color: var(--gold-soft); }
+  .ra-consent-hint {
+    font-size: 9.5px; letter-spacing: 0.10em;
+    color: var(--gold-soft); margin-top: 10px;
+    text-align: center;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+  .ra-consent-hint .mic-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 6px var(--cyan);
+    margin-right: 5px;
+    vertical-align: middle;
+    animation: micDotPulse 1.2s ease-in-out infinite;
+  }
+  @keyframes micDotPulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.4; }
   }
 
   /* View preset toolbar · pill row pinned top-left of the SSD viz */
@@ -8494,6 +8765,10 @@ document.addEventListener('DOMContentLoaded', function() {
           <div class="globe-canvas-wrap" id="globe-canvas-wrap"></div>
           <div class="globe-labels" id="globe-labels"></div>
           <div class="globe-tooltip" id="globe-tooltip"></div>
+          <!-- Street-level zoom hint  ·  shown when far out, faded out when zoomed in -->
+          <div id="globe-zoom-hint" class="globe-zoom-hint">Zoom in to enter street view  ·  see real studios, buildings & links</div>
+          <!-- City badge  ·  shown only when extreme zoom is engaged on a city -->
+          <div id="globe-city-badge" class="globe-city-badge"><span class="gcb-dot"></span><span id="globe-city-badge-name">·</span><span class="gcb-meta">LIVE</span></div>
           <div class="globe-overlay-top">
             <div class="globe-buttons" id="globe-mode-buttons">
               <button data-mode="all" class="active">All Validators</button>
@@ -13186,6 +13461,359 @@ function load() {
 }
 
 // ============================================================
+// IN-PROGRESS TOKENIZATION DRAFT  ·  resume-after-refresh
+// ============================================================
+// state.current holds the asset the user is currently working on (file,
+// hashes, fields, ownership proofs, PoA). It is NOT included in the main
+// save() blob because some of its values (the File object, the object-URL
+// preview) can't be serialized. This dedicated store snapshots a JSON-safe
+// view of state.current  · including the uploaded file as a base64 data
+// URL  · and restores it on the next page load so the user picks up exactly
+// where they left off. A "Resume Tokenization" banner surfaces it.
+const CURRENT_DRAFT_KEY = 'wireip-current-draft-v2';
+// Files larger than this are stored as metadata + hashes only · users have
+// to re-upload the file itself (a banner tells them so). 8 MB chosen to
+// stay well under the typical ~5–10 MB localStorage cap when combined with
+// the rest of the state blob.
+const CURRENT_DRAFT_MAX_FILE_BYTES = 8 * 1024 * 1024;
+
+let _saveCurrentDraftTimer = null;
+function saveCurrentDraftSoon() {
+  // Debounce so rapid typing doesn't thrash localStorage on every keystroke.
+  if (_saveCurrentDraftTimer) clearTimeout(_saveCurrentDraftTimer);
+  _saveCurrentDraftTimer = setTimeout(saveCurrentDraft, 400);
+}
+
+function saveCurrentDraft() {
+  try {
+    const c = state.current;
+    if (!c || (!c.type && !c.file && !c.hash && (!c.fields || Object.keys(c.fields).length === 0))) {
+      // Nothing meaningful in progress · clear any stale draft so the banner
+      // doesn't reappear after the user clears the form.
+      try { localStorage.removeItem(CURRENT_DRAFT_KEY); } catch (e) {}
+      return;
+    }
+    // Build a JSON-safe snapshot. The File object + object-URL preview
+    // can't survive a refresh; we capture the file bytes as a data URL
+    // separately when the user uploads.
+    const snap = {
+      v: 2,
+      savedAt: new Date().toISOString(),
+      type: c.type || null,
+      hash: c.hash || null,
+      cbiaHash: c.cbiaHash || null,
+      fileMeta: c.fileMeta || null,
+      // Persisted file bytes (added by handleFile when the file is small enough).
+      // Null for large files · user has to re-upload after refresh.
+      fileDataURL: c.persistedFileDataURL || null,
+      fileTooLargeToPersist: !!c.fileTooLargeToPersist,
+      fields: c.fields || {},
+      privacyMode: c.privacyMode || null,
+      selectedOffices: Array.isArray(c.selectedOffices) ? c.selectedOffices : [],
+      originality: c.originality || null,
+      ownershipProofs: Array.isArray(c.ownershipProofs) ? c.ownershipProofs : [],
+      extractedMeta: c.extractedMeta || null,
+      poaSigned: !!c.poaSigned,
+      poaSignature: c.poaSignature || null,
+      poaCardSerial: c.poaCardSerial || null,
+      visualizer: c.visualizer || null,
+      _resumedFromDraftId: c._resumedFromDraftId || null,
+    };
+    localStorage.setItem(CURRENT_DRAFT_KEY, JSON.stringify(snap));
+  } catch (e) {
+    // Quota exceeded · drop the file bytes and try again with metadata only.
+    try {
+      const c = state.current;
+      const trimmed = {
+        v: 2, savedAt: new Date().toISOString(),
+        type: c.type || null, hash: c.hash || null, cbiaHash: c.cbiaHash || null,
+        fileMeta: c.fileMeta || null,
+        fileDataURL: null, fileTooLargeToPersist: true,
+        fields: c.fields || {}, privacyMode: c.privacyMode || null,
+        selectedOffices: c.selectedOffices || [], originality: c.originality || null,
+        ownershipProofs: c.ownershipProofs || [],
+        extractedMeta: c.extractedMeta || null,
+        poaSigned: !!c.poaSigned, poaSignature: c.poaSignature || null,
+        poaCardSerial: c.poaCardSerial || null,
+        visualizer: c.visualizer || null,
+        _resumedFromDraftId: c._resumedFromDraftId || null,
+      };
+      localStorage.setItem(CURRENT_DRAFT_KEY, JSON.stringify(trimmed));
+    } catch (e2) {
+      console.warn('saveCurrentDraft: quota exceeded even without file bytes', e2);
+    }
+  }
+}
+
+function loadCurrentDraftSnapshot() {
+  try {
+    const raw = localStorage.getItem(CURRENT_DRAFT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) { return null; }
+}
+
+function clearCurrentDraft() {
+  try { localStorage.removeItem(CURRENT_DRAFT_KEY); } catch (e) {}
+  state.current = {
+    type: null, file: null, fileMeta: null, dataURL: null,
+    hash: null, cbiaHash: null, poaSigned: false, poaSignature: null,
+    fields: {},
+    privacyMode: 'selective',
+    selectedOffices: [],
+    originality: null,
+    ownershipProofs: [],
+  };
+}
+
+// Convert a stored data URL back into a File so handleFile() / preview /
+// mint flows all keep working without changes.
+function dataURLToFile(dataURL, fileMeta) {
+  try {
+    if (!dataURL || !fileMeta) return null;
+    const arr = dataURL.split(',');
+    const mime = (arr[0].match(/:(.*?);/) || [])[1] || (fileMeta.type || 'application/octet-stream');
+    const bstr = atob(arr[1] || '');
+    const u8 = new Uint8Array(bstr.length);
+    for (let i = 0; i < bstr.length; i++) u8[i] = bstr.charCodeAt(i);
+    return new File([u8], fileMeta.name || 'restored-file', {
+      type: mime,
+      lastModified: fileMeta.lastModified || Date.now(),
+    });
+  } catch (e) { return null; }
+}
+
+// Apply a saved snapshot back onto state.current AND repaint the visible
+// tokenization view (preview, hash pills, dynamic fields). Returns true if
+// any meaningful content was restored.
+function restoreCurrentDraft() {
+  const snap = loadCurrentDraftSnapshot();
+  if (!snap) return false;
+  // Hydrate state.current
+  state.current = state.current || {};
+  state.current.type            = snap.type || null;
+  state.current.hash            = snap.hash || null;
+  state.current.cbiaHash        = snap.cbiaHash || null;
+  state.current.fileMeta        = snap.fileMeta || null;
+  state.current.fields          = snap.fields || {};
+  state.current.privacyMode     = snap.privacyMode || 'selective';
+  state.current.selectedOffices = snap.selectedOffices || [];
+  state.current.originality     = snap.originality || null;
+  state.current.ownershipProofs = snap.ownershipProofs || [];
+  state.current.extractedMeta   = snap.extractedMeta || null;
+  state.current.poaSigned       = !!snap.poaSigned;
+  state.current.poaSignature    = snap.poaSignature || null;
+  state.current.poaCardSerial   = snap.poaCardSerial || null;
+  state.current.visualizer      = snap.visualizer || null;
+  state.current.persistedFileDataURL = snap.fileDataURL || null;
+  state.current.fileTooLargeToPersist = !!snap.fileTooLargeToPersist;
+  state.current._resumedFromDraftId = snap._resumedFromDraftId || null;
+
+  // Rebuild state.activePoa from the persisted PoA so enforceSecureCardMatch()
+  // accepts the resumed session. Set a fresh 5-minute expiry from now so the
+  // restored PoA is still considered valid for a short window · the user can
+  // then continue to mint without re-tapping if they refresh quickly.
+  if (snap.poaSigned && snap.poaSignature && snap.poaCardSerial && !state.activePoa) {
+    state.activePoa = {
+      signature: snap.poaSignature,
+      cardSerial: snap.poaCardSerial,
+      challenge: '',
+      status: 'restored',
+      capturedAt: snap.savedAt || new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    };
+  }
+
+  // Try to rebuild the File from the persisted bytes
+  if (snap.fileDataURL && snap.fileMeta) {
+    const f = dataURLToFile(snap.fileDataURL, snap.fileMeta);
+    if (f) {
+      state.current.file = f;
+    }
+  }
+
+  // Repaint UI · wrapped because some functions only exist after a later init step
+  setTimeout(() => {
+    try {
+      // Open the tokenization flow if a type was picked
+      if (state.current.type) {
+        if (typeof openTokenizationFlow === 'function') openTokenizationFlow();
+        // Re-select the asset-type card (this also wires up FIELD_DEFS for that type)
+        const card = document.querySelector('.asset-type[data-type="' + state.current.type + '"]');
+        if (card) {
+          // Re-run the user-click handler so all side effects fire
+          try { card.classList.add('selected'); } catch (e) {}
+        }
+      }
+      // Re-render fields with their saved values
+      if (typeof renderDynamicFields === 'function' && state.current.type) {
+        renderDynamicFields();
+      }
+      // If we have a restored File, re-run the preview/hash pipeline · but skip
+      // the type auto-detect (the user already picked one) and skip re-hashing.
+      if (state.current.file) {
+        try {
+          // Build the preview without going through full handleFile() since
+          // re-hashing isn't necessary (we already have hash + cbiaHash).
+          if (typeof refreshAssetPlaybackPreview === 'function') {
+            refreshAssetPlaybackPreview(state.current.file);
+          }
+          const wrap = document.getElementById('file-preview-wrap');
+          if (wrap) {
+            wrap.style.display = 'block';
+          }
+          // Drive a lightweight re-render of the file preview block:
+          if (typeof handleFile === 'function') {
+            // We pass a flag so handleFile knows the hash is already known.
+            state.current._skipReHash = true;
+            handleFile(state.current.file).catch(()=>{});
+          }
+        } catch (e) {}
+      } else if (state.current.fileTooLargeToPersist && state.current.fileMeta) {
+        // File was too big to persist · prompt the user to re-upload
+        if (typeof toast === 'function') {
+          toast('Your previous file "' + (state.current.fileMeta.name || 'asset') + '" was too large to save automatically · please re-upload to continue', 'warn', 8000);
+        }
+      }
+      // Re-apply PoA UI badge if it was signed
+      if (state.current.poaSigned) {
+        try {
+          const status = document.getElementById('poa-status');
+          if (status) {
+            status.className = 'pill ok';
+            const lbl = status.querySelector('span:last-child');
+            if (lbl) lbl.textContent = 'PoA verified · NFC tap (restored)';
+          }
+        } catch (e) {}
+      }
+      // Light up the mint-ready check
+      if (typeof updateMintReady === 'function') updateMintReady();
+      // Show the resume banner so the user knows what happened
+      showResumeBanner(snap);
+    } catch (e) {
+      console.warn('restoreCurrentDraft: UI rebuild failed', e);
+    }
+  }, 250);
+  return true;
+}
+
+function showResumeBanner(snap) {
+  try {
+    let banner = document.getElementById('resume-draft-banner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'resume-draft-banner';
+      banner.style.cssText = 'position:fixed;left:50%;top:74px;transform:translateX(-50%);z-index:9000;background:linear-gradient(135deg,rgba(240,196,25,0.16),rgba(8,10,14,0.95));border:1px solid var(--gold);color:var(--text);padding:12px 18px;border-radius:12px;font-size:12px;line-height:1.45;box-shadow:0 8px 28px rgba(0,0,0,0.55), 0 0 22px rgba(240,196,25,0.25);display:flex;align-items:center;gap:14px;max-width:92vw;';
+      document.body.appendChild(banner);
+    }
+    const when = snap && snap.savedAt ? new Date(snap.savedAt).toLocaleString() : '';
+    const fileName = snap && snap.fileMeta && snap.fileMeta.name ? snap.fileMeta.name : 'your asset';
+    const typeNice = snap && snap.type ? (snap.type[0].toUpperCase() + snap.type.slice(1)) : 'Tokenization';
+    banner.innerHTML =
+      '<div style="font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);">⬢ Resume Tokenization</div>' +
+      '<div style="flex:1;min-width:180px;">' + typeNice + ' draft for <strong>' + fileName + '</strong>' + (when ? ' · saved ' + when : '') + '</div>' +
+      '<button id="resume-draft-keep" style="padding:7px 14px;background:var(--gold);color:#0a0a0a;border:none;border-radius:8px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;font-size:11px;cursor:pointer;">Continue</button>' +
+      '<button id="resume-draft-clear" style="padding:7px 14px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:8px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;font-size:11px;cursor:pointer;">Discard</button>';
+    document.getElementById('resume-draft-keep').onclick = () => {
+      banner.remove();
+      try {
+        if (typeof showView === 'function') showView('view-tokenize');
+        const flow = document.getElementById('tokenization-flow');
+        if (flow && flow.scrollIntoView) flow.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (e) {}
+    };
+    document.getElementById('resume-draft-clear').onclick = () => {
+      clearCurrentDraft();
+      banner.remove();
+      // Force a full refresh of the tokenize view so the form is empty
+      try {
+        const fp = document.getElementById('file-preview-wrap');
+        if (fp) { fp.innerHTML = ''; fp.style.display = 'none'; }
+        const df = document.getElementById('dynamic-fields');
+        if (df) df.innerHTML = '';
+        const flow = document.getElementById('tokenization-flow');
+        const entry = document.getElementById('asset-entry-row');
+        if (flow)  flow.style.display = 'none';
+        if (entry) entry.style.display = '';
+        if (typeof updateMintReady === 'function') updateMintReady();
+      } catch (e) {}
+      if (typeof toast === 'function') toast('Draft discarded · starting fresh', 'info', 3000);
+    };
+    // Auto-dismiss after 25 seconds so it doesn't sit forever
+    setTimeout(() => { try { banner.remove(); } catch (e) {} }, 25000);
+  } catch (e) { console.warn('showResumeBanner failed', e); }
+}
+
+// ============================================================
+// SECURECARD MATCH GATE  ·  block mint when unique ID doesn't match
+// ============================================================
+// User-mandated rule: "DO NOT ALLOW REGISTRATION OR TOKENIZATION, IF THE
+// UNIQUE ID DOESN'T MATCH." This guard is called from btn-mint + the
+// auto-deploy NFC path. It compares the active PoA's card serial against
+// the device-bound secureCardId. If they don't match (or no card is
+// registered yet on this device), tokenization is rejected with a clear
+// banner + toast.
+function enforceSecureCardMatch() {
+  const expectedId    = state.settings && state.settings.secureCardId;
+  const expectedToken = state.settings && state.settings.secureCardToken;
+  const poa           = state.activePoa || null;
+  // No card registered on this device · nothing can mint until a SecureCard
+  // has been provisioned (Settings → SecureNode → Generate / Tap).
+  if (!expectedId || !expectedToken) {
+    if (typeof toast === 'function') {
+      toast('Registration blocked · provision your SecureCard™ in Settings → SecureNode before tokenizing', 'err', 7000);
+    }
+    return false;
+  }
+  // No active PoA on this session · user must tap the SecureCard.
+  if (!poa || !poa.cardSerial || !poa.signature) {
+    if (typeof toast === 'function') {
+      toast('Registration blocked · tap your SecureCard™ to generate a fresh Proof of Agency before submitting', 'warn', 6500);
+    }
+    return false;
+  }
+  // PoA must be unexpired.
+  if (poa.expiresAt && new Date(poa.expiresAt).getTime() < Date.now()) {
+    if (typeof toast === 'function') {
+      toast('Registration blocked · your SecureCard™ PoA has expired. Tap your card again to refresh.', 'warn', 7000);
+    }
+    return false;
+  }
+  // ===== STRICT UNIQUE-ID MATCH =====
+  const idMatch    = (poa.cardSerial === expectedId);
+  const tokenMatch = (poa.signature === expectedToken);
+  if (!idMatch || !tokenMatch) {
+    if (typeof toast === 'function') {
+      toast('REGISTRATION REJECTED · the tapped SecureCard™ ID does not match the one registered to this device. Tokenization is blocked until you tap the correct card.', 'err', 11000);
+    }
+    // Show a persistent banner so the rejection is unmissable.
+    try {
+      let bnr = document.getElementById('securecard-reject-banner');
+      if (!bnr) {
+        bnr = document.createElement('div');
+        bnr.id = 'securecard-reject-banner';
+        bnr.style.cssText = 'position:fixed;left:50%;top:74px;transform:translateX(-50%);z-index:9100;background:linear-gradient(135deg,rgba(255,80,80,0.20),rgba(8,10,14,0.95));border:1px solid #ff5050;color:#fff;padding:14px 20px;border-radius:12px;font-size:12px;line-height:1.5;box-shadow:0 8px 28px rgba(0,0,0,0.55), 0 0 22px rgba(255,80,80,0.30);display:flex;align-items:center;gap:14px;max-width:94vw;';
+        document.body.appendChild(bnr);
+      }
+      bnr.innerHTML =
+        '<div style="font-weight:900;letter-spacing:0.14em;text-transform:uppercase;color:#ff8080;">⛔ SecureCard™ Mismatch</div>' +
+        '<div style="flex:1;">Tokenization blocked · the tapped card does <strong>not match</strong> the unique ID registered to this device.<br>Tapped: <code style="font-size:11px;">' + (poa.cardSerial || '·').slice(0,28) + '…</code><br>Registered: <code style="font-size:11px;">' + (expectedId || '·').slice(0,28) + '…</code></div>' +
+        '<button onclick="this.parentElement.remove()" style="padding:7px 14px;background:#ff5050;color:#fff;border:none;border-radius:8px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;font-size:11px;cursor:pointer;">Dismiss</button>';
+      setTimeout(() => { try { bnr.remove(); } catch (e) {} }, 15000);
+    } catch (e) {}
+    // Also clear poaSigned on state.current so the mint button re-disables.
+    if (state.current) {
+      state.current.poaSigned = false;
+      state.current.poaSignature = null;
+    }
+    try { if (typeof updateMintReady === 'function') updateMintReady(); } catch (e) {}
+    try { if (typeof soundDeny === 'function') soundDeny(); } catch (e) {}
+    return false;
+  }
+  return true;
+}
+
+// ============================================================
 // NAV
 // ============================================================
 // Global uncaught-error catcher. Silent JS errors used to leave the app in a
@@ -17445,6 +18073,38 @@ async function handleFile(file) {
     console.error('handleFile outer error:', outerErr);
     if (typeof toast === 'function') toast('File processing hiccup: ' + (outerErr && outerErr.message || outerErr) + '  · try again', 'err', 5000);
   }
+  // ===== PERSIST THE UPLOAD SO PAGE-REFRESH RESUMES IT =====
+  // Small files are stored as a base64 data URL alongside the field state.
+  // Large files (>8MB) skip the bytes · only metadata + hashes survive a
+  // refresh, with a banner asking the user to re-upload.
+  try {
+    if (file && file.size <= CURRENT_DRAFT_MAX_FILE_BYTES && !state.current._skipReHash) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          state.current.persistedFileDataURL = reader.result;
+          state.current.fileTooLargeToPersist = false;
+          saveCurrentDraftSoon();
+        } catch (e) {}
+      };
+      reader.onerror = () => {
+        state.current.fileTooLargeToPersist = true;
+        saveCurrentDraftSoon();
+      };
+      reader.readAsDataURL(file);
+    } else if (file && file.size > CURRENT_DRAFT_MAX_FILE_BYTES) {
+      state.current.persistedFileDataURL = null;
+      state.current.fileTooLargeToPersist = true;
+      if (typeof toast === 'function') {
+        toast('File is large (' + (file.size / 1024 / 1024).toFixed(1) + ' MB) · metadata will be saved across refreshes, but you\'ll need to re-upload the file if you reload before submitting', 'info', 7000);
+      }
+      saveCurrentDraftSoon();
+    } else {
+      saveCurrentDraftSoon();
+    }
+    // Clear the skip flag once handleFile has finished the restored pass
+    delete state.current._skipReHash;
+  } catch (e) {}
 }
 
 // Build a luxurious, futuristic media player for the asset playback preview.
@@ -17827,6 +18487,15 @@ function resetFile() {
   resetOrigMetrics();
   fi.value = '';
   updateMintReady();
+  // Drop the persisted draft · the user explicitly cleared the form.
+  try {
+    state.current.persistedFileDataURL = null;
+    state.current.fileTooLargeToPersist = false;
+    if (typeof clearCurrentDraft === 'function') {
+      // Only wipe localStorage; the in-memory state was already reset above.
+      try { localStorage.removeItem(CURRENT_DRAFT_KEY); } catch (e) {}
+    }
+  } catch (e) {}
 }
 
 // Downscale an uploaded image for use as the visualizer overlay (and persisted thumbnail)
@@ -24515,6 +25184,8 @@ async function addOwnershipProof(file) {
   renderOwnershipProofs();
   reviewOwnershipProof(proof, file).catch(() => {});
   toast('Ownership document attached · ' + file.name, 'ok');
+  // Persist so the proof survives a page refresh.
+  if (typeof saveCurrentDraftSoon === 'function') saveCurrentDraftSoon();
   } catch (err) {
     console.error('Add ownership proof failed:', err);
     toast('Could not attach ownership proof: ' + (err && err.message || err), 'err', 6000);
@@ -25206,6 +25877,7 @@ $$('.asset-type').forEach(card => {
     card.classList.add('selected');
     state.current.type = card.dataset.type;
     renderDynamicFields();
+    if (typeof saveCurrentDraftSoon === 'function') saveCurrentDraftSoon();
     $('#type-pill').className = 'pill ok';
     $('#type-pill').querySelector('span:last-child').textContent = card.dataset.type;
     // FILE METADATA WINS over wallet name for the Creator field  · if the
@@ -25427,10 +26099,12 @@ function renderField(def) {
   input.addEventListener('input', () => {
     fieldState.value = input.value;
     updateMintReady();
+    if (typeof saveCurrentDraftSoon === 'function') saveCurrentDraftSoon();
   });
   input.addEventListener('change', () => {
     fieldState.value = input.value;
     updateMintReady();
+    if (typeof saveCurrentDraftSoon === 'function') saveCurrentDraftSoon();
   });
   lbl.appendChild(input);
   return lbl;
@@ -26349,6 +27023,13 @@ $('#btn-mint').addEventListener('click', async () => {
   if (missing.length > 0) return toast('Required fields missing: ' + missing.map(m=>m.label).join(', '), 'warn', 4000);
   if (!c.poaSigned) return toast('Tap SecureCard™ for PoA™ first', 'warn');
 
+  // ===== SECURECARD UNIQUE-ID MATCH (mandatory) =====
+  // Hard gate: tokenization is blocked if the active PoA's card serial /
+  // signature does not match the SecureCard registered to this device.
+  if (typeof enforceSecureCardMatch === 'function' && !enforceSecureCardMatch()) {
+    return;
+  }
+
   // Clear "we heard you" notification so the user knows the network is working.
   if (typeof toast === 'function') toast('⚜ Submitting to WireIP Network  · authenticating registration…', 'ok', 3500);
 
@@ -26458,6 +27139,8 @@ $('#btn-mint').addEventListener('click', async () => {
       }
     } catch (e) {}
     save();
+    // ===== Mint succeeded · clear the in-progress draft store =====
+    try { localStorage.removeItem(CURRENT_DRAFT_KEY); } catch (e) {}
     showDeedCertificate(asset);
     renderVault();
     showDeployCard(asset);
@@ -33450,7 +34133,9 @@ function initGlobe() {
   cv.addEventListener('mouseleave', () => { isDragging = false; hideTooltip(); });
   cv.addEventListener('wheel', e => {
     e.preventDefault();
-    camera.position.z = Math.max(140, Math.min(420, camera.position.z + e.deltaY * 0.25));
+    // Slower zoom step when close so users can fine-tune the city zoom level
+    const stepMul = camera.position.z < 130 ? 0.10 : 0.25;
+    camera.position.z = Math.max(86, Math.min(420, camera.position.z + e.deltaY * stepMul));
   }, { passive: false });
   cv.addEventListener('click', (e) => handleClick(e));
 
@@ -33484,7 +34169,8 @@ function initGlobe() {
       const dist = Math.sqrt(dx*dx + dy*dy);
       if (lastTouchDist > 0) {
         const delta = lastTouchDist - dist;
-        camera.position.z = Math.max(140, Math.min(420, camera.position.z + delta * 0.5));
+        const stepMul = camera.position.z < 130 ? 0.22 : 0.5;
+        camera.position.z = Math.max(86, Math.min(420, camera.position.z + delta * stepMul));
       }
       lastTouchDist = dist;
     }
@@ -33502,12 +34188,16 @@ function initGlobe() {
 
   refreshGlobeMarkers();
   buildGlobeLabels();
+  // Build the city-detail layer (real prominent studios per city · fade in at extreme zoom)
+  globe.cityDetail = buildCityDetail(earthGroup);
 
   // Animation loop
   (function animate() {
     requestAnimationFrame(animate);
     if (globe.autoRotate) earthGroup.rotation.y += 0.0008;
     const t = Date.now() * 0.003;
+    // Update extreme-zoom city detail (buildings + streets + studio labels)
+    updateCityDetail(camera);
     // Scale markers based on camera distance  · close-up = smaller dots so they don't cluster
     // Camera z range is ~140 (close) to ~420 (far). At z=420 → scale 1.0, at z=140 → scale 0.40.
     const camZ = camera.position.z;
@@ -33792,6 +34482,284 @@ function latLngToVec3(lat, lng, radius) {
     radius * Math.cos(phi),
     radius * Math.sin(phi) * Math.sin(theta)
   );
+}
+
+// ============================================================
+// VALIDATOR GLOBE  ·  EXTREME ZOOM-IN CITY DETAIL
+// ============================================================
+// When the user zooms the globe extremely close (camera.z < ~130),
+// real prominent studio buildings, streets, and connecting "data
+// flow" lines fade in around major city validator hubs. This makes
+// the globe feel like a live-view satellite map at street level.
+const PROMINENT_STUDIOS = {
+  'Atlanta':       { lat: 33.749,   lng: -84.388,    studios: ['Tyler Perry Studios', 'Stankonia Studios', 'Patchwerk Recording', 'Outside The Wire HQ', 'Wav Lord Records', 'Means Street Studios'] },
+  'Los Angeles':   { lat: 34.0522,  lng: -118.2437,  studios: ['Universal Studios', 'Capitol Records', 'Sony Pictures', 'Warner Bros', 'Paramount Pictures', 'Sunset Sound', 'Henson Recording'] },
+  'New York':      { lat: 40.7128,  lng: -74.0060,   studios: ['Electric Lady Studios', 'Sony Music HQ', 'Atlantic Records', 'Def Jam Recordings', 'Sterling Sound', 'Jungle City Studios'] },
+  'Nashville':     { lat: 36.1627,  lng: -86.7816,   studios: ['RCA Studio B', 'Blackbird Studio', 'Sound Stage Studios', 'Ocean Way Nashville', 'Sound Emporium'] },
+  'Miami':         { lat: 25.7617,  lng: -80.1918,   studios: ['Hit Factory Criteria', 'South Beach Studios', 'Circle House Studios'] },
+  'London':        { lat: 51.5074,  lng: -0.1278,    studios: ['Abbey Road Studios', 'AIR Studios', 'Metropolis Studios', 'RAK Studios', 'Strongroom Studios'] },
+  'Tokyo':         { lat: 35.6762,  lng: 139.6503,   studios: ['Sony Music Studios Tokyo', 'Avex Studio', 'Toho Studios'] },
+  'Seoul':         { lat: 37.5665,  lng: 126.978,    studios: ['SM Entertainment', 'YG Entertainment', 'HYBE Studios', 'JYP Studios'] },
+  'Memphis':       { lat: 35.1495,  lng: -90.0490,   studios: ['Sun Studio', 'Stax Records', 'Royal Studios', 'Ardent Studios'] },
+  'Detroit':       { lat: 42.3314,  lng: -83.0458,   studios: ['Hitsville USA · Motown', 'United Sound Systems'] },
+  'New Orleans':   { lat: 29.9511,  lng: -90.0715,   studios: ['Esplanade Studios', 'The Music Shed'] },
+  'Berlin':        { lat: 52.52,    lng: 13.405,     studios: ['Hansa Tonstudio', 'Funkhaus Studios'] },
+  'Paris':         { lat: 48.8566,  lng: 2.3522,     studios: ['Studio Davout', 'Studios Ferber'] },
+  'Toronto':       { lat: 43.6532,  lng: -79.3832,   studios: ['Revolution Recording', 'Noble Street Studios'] },
+  'Chicago':       { lat: 41.8781,  lng: -87.6298,   studios: ['Electrical Audio', 'Chicago Recording Company'] },
+  'San Francisco': { lat: 37.7749,  lng: -122.4194,  studios: ['Hyde Street Studios', 'Different Fur Studios'] },
+  'Houston':       { lat: 29.7604,  lng: -95.3698,   studios: ['SugarHill Recording Studios'] },
+  'Lagos':         { lat: 6.5244,   lng: 3.3792,     studios: ['Mavin Records', 'Chocolate City Studios'] },
+};
+
+function makeStudioLabelTexture(text, color, big) {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, c.width, c.height);
+  // Background pill
+  ctx.fillStyle = 'rgba(6, 8, 12, 0.86)';
+  _roundRect(ctx, 8, 28, 496, 72, 14);
+  ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.font = (big ? 'bold 42px' : 'bold 34px') + ' system-ui, -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, c.width/2, 64);
+  const tex = new THREE.CanvasTexture(c);
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function _roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y);
+  ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h-r);
+  ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  ctx.lineTo(x+r, y+h);
+  ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+  ctx.lineTo(x, y+r);
+  ctx.quadraticCurveTo(x, y, x+r, y);
+  ctx.closePath();
+}
+
+function buildCityDetail(earthGroup) {
+  const detail = new THREE.Group();
+  detail.name = 'cityDetail';
+  detail.visible = false;
+  const EARTH_R = 80;
+
+  const cityGroups = [];
+  for (const [city, data] of Object.entries(PROMINENT_STUDIOS)) {
+    const cg = new THREE.Group();
+    cg.userData = { city, lat: data.lat, lng: data.lng, materials: [] };
+
+    // Position on earth surface and orient so local +Y points outward
+    const surface = latLngToVec3(data.lat, data.lng, EARTH_R + 0.05);
+    cg.position.copy(surface);
+    const normal = surface.clone().normalize();
+    cg.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
+
+    // -------- Ground plate (district floor) --------
+    const plateMat = new THREE.MeshBasicMaterial({ color: 0x12181f, transparent: true, opacity: 0, depthWrite: false });
+    const plate = new THREE.Mesh(new THREE.CircleGeometry(7.5, 48), plateMat);
+    plate.rotation.x = -Math.PI / 2;
+    plate.position.y = 0.04;
+    cg.add(plate);
+    cg.userData.materials.push({ m: plateMat, base: 0.55 });
+
+    // -------- Street grid (gold lines) --------
+    const streetMat = new THREE.LineBasicMaterial({ color: 0xf0c419, transparent: true, opacity: 0 });
+    const streetGeo = new THREE.BufferGeometry();
+    const sv = [];
+    const span = 6.5;
+    for (let g = -span; g <= span; g += 1.5) {
+      sv.push(g, 0.07, -span,  g, 0.07,  span);   // N-S streets
+      sv.push(-span, 0.07, g,  span, 0.07, g);    // E-W streets
+    }
+    streetGeo.setAttribute('position', new THREE.Float32BufferAttribute(sv, 3));
+    const streets = new THREE.LineSegments(streetGeo, streetMat);
+    cg.add(streets);
+    cg.userData.materials.push({ m: streetMat, base: 0.65 });
+
+    // -------- Buildings (one per studio) --------
+    const studioCount = data.studios.length;
+    const ring = Math.max(2.6, Math.min(4.8, 1.6 + studioCount * 0.45));
+    for (let i = 0; i < studioCount; i++) {
+      const angle = (i / studioCount) * Math.PI * 2;
+      const bx = Math.cos(angle) * ring;
+      const bz = Math.sin(angle) * ring;
+      const seed = (i * 7919 + city.length * 131) % 100;
+      const bh = 1.4 + (seed % 24) / 10;          // 1.4 – 3.8
+      const bw = 0.9 + (seed % 8) / 20;           // 0.9 – 1.3
+      const bd = 0.9 + ((seed >> 2) % 8) / 20;
+
+      // Procedural window texture for the building face
+      const winC = document.createElement('canvas');
+      winC.width = 64; winC.height = 128;
+      const wctx = winC.getContext('2d');
+      wctx.fillStyle = '#1a2632'; wctx.fillRect(0, 0, 64, 128);
+      // Window grid
+      for (let wy = 8; wy < 128; wy += 12) {
+        for (let wx = 6; wx < 64; wx += 10) {
+          const lit = ((wx * wy + i * 37) % 5) < 3;
+          wctx.fillStyle = lit ? '#f0c419' : '#0a1014';
+          wctx.fillRect(wx, wy, 6, 7);
+        }
+      }
+      const winTex = new THREE.CanvasTexture(winC);
+      winTex.wrapS = THREE.RepeatWrapping;
+      winTex.wrapT = THREE.RepeatWrapping;
+      winTex.repeat.set(2, Math.max(1, Math.round(bh)));
+      winTex.needsUpdate = true;
+
+      const bldgMat = new THREE.MeshPhongMaterial({
+        map: winTex,
+        color: 0x404e5c,
+        emissive: 0xf0c419,
+        emissiveIntensity: 0.18,
+        shininess: 70,
+        transparent: true,
+        opacity: 0
+      });
+      const bldg = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), bldgMat);
+      bldg.position.set(bx, bh / 2 + 0.07, bz);
+      cg.add(bldg);
+      cg.userData.materials.push({ m: bldgMat, base: 1.0 });
+
+      // Glowing rooftop accent
+      const roofMat = new THREE.MeshBasicMaterial({ color: 0xf0c419, transparent: true, opacity: 0 });
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(bw * 1.05, 0.07, bd * 1.05), roofMat);
+      roof.position.set(bx, bh + 0.07, bz);
+      cg.add(roof);
+      cg.userData.materials.push({ m: roofMat, base: 0.95 });
+
+      // Studio name label sprite
+      const lblTex = makeStudioLabelTexture(data.studios[i], '#f0c419', false);
+      const lblMat = new THREE.SpriteMaterial({ map: lblTex, transparent: true, opacity: 0, depthTest: false });
+      const lbl = new THREE.Sprite(lblMat);
+      lbl.position.set(bx, bh + 1.0, bz);
+      lbl.scale.set(4.6, 1.15, 1);
+      cg.add(lbl);
+      cg.userData.materials.push({ m: lblMat, base: 1.0 });
+    }
+
+    // -------- Data-flow links between studios --------
+    const linkMat = new THREE.LineBasicMaterial({ color: 0x4fd6ff, transparent: true, opacity: 0 });
+    const linkGeo = new THREE.BufferGeometry();
+    const lv = [];
+    for (let i = 0; i < studioCount; i++) {
+      for (let j = i + 1; j < studioCount; j++) {
+        if (((i + j) % 2) !== 0) continue; // sparser
+        const a1 = (i / studioCount) * Math.PI * 2;
+        const a2 = (j / studioCount) * Math.PI * 2;
+        lv.push(Math.cos(a1) * ring, 0.55, Math.sin(a1) * ring);
+        lv.push(Math.cos(a2) * ring, 0.55, Math.sin(a2) * ring);
+      }
+    }
+    if (lv.length) {
+      linkGeo.setAttribute('position', new THREE.Float32BufferAttribute(lv, 3));
+      const links = new THREE.LineSegments(linkGeo, linkMat);
+      cg.add(links);
+      cg.userData.materials.push({ m: linkMat, base: 0.55 });
+    }
+
+    // -------- City name label (large, above everything) --------
+    const cityTex = makeStudioLabelTexture(city.toUpperCase(), '#ffffff', true);
+    const cityMat = new THREE.SpriteMaterial({ map: cityTex, transparent: true, opacity: 0, depthTest: false });
+    const cityLbl = new THREE.Sprite(cityMat);
+    cityLbl.position.set(0, 5.4, 0);
+    cityLbl.scale.set(7.2, 1.8, 1);
+    cg.add(cityLbl);
+    cg.userData.materials.push({ m: cityMat, base: 1.0 });
+
+    // -------- "LIVE" pulse ring on the ground --------
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x4fd6ff, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false });
+    const ringMesh = new THREE.Mesh(new THREE.RingGeometry(5.5, 6.2, 64), ringMat);
+    ringMesh.rotation.x = -Math.PI / 2;
+    ringMesh.position.y = 0.05;
+    cg.add(ringMesh);
+    cg.userData.materials.push({ m: ringMat, base: 0.7, pulse: true });
+
+    detail.add(cg);
+    cityGroups.push(cg);
+  }
+
+  earthGroup.add(detail);
+  return { detailGroup: detail, cityGroups };
+}
+
+function updateCityDetail(camera) {
+  if (!globe.cityDetail) return;
+  const camZ = camera.position.z;
+  // Fade range: starts showing at z=128, fully visible at z=92
+  const fadeStart = 128;
+  const fadeEnd = 92;
+  const tFade = Math.max(0, Math.min(1, (fadeStart - camZ) / (fadeStart - fadeEnd)));
+  globe.cityDetail.detailGroup.visible = tFade > 0.01;
+
+  // Hint pill · visible when far, hidden when extreme zoom engaged
+  const hintEl = document.getElementById('globe-zoom-hint');
+  if (hintEl) {
+    const showHint = camZ > 160;
+    hintEl.classList.toggle('hidden', !showHint);
+  }
+  // City badge (top of canvas) · only when in extreme zoom + has a focused city
+  const badgeEl = document.getElementById('globe-city-badge');
+  const badgeName = document.getElementById('globe-city-badge-name');
+
+  if (tFade <= 0.01) {
+    if (badgeEl) badgeEl.classList.remove('visible');
+    // Reset opacities so the next show-in starts from 0
+    for (const cg of globe.cityDetail.cityGroups) {
+      for (const rec of cg.userData.materials) rec.m.opacity = 0;
+    }
+    return;
+  }
+
+  // Find which city is most "centered" relative to the camera so only the
+  // closest cluster is rendered fully · the rest fade away to avoid clutter.
+  const camN = camera.position.clone().normalize();
+  let bestCG = null, bestDot = -2;
+  for (const cg of globe.cityDetail.cityGroups) {
+    const wp = new THREE.Vector3();
+    cg.getWorldPosition(wp);
+    const d = wp.clone().normalize().dot(camN);
+    if (d > bestDot) { bestDot = d; bestCG = cg; }
+  }
+
+  const t = Date.now() * 0.003;
+  for (const cg of globe.cityDetail.cityGroups) {
+    const target = (cg === bestCG) ? tFade : 0;
+    for (const rec of cg.userData.materials) {
+      const base = rec.base != null ? rec.base : 1;
+      // Smooth lerp toward target opacity
+      const cur = rec.m.opacity || 0;
+      let next = cur * 0.86 + (target * base) * 0.14;
+      if (rec.pulse) {
+        // Pulsing ring · modulate around current value
+        next *= (0.75 + Math.sin(t * 1.5) * 0.25);
+      }
+      rec.m.opacity = next;
+    }
+  }
+
+  // Update city badge name + visibility
+  if (badgeEl && bestCG) {
+    if (tFade > 0.25 && bestDot > 0.85) {
+      badgeEl.classList.add('visible');
+      if (badgeName && badgeName.textContent !== bestCG.userData.city.toUpperCase()) {
+        badgeName.textContent = bestCG.userData.city.toUpperCase();
+      }
+    } else {
+      badgeEl.classList.remove('visible');
+    }
+  }
 }
 
 // ============================================================
@@ -36768,6 +37736,9 @@ function init() {
             state.current.poaCardSerial = cardSer;
           }
           save && save();
+          // Persist the PoA into the resumable tokenization draft too · so a
+          // page refresh during the 5-minute PoA window keeps the user signed.
+          try { if (typeof saveCurrentDraftSoon === 'function') saveCurrentDraftSoon(); } catch (er) {}
           try { soundVerify && soundVerify(); } catch (er) {}
           // ===== ALWAYS open the NFC modal with success state =====
           // Even if the modal was closed when Safari loaded the tap URL,
@@ -36805,9 +37776,15 @@ function init() {
           } catch (er) {}
           try { updateMintReady && updateMintReady(); } catch (er) {}
           // ===== If a draft is ready to mint, auto-deploy =====
+          // BUT only if the SecureCard match gate passes. enforceSecureCardMatch()
+          // already shows a clear rejection banner + toast when the unique ID
+          // doesn't line up · we just bail out silently here.
           if (state.current && state.current.type && state.current.file && state.current.hash) {
             setTimeout(async () => {
               try {
+                if (typeof enforceSecureCardMatch === 'function' && !enforceSecureCardMatch()) {
+                  return;
+                }
                 if (typeof mintCurrentAsset === 'function') {
                   await mintCurrentAsset();
                 } else {
@@ -36868,6 +37845,10 @@ function init() {
   _safe('validators', () => { if (state.validators.length === 0) seedValidators(); ensureFlagshipValidators(); });
   _safe('save',     save);
   _safe('providers', () => { if (state.providers.length === 0) seedProviders(); });
+  // ===== Resume the in-progress tokenization draft from last session =====
+  // Restores state.current (file, fields, hashes, PoA) and shows a "Resume
+  // Tokenization" banner if a saved draft was found.
+  _safe('resume-draft', () => { if (typeof restoreCurrentDraft === 'function') restoreCurrentDraft(); });
   _safe('treasury-badge', () => {
     let totalVal = 0;
     for (const a of state.assets) totalVal += computeAssetValue(a).total;
@@ -36935,52 +37916,119 @@ function init() {
 init();
 
 // ============================================================
-// READ-ALOUD · Page-level text-to-speech via Web Speech API
+// SENTINEL · Voice Assistant (TTS + Speech Recognition)
 // ============================================================
-// Floating button (bottom-right) that reads the currently visible view's
-// text content aloud. Click once to start · click again to stop. As each
-// sentence speaks, the corresponding paragraph/heading is briefly
-// highlighted so users can follow along visually. Honors voice + rate
-// preferences (could be exposed in Settings later).
-(function initReadAloud() {
-  if (!('speechSynthesis' in window)) return; // browser doesn't support TTS
-  // Build the floating button
-  const btn = document.createElement('button');
-  btn.className = 'read-aloud-btn';
-  btn.id = 'read-aloud-btn';
-  btn.type = 'button';
-  btn.setAttribute('aria-label', 'Read page aloud');
-  btn.innerHTML = '🔊<span class="ra-label">Read aloud</span>';
-  document.body.appendChild(btn);
-  let speaking = false;
+// A persistent floating AI orb that can (1) read any view aloud and
+// (2) be invoked + commanded by voice. On first launch it gently asks
+// the user if they want audio-reading enabled, listens for "yes" or
+// "no" via Web Speech Recognition, and remembers the choice in
+// localStorage so it never asks again.
+//
+// States:
+//   idle      — orb breathes slowly, waiting
+//   listening — mic open, ripples pulse cyan
+//   thinking  — gold halo while STT processes
+//   speaking  — green waves animate while TTS reads
+(function initSentinel() {
+  if (!('speechSynthesis' in window)) return;
+
+  // ===== Persistent preferences =====
+  const PREF_KEY = 'wireip-sentinel-prefs';
+  function loadPrefs() {
+    try { return JSON.parse(localStorage.getItem(PREF_KEY) || '{}'); } catch (e) { return {}; }
+  }
+  function savePrefs(p) { try { localStorage.setItem(PREF_KEY, JSON.stringify(p)); } catch (e) {} }
+  const prefs = loadPrefs();   // { asked, autoRead, name }
+  const sentinelName = prefs.name || 'SENTINEL';
+
+  // ===== Build the orb =====
+  const orb = document.createElement('button');
+  orb.className = 'ra-orb';
+  orb.id = 'read-aloud-btn';
+  orb.type = 'button';
+  orb.setAttribute('aria-label', sentinelName + ' voice assistant');
+  orb.innerHTML =
+    '<div class="ra-orb-pulse"></div>' +
+    '<div class="ra-orb-pulse p2"></div>' +
+    '<div class="ra-orb-pulse p3"></div>' +
+    '<div class="ra-orb-shell"></div>' +
+    // Idle sigil · stylized AI mark · concentric arcs forming an iris
+    '<svg class="ra-orb-sigil" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<defs>' +
+        '<radialGradient id="ra-sigil-grad" cx="50%" cy="50%" r="50%">' +
+          '<stop offset="0%" stop-color="#80efff" stop-opacity="1"/>' +
+          '<stop offset="60%" stop-color="#4fd6ff" stop-opacity="0.6"/>' +
+          '<stop offset="100%" stop-color="#4fd6ff" stop-opacity="0"/>' +
+        '</radialGradient>' +
+      '</defs>' +
+      // outer hexagon · sentinel motif
+      '<polygon points="50,8 86,28 86,72 50,92 14,72 14,28" fill="none" stroke="url(#ra-sigil-grad)" stroke-width="2"/>' +
+      // inner hexagon (rotated)
+      '<polygon points="50,22 76,36 76,64 50,78 24,64 24,36" fill="none" stroke="#4fd6ff" stroke-width="1.5" opacity="0.7"/>' +
+      // center iris
+      '<circle cx="50" cy="50" r="9" fill="#4fd6ff" opacity="0.9"/>' +
+      '<circle cx="50" cy="50" r="4" fill="#fff"/>' +
+    '</svg>' +
+    // Voice bars · only visible during listening/speaking
+    '<div class="ra-orb-wave">' +
+      '<div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>' +
+    '</div>' +
+    '<div class="ra-orb-label">' + sentinelName + ' · ready</div>';
+  document.body.appendChild(orb);
+  const labelEl = orb.querySelector('.ra-orb-label');
+  function setLabel(text) { if (labelEl) labelEl.textContent = sentinelName + ' · ' + text; }
+  function setState(s) {
+    orb.classList.remove('listening', 'speaking', 'thinking');
+    if (s) orb.classList.add(s);
+  }
+
+  // ===== TTS helpers =====
   let utterances = [];
   let highlightedEls = [];
+  let speaking = false;
   function clearHighlights() {
     highlightedEls.forEach(el => el && el.classList && el.classList.remove('read-aloud-active'));
     highlightedEls = [];
+  }
+  function pickVoice() {
+    const voices = window.speechSynthesis.getVoices();
+    let v = voices.find(v => /Samantha|Daniel|Google US English|Microsoft Aria|Microsoft Jenny|Karen|Moira|Ava/i.test(v.name));
+    if (!v) v = voices.find(v => /^en[-_]/i.test(v.lang));
+    return v;
+  }
+  function speakLine(text, opts) {
+    opts = opts || {};
+    return new Promise((resolve) => {
+      try {
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = opts.rate || 1.0;
+        u.pitch = opts.pitch || 1.0;
+        u.volume = 1.0;
+        const v = pickVoice();
+        if (v) u.voice = v;
+        u.onend = () => resolve(true);
+        u.onerror = () => resolve(false);
+        window.speechSynthesis.speak(u);
+      } catch (e) { resolve(false); }
+    });
   }
   function stopReading() {
     try { window.speechSynthesis.cancel(); } catch (e) {}
     utterances = [];
     speaking = false;
-    btn.classList.remove('speaking');
-    btn.innerHTML = '🔊<span class="ra-label">Read aloud</span>';
+    setState(null);
+    setLabel('ready');
     clearHighlights();
   }
-  // Walks the active view's DOM and collects readable text chunks paired
-  // with their source element (so we can highlight as we read).
   function collectReadableChunks() {
     const active = document.querySelector('.view.active');
     if (!active) return [];
     const chunks = [];
-    // Selectors that produce natural reading sentences. Order = reading order.
     const sels = 'h1, h2, h3, h4, p, .lede, .help, .rh-tagline > p, .rh-tagline, blockquote, li';
     active.querySelectorAll(sels).forEach(el => {
-      // Skip elements inside hidden sections or modals
       if (el.closest('.hidden') || el.offsetParent === null) return;
       const text = (el.innerText || '').replace(/\s+/g, ' ').trim();
       if (text.length < 4) return;
-      // Skip if a parent was already added (avoid double-reading nested h1 inside a div etc.)
       if (chunks.length && chunks[chunks.length - 1].el.contains(el)) return;
       chunks.push({ el, text });
     });
@@ -36994,24 +38042,17 @@ init();
       return;
     }
     speaking = true;
-    btn.classList.add('speaking');
-    btn.innerHTML = '⏹<span class="ra-label">Stop reading</span>';
-    // Pick a voice · prefer English, prefer one labeled "Samantha", "Daniel",
-    // "Google US English", or any English voice. Falls back to default.
-    const voices = window.speechSynthesis.getVoices();
-    let voice = voices.find(v => /Samantha|Daniel|Google US English|Microsoft Aria|Microsoft Jenny/i.test(v.name));
-    if (!voice) voice = voices.find(v => /^en[-_]/i.test(v.lang));
+    setState('speaking');
+    setLabel('reading');
+    const v = pickVoice();
     chunks.forEach((c, idx) => {
       const u = new SpeechSynthesisUtterance(c.text);
-      u.rate = 1.02;
-      u.pitch = 1.0;
-      u.volume = 1.0;
-      if (voice) u.voice = voice;
+      u.rate = 1.02; u.pitch = 1.0; u.volume = 1.0;
+      if (v) u.voice = v;
       u.onstart = () => {
         clearHighlights();
         c.el.classList.add('read-aloud-active');
         highlightedEls.push(c.el);
-        // Scroll into view if it's not visible
         try {
           const r = c.el.getBoundingClientRect();
           if (r.top < 60 || r.bottom > window.innerHeight - 60) {
@@ -37028,22 +38069,231 @@ init();
       window.speechSynthesis.speak(u);
     });
   }
-  btn.addEventListener('click', () => {
-    if (speaking) stopReading();
-    else startReading();
+
+  // ===== Speech recognition (mic in) =====
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null;
+  let listening = false;
+  function startListening(onResult, opts) {
+    if (!SR) { onResult && onResult(null, 'unsupported'); return; }
+    if (listening) { try { recognition && recognition.stop(); } catch (e) {} }
+    recognition = new SR();
+    recognition.lang = (opts && opts.lang) || 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 3;
+    recognition.continuous = false;
+    listening = true;
+    setState('listening');
+    setLabel('listening');
+    recognition.onresult = (ev) => {
+      let best = '';
+      for (let i = 0; i < ev.results.length; i++) {
+        for (let j = 0; j < ev.results[i].length; j++) {
+          const t = (ev.results[i][j].transcript || '').toLowerCase().trim();
+          if (t.length > best.length) best = t;
+        }
+      }
+      listening = false;
+      setState('thinking');
+      setLabel('thinking');
+      onResult && onResult(best, null);
+    };
+    recognition.onerror = (e) => {
+      listening = false;
+      setState(null);
+      setLabel('ready');
+      onResult && onResult(null, e.error || 'error');
+    };
+    recognition.onend = () => {
+      listening = false;
+      if (!speaking) { setState(null); setLabel('ready'); }
+    };
+    try { recognition.start(); }
+    catch (e) {
+      listening = false;
+      setState(null); setLabel('ready');
+      onResult && onResult(null, 'start-failed');
+    }
+  }
+  function stopListening() {
+    try { recognition && recognition.stop(); } catch (e) {}
+    listening = false;
+    setState(null);
+    setLabel('ready');
+  }
+
+  // ===== First-launch consent dialog =====
+  // Shown ONCE per device after the boot splash finishes. Asks via TTS
+  // if the user wants audio-reading enabled and listens for yes/no via
+  // the mic. Falls back to button taps either way.
+  function showConsent() {
+    if (prefs.asked) return;          // already answered
+    const dlg = document.createElement('div');
+    dlg.className = 'ra-consent';
+    dlg.innerHTML =
+      '<div class="ra-consent-head">⌬ ' + sentinelName + ' · audio assistant</div>' +
+      '<div class="ra-consent-msg">Welcome. I can read every page of WireIP aloud and respond to your voice. <strong>Would you like to enable audio reading?</strong></div>' +
+      '<div class="ra-consent-actions">' +
+        '<button class="ra-consent-yes" type="button">✓ Yes · enable</button>' +
+        '<button class="ra-consent-no"  type="button">No thanks</button>' +
+      '</div>' +
+      (SR ? '<div class="ra-consent-hint"><span class="mic-dot"></span>Or just say <strong>YES</strong> or <strong>NO</strong></div>' : '') +
+      '';
+    document.body.appendChild(dlg);
+    requestAnimationFrame(() => dlg.classList.add('visible'));
+
+    function answered(yes) {
+      try { window.speechSynthesis.cancel(); } catch (e) {}
+      stopListening();
+      prefs.asked = true;
+      prefs.autoRead = !!yes;
+      savePrefs(prefs);
+      dlg.classList.remove('visible');
+      setTimeout(() => { try { dlg.remove(); } catch (e) {} }, 500);
+      if (yes) {
+        // Audible confirmation, then auto-read the current view.
+        setState('speaking'); setLabel('confirming');
+        speakLine('Audio reading enabled. I will read each page as you open it. Tap me any time to stop.', { rate: 1.0 }).then(() => {
+          setState(null); setLabel('ready');
+          setTimeout(startReading, 300);
+        });
+      } else {
+        setState('speaking'); setLabel('acknowledging');
+        speakLine('Got it. I will stay quiet. Tap me whenever you want me to read.', { rate: 1.0 }).then(() => {
+          setState(null); setLabel('ready');
+        });
+      }
+    }
+    dlg.querySelector('.ra-consent-yes').addEventListener('click', () => answered(true));
+    dlg.querySelector('.ra-consent-no').addEventListener('click', () => answered(false));
+
+    // Speak the prompt aloud, then open the mic to listen for yes/no.
+    setState('speaking'); setLabel('asking');
+    speakLine('Welcome to WireIP. Would you like to enable audio reading? You can say yes, or no.', { rate: 0.98 }).then(() => {
+      setState(null); setLabel('ready');
+      if (!SR) return;   // no speech recognition on this browser
+      // Listen for the user's voice response
+      startListening((transcript, err) => {
+        if (err || !transcript) {
+          // Reset state but leave dialog up so the user can tap
+          setState(null); setLabel('ready');
+          return;
+        }
+        if (/\b(yes|yeah|yep|sure|okay|ok|please|enable|on|do it|of course|absolutely)\b/i.test(transcript)) {
+          answered(true);
+        } else if (/\b(no|nope|nah|don't|do not|disable|off|skip|later|cancel)\b/i.test(transcript)) {
+          answered(false);
+        } else {
+          // Unclear · try a follow-up prompt
+          setState('speaking'); setLabel('clarifying');
+          speakLine('I did not catch that. Please say yes, or no, or tap a button.', { rate: 1.0 }).then(() => {
+            setState(null); setLabel('ready');
+            startListening((t2) => {
+              if (!t2) return;
+              if (/\byes|yeah|yep|sure|okay|ok\b/i.test(t2)) answered(true);
+              else if (/\bno|nope|nah\b/i.test(t2)) answered(false);
+            });
+          });
+        }
+      });
+    });
+  }
+
+  // ===== Orb click · primary action depends on state =====
+  orb.addEventListener('click', () => {
+    if (speaking) { stopReading(); return; }
+    if (listening) { stopListening(); return; }
+    startReading();
   });
-  // Stop reading when the user navigates away
+
+  // Long-press the orb (700ms) to invoke voice command mode
+  let pressTimer = null;
+  orb.addEventListener('pointerdown', (e) => {
+    pressTimer = setTimeout(() => {
+      pressTimer = null;
+      if (speaking) stopReading();
+      if (SR) {
+        startListening((t) => {
+          if (!t) return;
+          // Simple command vocabulary
+          if (/read|out loud|speak/i.test(t)) startReading();
+          else if (/stop|quiet|silence|enough/i.test(t)) stopReading();
+          else if (/home|main/i.test(t))         { try { showView && showView('view-home'); } catch (e) {} }
+          else if (/vault|portfolio/i.test(t))   { try { showView && showView('view-vault'); } catch (e) {} }
+          else if (/tokenize|mint|new asset/i.test(t)) { try { showView && showView('view-tokenize'); } catch (e) {} }
+          else if (/settings/i.test(t))          { try { showView && showView('view-settings'); } catch (e) {} }
+          else if (/dag|network/i.test(t))       { try { showView && showView('view-dag'); } catch (e) {} }
+          else {
+            // Unrecognized · echo back
+            setState('speaking'); setLabel('replying');
+            speakLine('Sorry, I did not understand. You can ask me to read, stop, or go to a page.', { rate: 1.0 }).then(() => {
+              setState(null); setLabel('ready');
+            });
+          }
+        });
+      }
+    }, 700);
+  });
+  function cancelPress() { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }
+  orb.addEventListener('pointerup',     cancelPress);
+  orb.addEventListener('pointerleave',  cancelPress);
+  orb.addEventListener('pointercancel', cancelPress);
+
+  // Stop reading when navigating away
   window.addEventListener('hashchange', stopReading);
   document.addEventListener('click', (e) => {
     if (!speaking) return;
     const t = e.target && e.target.closest && e.target.closest('.nav-item, .filter-chip, [data-view]');
     if (t) stopReading();
   });
-  // Some browsers need a getVoices() touch to populate the list
+
+  // Auto-read each view if the user opted in (debounced so quick taps
+  // don't queue up multiple readings).
+  let _viewReadTimer = null;
+  function maybeAutoRead() {
+    if (!prefs.autoRead) return;
+    if (_viewReadTimer) clearTimeout(_viewReadTimer);
+    _viewReadTimer = setTimeout(() => startReading(), 700);
+  }
+  // Wrap showView so we can hook each view change.
+  if (typeof window.showView === 'function') {
+    const _origShow = window.showView;
+    window.showView = function(id) {
+      try { _origShow(id); } catch (e) {}
+      maybeAutoRead();
+    };
+  }
+
+  // Warm up the voices list (some browsers fill it asynchronously)
   try { window.speechSynthesis.getVoices(); } catch (e) {}
   if (window.speechSynthesis && typeof window.speechSynthesis.onvoiceschanged !== 'undefined') {
-    window.speechSynthesis.onvoiceschanged = () => { /* voices ready · no-op */ };
+    window.speechSynthesis.onvoiceschanged = () => {};
   }
+
+  // ===== Boot prompt =====
+  // Wait until the splash is dismissed AND the user has tapped at least
+  // once (most browsers require a user gesture before speechSynthesis
+  // will actually play). The first user click triggers the consent flow.
+  let consentTriggered = false;
+  function triggerConsent() {
+    if (consentTriggered) return;
+    if (prefs.asked) return;
+    consentTriggered = true;
+    // Delay a beat so the page has settled
+    setTimeout(showConsent, 600);
+  }
+  // Fire on first user interaction (covers autoplay-policy restrictions)
+  ['click', 'touchstart', 'keydown'].forEach(ev => {
+    document.addEventListener(ev, function once() {
+      document.removeEventListener(ev, once);
+      triggerConsent();
+    }, { once: true, passive: true });
+  });
+  // Also fire after boot splash naturally clears (Safari + Chrome that
+  // didn't gate autoplay still get the prompt without needing a tap)
+  setTimeout(() => {
+    if (!document.getElementById('boot-splash') && !prefs.asked) triggerConsent();
+  }, 4500);
 })();
 </script>
 </body>
