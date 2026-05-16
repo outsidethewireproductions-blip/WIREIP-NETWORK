@@ -6655,6 +6655,19 @@
     .vault-grid { grid-template-columns: 1fr !important; }
   }
 
+  /* ===== Submit-guidance pulse · highlights the step that needs attention ===== */
+  @keyframes mintStepPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(240,196,25,0.0), 0 0 0 0 rgba(240,196,25,0); }
+    25%      { box-shadow: 0 0 0 6px rgba(240,196,25,0.40), 0 0 24px 4px rgba(240,196,25,0.55); }
+    50%      { box-shadow: 0 0 0 10px rgba(240,196,25,0.20), 0 0 32px 8px rgba(240,196,25,0.35); }
+    75%      { box-shadow: 0 0 0 6px rgba(240,196,25,0.40), 0 0 24px 4px rgba(240,196,25,0.55); }
+  }
+  .mint-step-pulse {
+    animation: mintStepPulse 1.2s ease-in-out 2;
+    border-radius: var(--radius);
+    scroll-margin-top: 96px;
+  }
+
   /* ============================================================
      MOBILE TOPBAR · FINAL OVERRIDE BLOCK (highest specificity)
      ============================================================
@@ -24797,13 +24810,67 @@ function hideFloatingSubmit() {
 $('#float-submit-btn').addEventListener('click', () => {
   const btn = $('#btn-mint');
   const c = state.current || {};
-  // Prerequisite check  · same conditions as updateMintReady + the click handler.
-  if (!c.type)                              return toast('Pick an asset type first (Step 2)', 'warn', 3500);
-  if (!c.file)                              return toast('Upload a file first (Step 1)', 'warn', 3500);
-  if (!c.hash)                              return toast('File still hashing  · give it a sec', 'warn', 3500);
+  // ===== HELPFUL prerequisite guidance · not "errors" =====
+  // Instead of an error toast for missing steps, scroll the user TO the
+  // step that needs attention and add a pulse-highlight so they see
+  // exactly what's left. The Submit button hasn't failed · it's pointing
+  // the way.
+  const guide = (msg, anchorSelector, glowSelector) => {
+    toast(msg, 'info', 4500);
+    try {
+      const anchor = anchorSelector && document.querySelector(anchorSelector);
+      if (anchor) anchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const glowTarget = (glowSelector && document.querySelector(glowSelector)) || anchor;
+      if (glowTarget) {
+        glowTarget.classList.add('mint-step-pulse');
+        setTimeout(() => glowTarget.classList.remove('mint-step-pulse'), 2400);
+      }
+    } catch (e) {}
+  };
+  // ===== AUTO-START the tokenization flow if the user hasn't begun =====
+  // If the user has captured PoA via NFC tap but hasn't opened the upload
+  // flow yet, Submit should kick them straight into Step 1 instead of
+  // throwing a "pick asset type" warning. We open the flow + scroll to the
+  // first step so the path forward is unmistakable.
+  try {
+    const flow  = document.getElementById('tokenization-flow');
+    const entry = document.getElementById('asset-entry-row');
+    const flowHidden = flow && (flow.style.display === 'none' || getComputedStyle(flow).display === 'none');
+    if (flowHidden && !c.type && !c.file) {
+      if (entry) entry.style.display = 'none';
+      if (flow)  flow.style.display  = 'block';
+      const upload = document.getElementById('btn-open-upload-flow');
+      if (upload && typeof upload.click === 'function') {
+        try { upload.click(); } catch (e) {}
+      }
+      setTimeout(() => {
+        try {
+          const step1 = document.querySelector('#dropzone') ||
+                        document.querySelector('#tokenization-flow .card');
+          if (step1) {
+            step1.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            step1.classList.add('mint-step-pulse');
+            setTimeout(() => step1.classList.remove('mint-step-pulse'), 2400);
+          }
+        } catch (e) {}
+      }, 220);
+      return toast('Drop a file in Step 1 to begin tokenization · PoA already captured', 'info', 5500);
+    }
+  } catch (e) {}
+  if (!c.type)                              return guide('Choose Copyright, Patent, Trademark, or Trade Secret to continue', '#asset-types, .asset-types', '#asset-types');
+  if (!c.file)                              return guide('Drop a file in Step 1 to continue', '#dropzone, .dropzone', '.dropzone');
+  if (!c.hash)                              return guide('Hashing your file · give it a second', '#dropzone, .dropzone');
   const defs = FIELD_DEFS[c.type] || [];
   const missing = defs.filter(d => d.required && !(c.fields?.[d.id]?.value?.toString().trim()));
-  if (missing.length > 0)                   return toast('Required fields missing: ' + missing.map(m => m.label).join(', '), 'warn', 5000);
+  if (missing.length > 0) {
+    const firstMissing = missing[0];
+    return guide(
+      missing.length === 1
+        ? 'Still need: ' + firstMissing.label
+        : 'Still need ' + missing.length + ' fields · starting with ' + firstMissing.label,
+      '#fld-' + firstMissing.id + ', [data-field="' + firstMissing.id + '"]',
+      '#fld-' + firstMissing.id);
+  }
   if (c.originality && c.originality.blocked) return toast('Originality check is blocking submission  · review Step 3', 'err', 5000);
   // ===== AI DISCLOSURE GATE =====
   // Fully-AI-generated works can never be tokenized as private IP. The
