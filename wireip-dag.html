@@ -22,7 +22,7 @@
      compare the footer chip to the latest build to verify their device
      has the fresh code. -->
 <script>
-window.WIREIP_BUILD_ID = '2026-05-18-17:45 · v8-transfer-fix';
+window.WIREIP_BUILD_ID = '2026-05-18-18:15 · v9-inline-redeem';
 // Stamp the topbar build chip as soon as the DOM is parsed — this is the
 // single most reliable way for the user to verify they're loading the
 // freshly-deployed file vs a cached version. If the chip on their
@@ -294,14 +294,13 @@ window.WIREIP_AUTH_BACKEND_URL = window.WIREIP_AUTH_BACKEND_URL || '';
       return showError(backendSignin.error || 'Sign-in rejected by backend');
     }
     // No backend configured · fall back to local-only authentication.
-    if (!acct) return showError(
-      'No account on this device with that handle.\n\n' +
-      'Three options:\n' +
-      '  · If you signed up on another device, tap "📱 Paste Transfer Code" above\n' +
-      '  · Otherwise tap "Create Account" to make one here\n' +
-      '  · For real cross-device login, wire a backend (see auth note below)'
-    );
-    if (acct.handle !== handle) return showError('No account on this device with that handle · check the spelling or use the transfer code option above');
+    if (!acct || acct.handle !== handle) {
+      // Render an INLINE transfer-code paste box right inside the error
+      // panel so the user can resolve this without having to scroll back
+      // up to the "Paste Transfer Code" CTA at the top of the gate.
+      _renderInlineTransferRedeem(handle);
+      return;
+    }
     const candidate = await sha256Hex(password + ':' + acct.salt);
     if (candidate !== acct.passHash) return showError('Incorrect password');
     hideGate({ handle: handle });
@@ -448,6 +447,72 @@ window.WIREIP_AUTH_BACKEND_URL = window.WIREIP_AUTH_BACKEND_URL || '';
           window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
         }
       } catch (e) {}
+    }
+    // Inline transfer-code redeem UI · renders inside #auth-error so the
+    // user resolves "no account on this device" without scrolling back
+    // up to the top-of-form CTA. The previous UX was a dead end on
+    // mobile because the error said "tap Paste Transfer Code above"
+    // but the user was already deep in the form and had to scroll way
+    // up to find the button.
+    function _renderInlineTransferRedeem(triedHandle) {
+      const err = document.getElementById('auth-error');
+      if (!err) return;
+      // Tag so we can re-render without piling up event listeners
+      err.style.background = 'rgba(255,80,80,0.06)';
+      err.style.border = '1px solid var(--err)';
+      err.style.color = 'var(--text)';
+      err.style.padding = '14px 14px';
+      err.style.display = 'block';
+      err.innerHTML =
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
+          '<span style="color:var(--err);font-size:18px;line-height:1;">✕</span>' +
+          '<strong style="color:var(--err);font-size:12px;letter-spacing:0.04em;">No account "@' + (triedHandle || '') + '" on this device</strong>' +
+        '</div>' +
+        '<p style="margin:0 0 10px;font-size:11px;color:var(--text);line-height:1.55;">' +
+          'This is a static web app · accounts only live on the device they were created on. To use the same account here, paste the <strong>Transfer Code</strong> from your other device.' +
+        '</p>' +
+        '<ol style="margin:0 0 12px;padding-left:18px;font-size:10.5px;color:var(--muted);line-height:1.6;">' +
+          '<li>On your existing device, go to <strong style="color:var(--gold);">Settings → Devices → "Sign in on another device"</strong></li>' +
+          '<li>Tap <strong style="color:var(--gold);">Copy code</strong> (or scan the QR with this phone\'s camera · auto-redeems)</li>' +
+          '<li>Paste it below:</li>' +
+        '</ol>' +
+        '<input type="text" id="auth-inline-transfer-input" placeholder="WI2-XXXX-XXXXX-XXXXX-…" ' +
+        'autocomplete="off" autocapitalize="off" spellcheck="false" ' +
+        'style="width:100%;padding:10px 12px;font-family:\'IBM Plex Mono\',ui-monospace,monospace;font-size:11px;background:var(--bg);border:1.5px solid var(--cyan);border-radius:6px;color:var(--cyan);letter-spacing:0.02em;margin-bottom:8px;">' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+          '<button type="button" id="auth-inline-transfer-paste" style="flex:1;min-width:120px;padding:10px;background:transparent;border:1px solid var(--cyan);color:var(--cyan);border-radius:6px;font-size:11px;font-weight:700;letter-spacing:0.08em;cursor:pointer;">📋 Paste from clipboard</button>' +
+          '<button type="button" id="auth-inline-transfer-redeem" style="flex:1;min-width:120px;padding:10px;background:var(--cyan);color:#050606;border:none;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:0.10em;text-transform:uppercase;cursor:pointer;">⌬ Redeem code</button>' +
+        '</div>' +
+        '<div style="margin-top:10px;font-size:10px;color:var(--muted);line-height:1.5;">' +
+          'No other device yet? Tap <strong style="color:var(--gold);">Create Account</strong> tab above to make a new one here.' +
+        '</div>';
+      // Wire the inline buttons
+      const input  = document.getElementById('auth-inline-transfer-input');
+      const paste  = document.getElementById('auth-inline-transfer-paste');
+      const redeem = document.getElementById('auth-inline-transfer-redeem');
+      if (paste) {
+        paste.addEventListener('click', async () => {
+          try {
+            const text = await navigator.clipboard.readText();
+            if (text) { input.value = text.trim(); input.focus(); }
+            else if (typeof toast === 'function') toast('Clipboard empty · copy the code on your other device first', 'warn');
+          } catch (e) {
+            // Safari/Firefox may block · prompt as fallback
+            const v = window.prompt('Paste your transfer code:');
+            if (v) input.value = v.trim();
+          }
+        });
+      }
+      function tryRedeem() {
+        const v = (input && input.value || '').trim();
+        if (!v) { input && input.focus(); return; }
+        processTransferCodeFromUI(v);
+      }
+      if (redeem) redeem.addEventListener('click', tryRedeem);
+      if (input)  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); tryRedeem(); } });
+      // Scroll the panel into view + focus the input so user can paste immediately
+      try { err.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+      setTimeout(() => { try { input && input.focus(); } catch (e) {} }, 250);
     }
     if (!wireForm()) {
       // Retry with a small backoff until the markup exists.
