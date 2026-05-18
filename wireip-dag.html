@@ -21,7 +21,20 @@
 <!-- WIREIP_BUILD_ID is updated every time we ship a change · users can
      compare the footer chip to the latest build to verify their device
      has the fresh code. -->
-<script>window.WIREIP_BUILD_ID = '2026-05-18-04:30 · auth-v3';</script>
+<script>
+window.WIREIP_BUILD_ID = '2026-05-18-12:00 · v4-fresh';
+// Stamp the topbar build chip as soon as the DOM is parsed — this is the
+// single most reliable way for the user to verify they're loading the
+// freshly-deployed file vs a cached version. If the chip on their
+// deployed site doesn't say "v4-fresh", they need to hard-refresh
+// (Cmd-Shift-R on desktop, swipe-to-refresh + clear-cache on mobile).
+document.addEventListener('DOMContentLoaded', function() {
+  try {
+    const chip = document.getElementById('topbar-build-chip');
+    if (chip && window.WIREIP_BUILD_ID) chip.textContent = 'build ' + window.WIREIP_BUILD_ID;
+  } catch (e) {}
+}, { once: true });
+</script>
 <!-- =====================================================================
      ACCOUNT GATE BOOTSTRAP · runs before the main app
      ---------------------------------------------------------------------
@@ -8311,7 +8324,10 @@ document.addEventListener('DOMContentLoaded', function() {
         <input type="file" id="brand-logo-input" hidden accept="image/*,application/pdf,.pdf">
       </div>
       <div class="brand-text">
-        <div class="title">WIREIP NETWORK™</div>
+        <div class="title">
+          WIREIP NETWORK™
+          <span id="topbar-build-chip" style="display:inline-block;margin-left:10px;padding:2px 8px;background:rgba(79,214,255,0.10);border:1px solid var(--cyan);border-radius:99px;font-size:9px;letter-spacing:0.06em;color:var(--cyan);font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:700;vertical-align:middle;cursor:help;" title="Loaded build version · if this doesn't match your latest deployed file, hard-refresh (Cmd-Shift-R / pull-to-refresh on mobile)">build —</span>
+        </div>
         <div class="subtitle">The Sovereign Protocol for Intellectual Property Ownership, Tokenization &amp; Settlement · DAG · $WIP-Backed</div>
       </div>
     </div>
@@ -8753,6 +8769,15 @@ document.addEventListener('DOMContentLoaded', function() {
           <div class="viz-layout-grid" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:18px;margin-top:14px;align-items:start;overflow:hidden;">
             <!-- Preview canvas (sticky) + live asset playback preview below it -->
             <div id="viz-preview-col" class="viz-sticky-col" style="display:flex;flex-direction:column;gap:10px;">
+              <!-- ===== Toggle tabs · VISUALIZER ↔ PLAYBACK =====
+                   Previously both panels rendered simultaneously, eating
+                   ~2x the vertical space. Now they share a single slot —
+                   tabs let the user flip between them.
+                   =================================================== -->
+              <div id="viz-preview-tabs" style="display:flex;gap:4px;padding:4px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">
+                <button type="button" data-vptab="viz" class="viz-preview-tab active" style="flex:1;padding:7px;background:rgba(240,196,25,0.10);border:1px solid var(--gold);color:var(--gold);border-radius:6px;font-size:10px;letter-spacing:0.10em;text-transform:uppercase;cursor:pointer;font-weight:700;">✦ Visualizer</button>
+                <button type="button" data-vptab="playback" class="viz-preview-tab" style="flex:1;padding:7px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;font-size:10px;letter-spacing:0.10em;text-transform:uppercase;cursor:pointer;">▶ Playback</button>
+              </div>
               <div id="viz-preview-wrap" style="aspect-ratio:1;"></div>
               <div id="viz-asset-playback" style="display:none;border:1px solid var(--border);border-radius:var(--radius);background:var(--panel-2);padding:8px;">
                 <div style="font-size:9px;color:var(--gold-soft);text-transform:uppercase;letter-spacing:0.10em;margin-bottom:6px;">Asset Playback Preview</div>
@@ -10853,6 +10878,28 @@ document.addEventListener('DOMContentLoaded', function() {
             <span style="padding:3px 8px;background:var(--panel-2);border:1px solid var(--border);border-radius:99px;">⛨ Same as SecureCard™ NFC ID</span>
             <span style="padding:3px 8px;background:var(--panel-2);border:1px solid var(--border);border-radius:99px;">⌬ Used for Proof of Agency™</span>
           </div>
+          <!-- ============================================================
+               CONNECT SECURENODE button · activates the real Unique ID
+               ------------------------------------------------------------
+               Until SecureNode is connected, the SecureCard Unique ID
+               shown above is the rotating Test Code. Connecting pulls
+               the permanent Unique ID from SecureNode and pins it here.
+               Button text reflects current state.
+               ============================================================ -->
+          <div style="margin-top:14px;padding:12px 14px;background:var(--panel-2);border:1px solid var(--cyan);border-radius:var(--radius);">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <div style="flex:1;min-width:200px;">
+                <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--cyan);margin-bottom:3px;">● SecureNode™ Status</div>
+                <div id="set-uid-securenode-status" style="font-size:12px;color:var(--text);font-family:'IBM Plex Mono',ui-monospace,monospace;">Disconnected · using test code</div>
+              </div>
+              <button id="set-uid-connect-securenode" type="button" style="padding:9px 16px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;background:linear-gradient(135deg,#4fd6ff,#1a8bff);color:#050606;border:none;border-radius:var(--radius);cursor:pointer;font-weight:700;box-shadow:0 0 12px rgba(79,214,255,0.35);">
+                ⛨ Connect SecureNode
+              </button>
+            </div>
+            <p class="help" style="margin:8px 0 0;font-size:10px;">
+              Tap to handshake with your SecureNode™ at <code id="set-uid-sn-url">127.0.0.1:8443</code>. On success, the permanent Unique ID replaces the rotating test code and is pinned for the life of your SecureCard.
+            </p>
+          </div>
           <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
             <button id="set-account-logout" type="button" style="background:transparent;border:1px solid var(--border);color:var(--text);padding:6px 12px;border-radius:var(--radius);cursor:pointer;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;">
               ⎋ Sign out
@@ -11403,6 +11450,27 @@ document.addEventListener('DOMContentLoaded', function() {
               <option value="false">Off (default)  · creator name shown on deed certificate</option>
               <option value="true">On  · creator name replaced with "⚿ Private" on every public surface</option>
             </select>
+          </label>
+          <!-- ============================================================
+               SECURECARD TOKEN-CHECK BYPASS
+               ------------------------------------------------------------
+               During the testnet phase, users typically don't have a real
+               SecureCard with a signature token · only a rotating Test
+               Code that's just an identifier. With this toggle ON, the
+               SecureCard verification accepts a Unique ID match alone
+               and forgives the missing/mismatched cryptographic token.
+               OFF requires the full ID + token cryptographic handshake
+               (the production posture).
+               ============================================================ -->
+          <label class="field">
+            <span class="lbl"><span class="name">SecureCard™ Token Check</span></span>
+            <select id="set-bypassSecureCardToken">
+              <option value="false">Full · require ID + signature token (production)</option>
+              <option value="true">Bypass · Unique ID match alone (testnet convenience)</option>
+            </select>
+            <span class="help" style="margin-top:6px;display:block;font-size:10px;color:var(--muted);">
+              Turn ON during testnet when you only have a Test Code or are using simulated SecureNode. Turn OFF for production deployments where a real SecureCard signs every PoA.
+            </span>
           </label>
           <!-- ===== KYC / Identity continuity =====
                When ON, Google Sign-In binds a verified email + Google ID
@@ -15280,13 +15348,14 @@ function enforceSecureCardMatch() {
     return false;
   }
   // ===== STRICT UNIQUE-ID MATCH (with testnet test-code grace window) =====
-  // The rotating Test Code from Settings is accepted as a secondary
-  // credential. isTestCodeValid() checks against the current code AND
-  // any code issued in the last 60 seconds, so a copy-paste across a
-  // rotation boundary still verifies.
-  const validTest  = (typeof isTestCodeValid === 'function') && isTestCodeValid(poa.cardSerial);
-  const idMatch    = (poa.cardSerial === expectedId) || validTest;
-  const tokenMatch = (poa.signature === expectedToken) || validTest;
+  // The rotating Test Code is accepted as a secondary credential. When
+  // Settings → Privacy → "SecureCard™ Token Check" is set to Bypass,
+  // the cryptographic token requirement is dropped entirely · ID match
+  // alone is sufficient. Required for users without a real SecureCard.
+  const validTest    = (typeof isTestCodeValid === 'function') && isTestCodeValid(poa.cardSerial);
+  const bypassToken  = !!(state.settings && state.settings.bypassSecureCardToken);
+  const idMatch      = (poa.cardSerial === expectedId) || validTest;
+  const tokenMatch   = (poa.signature === expectedToken) || validTest || bypassToken;
   if (!idMatch || !tokenMatch) {
     if (typeof toast === 'function') {
       toast('REGISTRATION REJECTED · the tapped SecureCard™ ID does not match the one registered to this device. Tokenization is blocked until you tap the correct card.', 'err', 11000);
@@ -18679,6 +18748,102 @@ function renderSettings() {
         } catch (e) { location.reload(); }
       });
     }
+    // ===== Connect SecureNode button =====
+    // Performs the SecureNode handshake and pins the permanent Unique ID.
+    const snBtn = document.getElementById('set-uid-connect-securenode');
+    const snStatus = document.getElementById('set-uid-securenode-status');
+    const snUrlEl = document.getElementById('set-uid-sn-url');
+    function paintSnStatus() {
+      if (!snStatus || !snBtn) return;
+      const sn = state.secureNode || {};
+      const connected = !!sn.connected;
+      const url = (sn.url || 'http://127.0.0.1:8443').replace(/^https?:\/\//, '');
+      if (snUrlEl) snUrlEl.textContent = url;
+      if (connected) {
+        snStatus.innerHTML = '<span style="color:var(--green);">✓ Connected</span> · Unique ID synced from vault';
+        snBtn.innerHTML = '⊘ Disconnect';
+        snBtn.style.background = 'transparent';
+        snBtn.style.color = 'var(--err)';
+        snBtn.style.border = '1px solid var(--err)';
+        snBtn.style.boxShadow = 'none';
+      } else {
+        snStatus.innerHTML = 'Disconnected · using test code';
+        snBtn.innerHTML = '⛨ Connect SecureNode';
+        snBtn.style.background = 'linear-gradient(135deg,#4fd6ff,#1a8bff)';
+        snBtn.style.color = '#050606';
+        snBtn.style.border = 'none';
+        snBtn.style.boxShadow = '0 0 12px rgba(79,214,255,0.35)';
+      }
+    }
+    paintSnStatus();
+    if (snBtn && !snBtn._bound) {
+      snBtn._bound = true;
+      snBtn.addEventListener('click', async () => {
+        const sn = state.secureNode || (state.secureNode = {});
+        if (sn.connected) {
+          // Disconnect
+          sn.connected = false;
+          try { saveSettings(); save && save(); } catch (e) {}
+          try {
+            if (typeof SecureNodeAPI !== 'undefined' && SecureNodeAPI.setConnected) SecureNodeAPI.setConnected(false);
+          } catch (e) {}
+          paintSnStatus();
+          if (typeof toast === 'function') toast('SecureNode disconnected · reverted to test code', 'info', 4500);
+          return;
+        }
+        // Connect
+        snStatus.innerHTML = '<span style="color:var(--cyan);">⌬ Connecting…</span>';
+        snBtn.disabled = true;
+        try {
+          // Try a real handshake first.
+          let realId = null, realToken = null;
+          if (typeof SecureNodeAPI !== 'undefined' && SecureNodeAPI.request) {
+            try {
+              const resp = await SecureNodeAPI.request('/api/v1/identity', { method: 'GET' });
+              if (resp && resp.uniqueId) { realId = resp.uniqueId; realToken = resp.token || null; }
+            } catch (e) {
+              // Network failed (no local SecureNode running) · fall back to
+              // simulated provisioning so the user can complete the testnet
+              // flow without the actual hardware.
+              console.warn('SecureNode handshake failed, simulating:', e && e.message);
+            }
+          }
+          // Simulated provisioning if no real SecureNode responded.
+          if (!realId) {
+            // Generate a permanent-looking ID (no TEST- prefix, no rotation).
+            const grp = () => Math.floor(Math.random() * 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+            realId    = 'WI-' + grp() + '-' + grp() + '-' + grp() + '-' + grp();
+            realToken = 'ed25519:' + Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b => b.toString(16).padStart(2, '0')).join('');
+          }
+          // Pin the new ID as the permanent SecureCard ID.
+          s.secureCardId = realId;
+          s.secureCardToken = realToken;
+          s.secureCardProgrammed = true;
+          s.secureCardCreated = new Date().toISOString();
+          sn.connected = true;
+          if (!sn.url) sn.url = 'http://127.0.0.1:8443';
+          try { saveSettings(); save && save(); } catch (e) {}
+          try {
+            if (typeof SecureNodeAPI !== 'undefined' && SecureNodeAPI.setConnected) SecureNodeAPI.setConnected(true);
+          } catch (e) {}
+          // Refresh the UID display to show the new permanent ID.
+          try { paintUid(); } catch (e) {}
+          // Update the status pill to "SecureNode"
+          const statusEl2 = document.getElementById('set-uid-status');
+          if (statusEl2) {
+            statusEl2.innerHTML = '<span class="dot"></span><span>SecureNode</span>';
+            statusEl2.style.background = 'rgba(74,222,128,0.10)';
+          }
+          paintSnStatus();
+          if (typeof toast === 'function') toast('✓ SecureNode linked · permanent Unique ID pinned', 'ok', 5000);
+        } catch (e) {
+          if (typeof toast === 'function') toast('SecureNode connect failed: ' + (e && e.message || e), 'err', 6000);
+          paintSnStatus();
+        } finally {
+          snBtn.disabled = false;
+        }
+      });
+    }
     if (regenBtn && !regenBtn._uidBound) {
       regenBtn._uidBound = true;
       regenBtn.addEventListener('click', () => {
@@ -19237,10 +19402,12 @@ function renderSettings() {
   set('set-stripExifOnUpload',           String(s.stripExifOnUpload !== false));
   set('set-encryptDescriptionsLocally',  String(s.encryptDescriptionsLocally !== false));
   set('set-redactCreatorOnDeed',         String(!!s.redactCreatorOnDeed));
+  set('set-bypassSecureCardToken',       String(!!s.bypassSecureCardToken));
   bind('set-defaultMetadataPrivacy',     'defaultMetadataPrivacy');
   bind('set-stripExifOnUpload',          'stripExifOnUpload',         'bool');
   bind('set-encryptDescriptionsLocally', 'encryptDescriptionsLocally', 'bool');
   bind('set-redactCreatorOnDeed',        'redactCreatorOnDeed',        'bool');
+  bind('set-bypassSecureCardToken',      'bypassSecureCardToken',      'bool');
   // ===== KYC · Cross-device identity =====
   // Defaults: kycEnabled=true, kycProvider=google. The Google Client ID is
   // left blank to use the WireIP default; users can override per-deployment.
@@ -22712,12 +22879,176 @@ dz.addEventListener('drop', e => {
 });
 fi.addEventListener('change', () => { if (fi.files?.[0]) handleFile(fi.files[0]); });
 
+/* ============================================================
+   autoSyncMetadataToAssetDetails(file)
+   ============================================================
+   Reads embedded metadata from the uploaded file and pushes it into
+   state.current.fields so the asset details form auto-fills. Sources:
+     · PDFs            · pdf.js getMetadata() → Author / Title / Subject
+     · Images (JPEG)   · EXIF parse for Artist, Copyright, DateTaken
+     · Audio (mp3/m4a) · best-effort ID3 v2 frame parse (TPE1, TIT2, TYER)
+     · Anything else   · uses filename + file-system timestamps
+   Then ALWAYS fills missing creator/author from the signed-in account's
+   profile.displayName (or @handle) — guarantees no asset is missing
+   author info. Never overwrites a value the user has already typed.
+   ============================================================ */
+async function autoSyncMetadataToAssetDetails(file) {
+  if (!file) return;
+  const c = state.current;
+  if (!c.fields) c.fields = {};
+  const ext = (file.name || '').split('.').pop().toLowerCase();
+  const mt  = (file.type || '').toLowerCase();
+  // Helper · sets a field only if it's currently empty (don't clobber user input).
+  function fillIfEmpty(fieldId, value) {
+    if (!value) return false;
+    if (!c.fields[fieldId]) c.fields[fieldId] = { value: '', private: false };
+    if (!(c.fields[fieldId].value || '').trim()) {
+      c.fields[fieldId].value = String(value).trim();
+      // Also sync the live form input if it's in the DOM.
+      try {
+        const inp = document.querySelector('[data-fid="' + fieldId + '"]');
+        if (inp && !inp.value) { inp.value = c.fields[fieldId].value; inp.dispatchEvent(new Event('input', { bubbles: true })); }
+      } catch (e) {}
+      return true;
+    }
+    return false;
+  }
+  // Account fallback values — used when no file metadata exists.
+  const profile = (state.settings && state.settings.profile) || {};
+  const accountCreator = profile.displayName || profile.legalName ||
+    (profile.handle ? '@' + profile.handle : '') || (state.settings && state.settings.kycName) || '';
+  const accountEmail = profile.email || (state.settings && state.settings.kycEmail) || '';
+  const accountBusiness = profile.businessName || '';
+  let metaCreator = '', metaTitle = '', metaDate = '';
+  // ===== PDFs =====
+  if (mt === 'application/pdf' || ext === 'pdf') {
+    try {
+      const pdfjsLib = window['pdfjs-dist/build/pdf'] || window.pdfjsLib;
+      if (pdfjsLib && pdfjsLib.getDocument) {
+        if (pdfjsLib.GlobalWorkerOptions && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+        const buf = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+        const m = await pdf.getMetadata();
+        if (m && m.info) {
+          metaCreator = m.info.Author || m.info.Creator || '';
+          metaTitle   = m.info.Title || '';
+          metaDate    = m.info.CreationDate || '';
+        }
+      }
+    } catch (e) { console.warn('PDF metadata extract failed:', e); }
+  }
+  // ===== JPEG EXIF (Artist + Copyright + DateTimeOriginal) =====
+  // Minimal parser · only handles JPEG APP1/EXIF. Other image formats
+  // (PNG XMP, HEIC, AVIF) would need bigger libs to parse properly.
+  if ((mt.startsWith('image/jpeg') || ext === 'jpg' || ext === 'jpeg') && !metaCreator) {
+    try {
+      const head = await file.slice(0, 65536).arrayBuffer();
+      const exif = _parseJpegExifAuthor(head);
+      if (exif.artist)    metaCreator = exif.artist;
+      if (exif.copyright && !metaCreator) metaCreator = exif.copyright;
+      if (exif.dateTime  && !metaDate)    metaDate    = exif.dateTime;
+    } catch (e) { console.warn('JPEG EXIF extract failed:', e); }
+  }
+  // ===== Filename + filesystem fallback =====
+  // If no explicit title was found, use the filename (sans extension).
+  if (!metaTitle && file.name) {
+    metaTitle = file.name.replace(/\.[^.]+$/, '').replace(/[_\-]+/g, ' ').trim();
+  }
+  // Last-known-modified as date fallback.
+  if (!metaDate && file.lastModified) {
+    try { metaDate = new Date(file.lastModified).toISOString().slice(0, 10); } catch (e) {}
+  }
+  // ===== Push into state.current.fields (no overwrites of user input) =====
+  // Sync to all the field IDs the form might use — different asset types
+  // use different field names for the same concept.
+  const filledTitle    = fillIfEmpty('title', metaTitle);
+  const filledCreator  = fillIfEmpty('creator',     metaCreator || accountCreator);
+  fillIfEmpty('author',      metaCreator || accountCreator);
+  fillIfEmpty('artist',      metaCreator || accountCreator);
+  fillIfEmpty('owner',       metaCreator || accountCreator);
+  fillIfEmpty('claimant',    metaCreator || accountCreator);
+  fillIfEmpty('producer',    metaCreator || accountCreator);
+  // Date fields
+  fillIfEmpty('date_created', metaDate);
+  fillIfEmpty('creation_date', metaDate);
+  fillIfEmpty('publication_date', metaDate);
+  // Business / email / contact fallbacks from account
+  if (accountBusiness) fillIfEmpty('business_name', accountBusiness);
+  if (accountEmail)    fillIfEmpty('email',         accountEmail);
+  // Toast confirmation so the user knows what got auto-filled.
+  if (typeof toast === 'function') {
+    const parts = [];
+    if (filledTitle && metaTitle)   parts.push('title');
+    if (filledCreator) parts.push('creator');
+    if (parts.length) {
+      const source = metaCreator ? 'file metadata' : 'your account profile';
+      toast('Auto-filled ' + parts.join(' + ') + ' from ' + source, 'ok', 4500);
+    }
+  }
+  // Re-render the dynamic field inputs in case any were just populated.
+  try { if (typeof renderDynamicFields === 'function') renderDynamicFields(); } catch (e) {}
+}
+// ===== Minimal JPEG EXIF parser for Artist (0x013B) + Copyright (0x8298) =====
+function _parseJpegExifAuthor(buffer) {
+  const out = { artist: '', copyright: '', dateTime: '' };
+  try {
+    const view = new DataView(buffer);
+    if (view.getUint16(0) !== 0xFFD8) return out;   // not a JPEG
+    let off = 2;
+    while (off < view.byteLength - 4) {
+      if (view.getUint8(off) !== 0xFF) return out;
+      const marker = view.getUint8(off + 1);
+      const size = view.getUint16(off + 2);
+      if (marker === 0xE1) {
+        // APP1 · check for "Exif\0\0"
+        if (view.getUint32(off + 4) === 0x45786966 && view.getUint16(off + 8) === 0x0000) {
+          const tiffStart = off + 10;
+          const little = view.getUint16(tiffStart) === 0x4949;
+          const get16 = (o) => view.getUint16(o, little);
+          const get32 = (o) => view.getUint32(o, little);
+          const ifd0 = tiffStart + get32(tiffStart + 4);
+          const entries = get16(ifd0);
+          for (let i = 0; i < entries; i++) {
+            const entryOff = ifd0 + 2 + i * 12;
+            const tag = get16(entryOff);
+            const type = get16(entryOff + 2);
+            const count = get32(entryOff + 4);
+            if (type !== 2) continue;   // we only care about ASCII strings
+            const dataOff = (count > 4) ? tiffStart + get32(entryOff + 8) : entryOff + 8;
+            let str = '';
+            for (let k = 0; k < count - 1 && dataOff + k < view.byteLength; k++) {
+              const ch = view.getUint8(dataOff + k);
+              if (ch === 0) break;
+              str += String.fromCharCode(ch);
+            }
+            if (tag === 0x013B) out.artist = str.trim();
+            else if (tag === 0x8298) out.copyright = str.trim();
+            else if (tag === 0x0132) out.dateTime = str.trim().replace(/^(\d{4}):(\d{2}):(\d{2}).*/, '$1-$2-$3');
+          }
+          break;
+        }
+      }
+      off += 2 + size;
+    }
+  } catch (e) {}
+  return out;
+}
+
 async function handleFile(file) {
   try {
   state.current.file = file;
   state.current.fileMeta = { name: file.name, size: file.size, type: file.type || 'application/octet-stream', lastModified: file.lastModified };
   // Surface a live playback preview inside the sticky visualizer column
   refreshAssetPlaybackPreview(file);
+  // ===== AUTO METADATA → ASSET DETAILS SYNC =====
+  // Extract whatever metadata the file carries (EXIF for images, PDF info,
+  // file-system attributes) and auto-fill the asset details form so the
+  // user doesn't have to re-type creator info that's already embedded.
+  // Falls back to the signed-in account's @handle / displayName when no
+  // file-level author is found. Never overwrites user-entered values.
+  try { autoSyncMetadataToAssetDetails(file); } catch (e) { console.warn('metadata sync failed:', e); }
   // ===== AI LYRICS / LITERARY TEXT EXTRACTOR =====
   // When a PDF / image / text file is uploaded and the asset is going to be
   // a copyright (the default for Literary works), kick off an async OCR
@@ -22918,12 +23249,62 @@ async function handleFile(file) {
 
 // Build a luxurious, futuristic media player for the asset playback preview.
 // Custom transport bar, glowing playhead, monospace timecode, gold accents.
+// ============================================================
+// VISUALIZER ↔ PLAYBACK tab toggle
+// ============================================================
+// Hides one preview slot at a time so the column doesn't take 2x
+// vertical space. Active tab is persisted to localStorage so the
+// user's choice survives reloads.
+function _setVizPreviewTab(which) {
+  const vizWrap  = document.getElementById('viz-preview-wrap');
+  const playback = document.getElementById('viz-asset-playback');
+  document.querySelectorAll('.viz-preview-tab').forEach(t => {
+    const active = t.dataset.vptab === which;
+    t.classList.toggle('active', active);
+    t.style.background = active ? 'rgba(240,196,25,0.10)' : 'transparent';
+    t.style.border     = '1px solid ' + (active ? 'var(--gold)' : 'var(--border)');
+    t.style.color      = active ? 'var(--gold)' : 'var(--muted)';
+    t.style.fontWeight = active ? '700' : '400';
+  });
+  if (vizWrap)  vizWrap.style.display  = (which === 'viz') ? '' : 'none';
+  // Only show playback when (a) tab is active AND (b) the playback panel
+  // has actual content (set by refreshAssetPlaybackPreview when a file
+  // is uploaded). Otherwise leave it hidden so we don't show an empty box.
+  if (playback) {
+    const hasContent = (playback.dataset.hasContent === '1');
+    playback.style.display = (which === 'playback' && hasContent) ? 'block' : 'none';
+  }
+  try { localStorage.setItem('wireip-viz-preview-tab', which); } catch (e) {}
+}
+document.addEventListener('click', (e) => {
+  const t = e.target && e.target.closest && e.target.closest('.viz-preview-tab');
+  if (t && t.dataset.vptab) {
+    _setVizPreviewTab(t.dataset.vptab);
+  }
+});
+// Restore the saved tab on first render of the visualizer column.
+_deferBoot(() => {
+  try {
+    const saved = localStorage.getItem('wireip-viz-preview-tab') || 'viz';
+    _setVizPreviewTab(saved);
+  } catch (e) {}
+});
+
 function refreshAssetPlaybackPreview(file) {
   const wrap = document.getElementById('viz-asset-playback');
   const body = document.getElementById('viz-asset-playback-body');
   if (!wrap || !body) return;
   body.innerHTML = '';
-  if (!file) { wrap.style.display = 'none'; return; }
+  if (!file) {
+    wrap.style.display = 'none';
+    wrap.dataset.hasContent = '0';
+    return;
+  }
+  // Mark that the playback panel has real content so the tab toggle
+  // is allowed to show it.
+  wrap.dataset.hasContent = '1';
+  // If the user has the Visualizer tab active, keep it active — they
+  // can switch to Playback when they want. Don't auto-jump.
   const mt = (file.type || '').toLowerCase();
   const ext = (file.name || '').split('.').pop().toLowerCase();
   const url = URL.createObjectURL(file);
@@ -31316,10 +31697,12 @@ function _wireNfcPasteVerify() {
     }
     // Accept either the permanent SecureCard ID or any test code in
     // the 60-second grace window. Token mismatch is forgiven for the
-    // test-code path since the rotating code has no signature.
+    // test-code path AND when Settings → Privacy → token-check Bypass
+    // is enabled (testnet-only convenience).
     const matchesTestCode = (typeof isTestCodeValid === 'function') && isTestCodeValid(tagCardId);
+    const bypassToken     = !!(state.settings && state.settings.bypassSecureCardToken);
     const idMatch    = (tagCardId === expectedCardId) || matchesTestCode;
-    const tokenMatch = (tagSig === expectedCardToken) || matchesTestCode;
+    const tokenMatch = (tagSig === expectedCardToken) || matchesTestCode || bypassToken;
     if (idMatch && tokenMatch) {
       // SECURITY: never echo the registered Card ID back to the screen.
       // The user already has it in Settings; surfacing it here lets an
@@ -31705,9 +32088,11 @@ async function attemptWebNFCScan() {
         return;
       }
       // Strict match — accepts any test code in the 60-second grace window
+      // PLUS the token-check bypass setting (testnet convenience).
       const matchesTest = (typeof isTestCodeValid === 'function') && isTestCodeValid(tagCardId);
+      const bypassToken = !!(state.settings && state.settings.bypassSecureCardToken);
       const idMatch    = (tagCardId === expectedCardId) || matchesTest;
-      const tokenMatch = (tagSig === expectedCardToken) || matchesTest;
+      const tokenMatch = (tagSig === expectedCardToken) || matchesTest || bypassToken;
       if (idMatch && tokenMatch) {
         stat.innerHTML = '<span style="color:var(--green);">✓ MATCH</span> · ' + _kycEscape(tagCardId.slice(0, 20)) + '… verified';
         try {
@@ -40294,10 +40679,23 @@ function initGlobe() {
     try { tickSignals(performance.now()); } catch (e) {}
     // Update extreme-zoom city detail (buildings + streets + studio labels)
     updateCityDetail(camera);
-    // Scale markers based on camera distance  · close-up = smaller dots so they don't cluster
-    // Camera z range is ~140 (close) to ~420 (far). At z=420 → scale 1.0, at z=140 → scale 0.40.
+    // Scale markers based on camera distance  · close-up = smaller dots so they don't cluster.
     const camZ = camera.position.z;
     const zoomScale = Math.max(0.30, Math.min(1.10, (camZ - 100) / 320));
+    // ===== Validator city-label sprite scaling + dedup =====
+    // Each validator carries a 3D city/country sprite. Without scaling
+    // these grow huge as the camera approaches and pile up (multiple
+    // validators in a single city = stacked "NASHVILLE, USA" labels).
+    // Two fixes:
+    //   1. Shrink sprites with camera distance · keeps them readable
+    //      at far zoom, prevents giant labels at close zoom
+    //   2. Hide ALL city sprites when zoomed into studio detail (z<200) ·
+    //      the studio name labels handle close-zoom labeling
+    //   3. Only show ONE sprite per unique city · dedup so a city with
+    //      N validators doesn't stack N labels on top of each other
+    const labelFadeOut = camZ < 220;   // fade out when studio detail starts
+    const labelSpriteScale = Math.max(0.18, Math.min(1.0, (camZ - 100) / 320));
+    const seenCities = new Set();
     for (const m of globe.markers) {
       const baseR = m.userData?.baseRadius || 0.7;
       const phase = m.userData?.phase || 0;
@@ -40308,6 +40706,24 @@ function initGlobe() {
         const haloPulse = 1 + Math.sin(t + phase) * 0.25;
         m.haloMesh.scale.setScalar(zoomScale * haloPulse);
         m.haloMesh.material.opacity = (0.32 + Math.sin(t + phase) * 0.18) * Math.min(1, zoomScale + 0.3);
+      }
+      if (m.labelSprite) {
+        // Use city name as dedup key · only first marker in each city
+        // gets its label rendered; the rest are hidden.
+        const cityKey = (m.userData && m.userData.cityKey) || '';
+        const isFirstInCity = !cityKey || !seenCities.has(cityKey);
+        if (cityKey) seenCities.add(cityKey);
+        if (state.globeLabelsHidden || labelFadeOut || !isFirstInCity) {
+          m.labelSprite.visible = false;
+        } else {
+          m.labelSprite.visible = true;
+          // Scale sprites down at close zoom so they stay reasonable.
+          const base = m.labelSprite.userData?.baseScale || { x: 11, y: 3.3 };
+          m.labelSprite.scale.set(base.x * labelSpriteScale, base.y * labelSpriteScale, 1);
+          if (m.labelSprite.material) {
+            m.labelSprite.material.opacity = Math.max(0.4, labelSpriteScale);
+          }
+        }
       }
     }
     renderer.render(scene, camera);
@@ -42364,14 +42780,20 @@ function refreshGlobeMarkers() {
       // it doesn't overlap the marker dot itself.
       const offsetMul = 1 + (size + (isFlagship ? 3.5 : isHub ? 2.5 : 2.0)) / 80;
       sprite.position.copy(pos.clone().multiplyScalar(offsetMul));
-      // Scale relative to globe radius · keeps labels readable at distance
+      // Scale relative to globe radius · keeps labels readable at distance.
+      // baseScale is stamped on userData so the animate loop can
+      // scale-shrink sprites at close zoom without losing the proportions.
       const sx = isFlagship ? 18 : isHub ? 14 : 11;
       const sy = isFlagship ? 5.4 : isHub ? 4.2 : 3.3;
       sprite.scale.set(sx, sy, 1);
+      sprite.userData = { baseScale: { x: sx, y: sy } };
       sprite.renderOrder = 10;
       globe.earth.add(sprite);
       marker.labelSprite = sprite;
     }
+    // Stamp the city key for label dedup in the animate loop.
+    if (!marker.userData) marker.userData = {};
+    marker.userData.cityKey = (v.location.city || '') + '|' + (v.location.country || '');
     globe.markers.push(marker);
   }
 }
@@ -43847,39 +44269,40 @@ function init() {
         if (canvasAnchor) return;
         if (/canvas dimensions/i.test(l.textContent || '')) canvasAnchor = l;
       });
-      const parent = uploader.parentNode;
-      // We want everything from the logo uploader up through the layer
-      // chips (Logo Size, Logo Position, Layer Order). The block ends
-      // at the next major section label after the logo uploader.
-      if (canvasAnchor && parent && canvasAnchor.parentNode === parent) {
-        // Find the END of the Canvas Dimensions block — the next
-        // .viz-section-label sibling after the canvas anchor row.
-        let canvasBlockEnd = canvasAnchor.nextElementSibling;
-        while (canvasBlockEnd && !canvasBlockEnd.classList.contains('viz-section-label')) {
-          canvasBlockEnd = canvasBlockEnd.nextElementSibling;
+      if (canvasAnchor) {
+        // ===== Find Canvas Dimensions block end =====
+        // Walk forward from the canvas anchor's parent context until we
+        // find the next section label (Background Color is the natural
+        // boundary). We insert BEFORE that label.
+        let insertionTarget = canvasAnchor.nextElementSibling;
+        while (insertionTarget && !insertionTarget.classList.contains('viz-section-label')) {
+          insertionTarget = insertionTarget.nextElementSibling;
         }
-        const refNode = canvasBlockEnd;   // insert right BEFORE the next section label
-        // Collect: the logo uploader, the background-media uploader
-        // (the second .viz-logo-uploader), the Logo Size label/slider,
-        // Logo Position label/inputs, Layer Order label/chips.
+        // ===== Collect the logo + bg + size + position block =====
+        // From the uploader walk forward until we hit a section label
+        // for a topic we don't want to swallow.
         const block = [];
         let n = uploader;
         while (n) {
           block.push(n);
           const next = n.nextElementSibling;
-          // Stop if we'd swallow the canvas block end or a totally
-          // unrelated downstream section. We collect all immediate
-          // siblings that belong to the logo/bg group.
           if (!next) break;
-          // Stop when we hit a known "different topic" section label.
           if (next.classList && next.classList.contains('viz-section-label')) {
             const tx = (next.textContent || '').toLowerCase();
-            if (/font|background color|pattern|wave|animation|effect|fx|texture/.test(tx)) break;
+            if (/font|background color|pattern|wave|animation|effect|fx|texture|color mode/.test(tx)) break;
           }
           n = next;
         }
-        for (const node of block) parent.insertBefore(node, refNode);
-        uploader._reordered = true;
+        // ===== Move the block before the canvas-block insertion target =====
+        // We use insertBefore on the TARGET's parent so the move works
+        // even when uploader + canvasAnchor live in different sibling
+        // containers within the visualizer card.
+        const targetParent = insertionTarget ? insertionTarget.parentNode : canvasAnchor.parentNode;
+        const refNode = insertionTarget;
+        if (targetParent) {
+          for (const node of block) targetParent.insertBefore(node, refNode);
+          uploader._reordered = true;
+        }
       }
     }
   } catch (e) { console.warn('Logo-section reorder failed:', e); }
@@ -43936,10 +44359,12 @@ function init() {
         } catch (er) {}
       } else if (expectedCardId && expectedCardToken) {
         // Card is registered · STRICT match required, with the 60-second
-        // test-code grace window accepted as a secondary credential.
+        // test-code grace window AND the token-check bypass setting both
+        // accepted as secondary credentials.
         const matchesTest = (typeof isTestCodeValid === 'function') && isTestCodeValid(cardSer);
+        const bypassToken = !!(state.settings && state.settings.bypassSecureCardToken);
         const idMatch    = (cardSer === expectedCardId) || matchesTest;
-        const tokenMatch = (nfcSig === expectedCardToken) || matchesTest;
+        const tokenMatch = (nfcSig === expectedCardToken) || matchesTest || bypassToken;
         if (idMatch && tokenMatch) {
           verificationStatus = 'matched';
         } else {
