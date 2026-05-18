@@ -22,7 +22,7 @@
      compare the footer chip to the latest build to verify their device
      has the fresh code. -->
 <script>
-window.WIREIP_BUILD_ID = '2026-05-18-18:15 · v9-inline-redeem';
+window.WIREIP_BUILD_ID = '2026-05-18-22:00 · v15-real-logo';
 // Stamp the topbar build chip as soon as the DOM is parsed — this is the
 // single most reliable way for the user to verify they're loading the
 // freshly-deployed file vs a cached version. If the chip on their
@@ -152,23 +152,21 @@ window.WIREIP_AUTH_BACKEND_URL = window.WIREIP_AUTH_BACKEND_URL || '';
         'background:radial-gradient(ellipse at center,rgba(8,16,30,0.98),rgba(2,4,8,1));' +
         'display:flex;align-items:center;justify-content:center;flex-direction:column;' +
         'opacity:0;transition:opacity 0.35s ease;';
+      // ===== Branded splash logo =====
+      // Uses the user-supplied wireip-logo.svg (the actual vector logo
+      // file in the project root). A tiny placeholder is shown only
+      // while the SVG loads; if the file is missing the placeholder
+      // stays so the splash never breaks.
       splash.innerHTML =
         '<div style="text-align:center;max-width:480px;padding:24px;">' +
-          '<svg width="120" height="120" viewBox="0 0 100 100" style="margin-bottom:18px;">' +
-            '<defs><radialGradient id="agGrad" cx="50%" cy="50%" r="50%">' +
-              '<stop offset="0%" stop-color="#f0c419" stop-opacity="0.85"/>' +
-              '<stop offset="60%" stop-color="#4fd6ff" stop-opacity="0.45"/>' +
-              '<stop offset="100%" stop-color="#4fd6ff" stop-opacity="0"/>' +
-            '</radialGradient></defs>' +
-            '<circle cx="50" cy="50" r="46" fill="url(#agGrad)">' +
-              '<animate attributeName="r" from="20" to="46" dur="1.2s" fill="freeze" />' +
-              '<animate attributeName="opacity" from="0" to="1" dur="0.6s" fill="freeze" />' +
-            '</circle>' +
-            '<polygon points="50,12 86,32 86,68 50,88 14,68 14,32" fill="none" stroke="#f0c419" stroke-width="2"/>' +
-            '<polygon points="50,24 76,38 76,62 50,76 24,62 24,38" fill="none" stroke="#4fd6ff" stroke-width="1.5" opacity="0.7"/>' +
-            '<text x="50" y="56" text-anchor="middle" fill="#fff" font-family="ui-monospace,monospace" font-size="20" font-weight="700">⌬</text>' +
-          '</svg>' +
-          '<div style="font-size:9px;letter-spacing:0.34em;text-transform:uppercase;color:var(--cyan);margin-bottom:6px;">⛨ WireIP Network</div>' +
+          '<div style="position:relative;width:220px;height:220px;margin:0 auto 18px;">' +
+            // Soft gold halo so the logo "breathes" on the dark splash
+            '<div style="position:absolute;inset:-20px;border-radius:50%;background:radial-gradient(circle,rgba(240,196,25,0.20),transparent 65%);pointer-events:none;"></div>' +
+            // The real logo · drops in cleanly when present
+            '<img src="wireip-logo.svg?v=' + (window.WIREIP_BUILD_ID || Date.now()) + '" alt="WireIP" ' +
+                 'style="position:relative;width:100%;height:100%;object-fit:contain;display:block;" ' +
+                 'onerror="this.style.display=\'none\';" />' +
+          '</div>' +
           '<div style="font-size:26px;font-weight:800;color:var(--gold);letter-spacing:0.10em;margin-bottom:8px;">ACCESS GRANTED</div>' +
           (handle ? '<div style="font-family:\'IBM Plex Mono\',ui-monospace,monospace;font-size:14px;color:var(--cyan);letter-spacing:0.04em;">@' + handle.replace(/[<>"&]/g,'') + '</div>' : '') +
           '<div style="font-size:10px;color:var(--muted);margin-top:12px;letter-spacing:0.14em;text-transform:uppercase;">Entering the network…</div>' +
@@ -417,9 +415,68 @@ window.WIREIP_AUTH_BACKEND_URL = window.WIREIP_AUTH_BACKEND_URL || '';
         return;
       }
       const obj = result.payload;
-      // Provision the account record locally with the decoded credentials.
-      const newAcct = { handle: obj.handle, passHash: obj.passHash, salt: obj.salt, createdAt: Date.now(), provisioned_from_transfer: true };
+      // Provision the account record locally · preserve the source
+      // device's createdAt so the receiving device shows the same
+      // "member since" date. Stamp provisioned_from_transfer so we
+      // can audit how this device's account record was created.
+      const newAcct = {
+        handle: obj.handle,
+        passHash: obj.passHash,
+        salt: obj.salt,
+        createdAt: obj.createdAt || Date.now(),
+        provisionedAt: Date.now(),
+        provisioned_from_transfer: true,
+      };
       saveAccount(newAcct);
+      // Seed profile (display name, legal name, email) into wireip_settings
+      // BEFORE the full settings restore below · this guarantees the
+      // receiving device shows the source device's name immediately on
+      // first paint, even if settings restore order is weird.
+      if (obj.profile) {
+        try {
+          const cur = JSON.parse(localStorage.getItem('wireip_settings') || '{}');
+          cur.profile = Object.assign({}, cur.profile || {}, obj.profile);
+          // Always force the handle field to match the redeemed account
+          cur.profile.handle = obj.handle;
+          localStorage.setItem('wireip_settings', JSON.stringify(cur));
+        } catch (e) {}
+      } else {
+        // Even on a v2 (account-only) code, mirror the handle into the
+        // profile so the topbar @handle chip is accurate on first paint.
+        try {
+          const cur = JSON.parse(localStorage.getItem('wireip_settings') || '{}');
+          cur.profile = Object.assign({}, cur.profile || {}, { handle: obj.handle });
+          localStorage.setItem('wireip_settings', JSON.stringify(cur));
+        } catch (e) {}
+      }
+      // ===== v3 · restore vault snapshot =====================================
+      // The v3 transfer code bundles the source device's assets + drafts +
+      // settings. Write them to the account-namespaced storage keys NOW so
+      // the user sees their data the instant the app loads after sign-in
+      // (no separate sync step required).
+      let restoredCounts = null;
+      if (obj.v === 3 && obj.vault) {
+        try {
+          const vaultKey = 'wireip-vault-v3:' + String(obj.handle).toLowerCase();
+          // Merge with any existing vault data on this device · prefer the
+          // incoming snapshot for assets/drafts but keep anything local that
+          // isn't in the snapshot (defensive · should normally be empty).
+          let existing = null;
+          try { existing = JSON.parse(localStorage.getItem(vaultKey) || 'null'); } catch (e) {}
+          const merged = Object.assign({}, existing || {}, obj.vault);
+          localStorage.setItem(vaultKey, JSON.stringify(merged));
+          restoredCounts = {
+            assets: (obj.vault.assets || []).length,
+            drafts: (obj.vault.drafts || []).length,
+          };
+          if (obj.settings) {
+            try {
+              const cur = JSON.parse(localStorage.getItem('wireip_settings') || '{}');
+              localStorage.setItem('wireip_settings', JSON.stringify(Object.assign({}, cur, obj.settings)));
+            } catch (e) {}
+          }
+        } catch (e) { console.warn('Vault restore from transfer code failed:', e); }
+      }
       // Pre-fill the handle field + flip to Sign In tab so the user
       // just needs to type their password to complete the login.
       setAuthMode('signin');
@@ -430,7 +487,18 @@ window.WIREIP_AUTH_BACKEND_URL = window.WIREIP_AUTH_BACKEND_URL || '';
       showError('');
       const err = document.getElementById('auth-error');
       if (err) {
-        err.textContent = '✓ Account "@' + obj.handle + '" provisioned on this device · type your password to sign in';
+        const restoredMsg = restoredCounts
+          ? ' · vault restored: ' + restoredCounts.assets + ' asset' + (restoredCounts.assets === 1 ? '' : 's') + ', ' + restoredCounts.drafts + ' draft' + (restoredCounts.drafts === 1 ? '' : 's')
+          : '';
+        function _escapeAuthHtml(s) {
+          return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+        const nameLine = (obj.profile && (obj.profile.displayName || obj.profile.legalName))
+          ? '<div style="margin-top:4px;font-size:10.5px;color:var(--text);">Welcome back, <strong>' + _escapeAuthHtml(obj.profile.displayName || obj.profile.legalName) + '</strong></div>'
+          : '';
+        err.innerHTML = '✓ Account <strong>@' + obj.handle + '</strong> provisioned on this device' + restoredMsg + ' · type your password to sign in' + nameLine;
         err.style.background = 'rgba(74,222,128,0.10)';
         err.style.border = '1px solid var(--green)';
         err.style.color = 'var(--green)';
@@ -5772,9 +5840,18 @@ document.addEventListener('DOMContentLoaded', function() {
       font-size: 11px; letter-spacing: 0.12em;
     }
     .float-submit-bar .fsb-pill { font-size: 8px; padding: 2px 8px; }
-    /* Globe / DAG */
-    .globe-shell { height: 50vh; min-height: 320px; }
-    .canvas-wrap { height: 50vh; min-height: 320px; }
+    /* ===== Mobile globe sizing =====
+       Previously 50vh which on iPhone leaves a big empty band below the
+       canvas and (combined with the title + lede above) means part of the
+       globe is below the fold when you first land on the view. Now uses
+       a dynamic-viewport calculation that subtracts the topbar (60px)
+       and the title block (~120px) so the globe fills the remaining
+       visible space. min-height keeps it usable on very short screens. */
+    .globe-shell { height: calc(100dvh - 200px); min-height: 360px; max-height: 78dvh; }
+    .canvas-wrap { height: 50dvh; min-height: 320px; }
+    /* Tighten the title + lede so the globe gets more vertical room */
+    #view-globe h1 { font-size: 14px !important; letter-spacing: 0.10em !important; margin: 0 0 4px !important; }
+    #view-globe .lede { font-size: 10.5px !important; line-height: 1.45 !important; margin-bottom: 8px !important; }
     .globe-stats { padding: 6px 8px; gap: 8px; font-size: 8px; }
     .globe-stats .gs-item .gs-val { font-size: 11px; }
     .globe-stats .gs-item .gs-lab { font-size: 7.5px; }
@@ -7434,6 +7511,7 @@ document.addEventListener('DOMContentLoaded', function() {
   body[data-accent="green"]  { --gold: #4ade80; --gold-soft: #22a85b; }
   body[data-accent="purple"] { --gold: #c084fc; --gold-soft: #9b5de5; }
   body[data-accent="orange"] { --gold: #f59e0b; --gold-soft: #d4830a; }
+  body[data-accent="red"]    { --gold: #e10600; --gold-soft: #a30400; }
   /* Compact density  · tighter padding everywhere. */
   body[data-density="compact"] .view             { padding: 16px 20px; }
   body[data-density="compact"] .card             { padding: 14px; margin-bottom: 12px; }
@@ -9055,14 +9133,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 <span>Background Color</span>
                 <span id="viz-color-swatch" style="display:inline-block;width:18px;height:18px;border-radius:50%;background:#f0c419;border:1px solid var(--border);box-shadow:0 0 6px rgba(240,196,25,0.4);"></span>
               </div>
-              <!-- Quick-pick chips · matches the Font Color pattern: white / black / WIRE RED / custom -->
+              <!-- Quick-pick chips · white / black / custom (WIRE RED moved to
+                   Settings → Appearance → Accent Color so it lives alongside
+                   the other named brand colors instead of being a one-off in
+                   the canvas controls). -->
               <div class="viz-bg-color-chips" style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
                 <div class="viz-bg-chip" data-bgc="white" title="White background"
                      style="width:28px;height:28px;border-radius:50%;background:#fff;border:2px solid var(--border);cursor:pointer;"></div>
                 <div class="viz-bg-chip" data-bgc="black" title="Black background"
                      style="width:28px;height:28px;border-radius:50%;background:#000;border:2px solid var(--border);cursor:pointer;"></div>
-                <div class="viz-bg-chip" data-bgc="wire-red" data-hex="e10600" title="WIRE RED · signature red"
-                     style="width:28px;height:28px;border-radius:50%;background:#e10600;border:2px solid var(--err);cursor:pointer;box-shadow:0 0 8px rgba(225,6,0,0.55);"></div>
                 <div class="viz-bg-chip" data-bgc="custom" id="viz-bg-custom-swatch" title="Custom (pasted hex / waveform)"
                      style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#ef4444 0%,#f59e0b 25%,#84cc16 50%,#06b6d4 75%,#a855f7 100%);border:2px solid var(--gold);cursor:pointer;"></div>
                 <button id="viz-bg-eyedropper" type="button" title="Sample a color from anywhere on screen"
@@ -11355,6 +11434,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <option value="green">Wire Green</option>
                 <option value="purple">Wire Purple</option>
                 <option value="orange">Wire Orange</option>
+                <option value="red">Wire Red</option>
                 <option value="custom">Custom Hex…</option>
               </select>
               <div id="set-accent-custom-wrap" style="display:none;margin-top:6px;display:flex;gap:8px;align-items:center;">
@@ -15081,9 +15161,24 @@ function save() {
 }
 function load() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    // Try the account-namespaced key first; if empty and the legacy
+    // (unnamed) key exists, recover from there. This is what saves
+    // drafts that were written before the user signed in OR while
+    // STORAGE_KEY was momentarily resolving to the legacy fallback.
+    let raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw || raw === '{}' || raw === 'null') {
+      const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (legacy && legacy !== raw && legacy !== '{}' && legacy !== 'null') {
+        raw = legacy;
+        console.info('[WireIP load] recovered from legacy key · migrating to', String(STORAGE_KEY));
+        // Migrate the legacy blob over to the namespaced key so future
+        // saves land in the right place and the legacy slot can be left.
+        try { localStorage.setItem(STORAGE_KEY, legacy); } catch (e) {}
+      }
+    }
     if (!raw) return false;
     const p = JSON.parse(raw);
+    try { console.info('[WireIP load] key=' + String(STORAGE_KEY) + ' assets=' + (p.assets||[]).length + ' drafts=' + (p.drafts||[]).length); } catch (e) {}
     state.assets = p.assets || [];
     state.trash = Array.isArray(p.trash) ? p.trash : [];
     // NOTE: state.settings is OWNED by loadSettings() / saveSettings() and the
@@ -15564,6 +15659,37 @@ function showView(id) {
     // Close the mobile drawer if it was open.
     document.getElementById('nav-backdrop')?.classList.remove('show');
     document.getElementById('side-nav')?.classList.remove('open');
+    // ===== Scroll the new view back to the top =====
+    // The ACTUAL scroll container is `.content-area` (the middle column
+    // with overflow-y:auto). Window scroll and #app scroll are no-ops
+    // on the desktop layout — the previous fix was hitting all the wrong
+    // elements. Now we reset .content-area first, then the active view,
+    // then nested scroll containers · in that order so iOS doesn't snap
+    // back. We do this twice with rAF in between because mobile browsers
+    // sometimes restore scroll position AFTER the view-switch render.
+    function _resetAllScrollables() {
+      try {
+        const ca = document.querySelector('.content-area');
+        if (ca) ca.scrollTop = 0;
+        const activeView = document.getElementById(id);
+        if (activeView) {
+          activeView.scrollTop = 0;
+          activeView.querySelectorAll('.scroll-area, .view-body, .card-grid, [data-scroll-container]').forEach(el => { el.scrollTop = 0; });
+        }
+        const appWrap = document.getElementById('app');
+        if (appWrap) appWrap.scrollTop = 0;
+        if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
+        if (document.documentElement) document.documentElement.scrollTop = 0;
+        if (document.body) document.body.scrollTop = 0;
+        try { window.scrollTo(0, 0); } catch (e) {}
+      } catch (e) {}
+    }
+    _resetAllScrollables();
+    // Mobile browsers (especially iOS Safari) sometimes restore scroll
+    // position after a class change · run again on next animation frame
+    // AND after a 100ms beat to defeat both quirks.
+    requestAnimationFrame(_resetAllScrollables);
+    setTimeout(_resetAllScrollables, 100);
   } catch (e) { console.error('showView switch failed:', e); }
 
   // Each per-view render is isolated in its own try/catch so a single broken
@@ -16323,6 +16449,77 @@ function encodeAccountTransferCode() {
   } catch (e) { return null; }
 }
 window.encodeAccountTransferCode = encodeAccountTransferCode;
+
+// ===== FULL transfer code · WI3 format =====================================
+// Includes the account credentials AND a snapshot of the user's vault data
+// (assets, drafts, trash, registrations, settings, etc.) so signing in on
+// a fresh device immediately shows the same vault as the source device.
+// The v2 path stays for back-compat / scenarios where the vault is too
+// large to fit in a QR code. v3 codes are larger (kilobytes) but work as
+// pasted text and AirDrop / iMessage / email.
+function encodeAccountTransferCodeFull() {
+  try {
+    const acct = JSON.parse(localStorage.getItem('wireip-account') || 'null');
+    if (!acct || !acct.handle) return null;
+    // Pull the user's vault data from the account-namespaced storage key.
+    // Settings live in a separate key (`wireip_settings`) so they ride
+    // along independently.
+    let vault = null;
+    try {
+      const raw = localStorage.getItem(String(STORAGE_KEY)) || localStorage.getItem(LEGACY_STORAGE_KEY);
+      vault = raw ? JSON.parse(raw) : null;
+    } catch (e) {}
+    let settings = null;
+    try { settings = JSON.parse(localStorage.getItem('wireip_settings') || 'null'); } catch (e) {}
+    // Trim the vault snapshot to exclude file-blob heavyweights that would
+    // blow past localStorage / QR-code limits. We keep file metadata so
+    // assets show up in the vault list; the user can re-upload originals
+    // if they need the full files on the new device.
+    function _trimAsset(a) {
+      if (!a || typeof a !== 'object') return a;
+      const copy = Object.assign({}, a);
+      if (copy.dataURL) delete copy.dataURL;        // base64 file payload
+      if (copy.fileBlob) delete copy.fileBlob;      // any raw blob refs
+      if (copy.file && copy.file.dataURL) { copy.file = Object.assign({}, copy.file); delete copy.file.dataURL; }
+      return copy;
+    }
+    const trimmedVault = vault ? {
+      assets:         (vault.assets        || []).map(_trimAsset),
+      drafts:         (vault.drafts        || []).map(_trimAsset),
+      trash:          (vault.trash         || []).map(_trimAsset),
+      registrations:   vault.registrations  || [],
+      matches:         vault.matches        || [],
+      collaborators:   vault.collaborators  || [],
+      networks:        vault.networks       || [],
+      contracts:       vault.contracts      || [],
+      ipListings:      vault.ipListings     || [],
+    } : null;
+    // Carry the source device's ENTIRE account record (createdAt + any
+    // future fields) plus a snapshot of the profile so the receiving
+    // device shows the same display name immediately, before settings
+    // load. This is what makes the cross-device experience feel like
+    // "same account" instead of "different user with the same handle".
+    const profileSnap = (settings && settings.profile) ? settings.profile : null;
+    const payload = {
+      v: 3,
+      handle: acct.handle,
+      passHash: acct.passHash,
+      salt: acct.salt,
+      createdAt: acct.createdAt || Date.now(),
+      issued: Date.now(),
+      profile: profileSnap,        // displayName, legalName, email, handle
+      vault: trimmedVault,
+      settings: settings,
+    };
+    const json = JSON.stringify(payload);
+    const b64 = _b64urlEncode(json);
+    const cks = _checksum4(b64);
+    const groups = [];
+    for (let i = 0; i < b64.length; i += 5) groups.push(b64.slice(i, i + 5));
+    return 'WI3-' + cks + '-' + groups.join('-');
+  } catch (e) { return null; }
+}
+window.encodeAccountTransferCodeFull = encodeAccountTransferCodeFull;
 window.decodeAccountTransferCode = function(code) {
   if (!code) return { ok: false, error: 'empty code' };
   let s = String(code).trim();
@@ -16339,17 +16536,19 @@ window.decodeAccountTransferCode = function(code) {
   // base64 decode then produced different bytes). This was THE bug
   // causing "checksum mismatch" reports.
   s = s.replace(/[\s​-‍﻿]+/g, '');
-  // ----- v2 format: WI2-CKSUM-payload -----
-  // Case-insensitive prefix check; the WI2 and checksum portion is
-  // tolerated in any case, but the payload itself stays as-typed.
-  const v2re = /^wi2-/i;
-  if (v2re.test(s)) {
+  // ----- v2 / v3 format: WI[23]-CKSUM-payload -----
+  // v2 = account credentials only (small, QR-friendly).
+  // v3 = credentials + vault snapshot (drafts, assets, settings).
+  // Same wire format · the version field inside the payload distinguishes
+  // them and tells the redeemer whether to restore vault data.
+  const vNre = /^wi([23])-/i;
+  const vMatch = s.match(vNre);
+  if (vMatch) {
+    const expectedV = parseInt(vMatch[1], 10);
     const rest = s.slice(4);
     const dash = rest.indexOf('-');
-    if (dash < 0) return { ok: false, error: 'malformed v2 code (no checksum separator)' };
-    // Checksum is hex · normalize to uppercase since hex is case-insensitive
+    if (dash < 0) return { ok: false, error: 'malformed code (no checksum separator)' };
     const cks = rest.slice(0, dash).toUpperCase();
-    // Payload: strip grouping dashes only. PRESERVE case.
     const payload = rest.slice(dash + 1).replace(/-/g, '');
     const computed = _checksum4(payload);
     if (computed !== cks) {
@@ -16358,7 +16557,13 @@ window.decodeAccountTransferCode = function(code) {
     try {
       const json = _b64urlDecode(payload);
       const obj = JSON.parse(json);
-      if (!obj || obj.v !== 2 || !obj.handle || !obj.passHash || !obj.salt) return { ok: false, error: 'decoded payload missing fields' };
+      if (!obj || (obj.v !== 2 && obj.v !== 3) || !obj.handle || !obj.passHash || !obj.salt) {
+        return { ok: false, error: 'decoded payload missing fields' };
+      }
+      // Sanity check the version actually matches the prefix.
+      if (obj.v !== expectedV) {
+        return { ok: false, error: 'version mismatch · prefix says WI' + expectedV + ' but payload is v' + obj.v };
+      }
       return { ok: true, payload: obj };
     } catch (e) {
       return { ok: false, error: 'base64 decode failed: ' + (e && e.message || e) };
@@ -16380,42 +16585,73 @@ window.decodeAccountTransferCode = function(code) {
 };
 
 function openAccountTransferModal() {
-  const code = encodeAccountTransferCode();
-  if (!code) {
+  // Generate BOTH codes:
+  //   · compactCode (WI2-)  ·  account credentials only · QR-friendly
+  //   · fullCode    (WI3-)  ·  credentials + vault snapshot (assets, drafts,
+  //                              settings) · larger, paste-only
+  // The QR always uses compactCode (~150 bytes, fits any QR). The displayed
+  // text + copy buttons use fullCode by DEFAULT so users get their vault
+  // data restored on the receiving device. A toggle lets them switch back
+  // to compact if they have a reason to (no vault data to share, etc.).
+  const compactCode = encodeAccountTransferCode();
+  const fullCode    = encodeAccountTransferCodeFull() || compactCode;
+  if (!compactCode && !fullCode) {
     if (typeof toast === 'function') toast('No account record found · sign out then sign back in and try again', 'err');
     return;
   }
+  let useFullCode = true;
+  let code = useFullCode ? fullCode : compactCode;
   const overlay = document.createElement('div');
   overlay.className = 'modal-backdrop';
   overlay.style.zIndex = 10500;
-  // Build the transfer URL with the code as a query param so a QR scan
-  // on the phone opens the deployed app + auto-provisions in one tap.
-  // ALWAYS target /wireip-dag.html explicitly because the deployment's
-  // index.html redirect can otherwise strip the query string when the
-  // user lands at /. The page accepts ?transfer=, ?wi-signin=, or ?code=.
+  // Build the transfer URL · uses the COMPACT code so it fits comfortably
+  // in a QR code's data capacity (QR can hold ~2.9KB max; full v3 codes
+  // can easily exceed that with even a few drafts).
   const baseHref = location.origin + '/wireip-dag.html';
-  const transferUrl = baseHref + '?wi-signin=' + encodeURIComponent(code);
-  // Use the api.qrserver.com free QR generator (no API key, no auth) —
-  // returns a PNG of the QR code. 280px square is comfortably scannable
-  // from across a desk. ECC level M for balance of size + error tolerance.
-  const qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&ecc=M&data=' + encodeURIComponent(transferUrl);
+  const compactUrl = baseHref + '?wi-signin=' + encodeURIComponent(compactCode || '');
+  const fullUrl    = baseHref + '?wi-signin=' + encodeURIComponent(fullCode || '');
+  let transferUrl = useFullCode ? fullUrl : compactUrl;
+  // QR always uses the compact account-only URL so it always scans cleanly.
+  const qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&ecc=M&data=' + encodeURIComponent(compactUrl);
+  // Sniff vault size for the "what's included" line.
+  let vaultStats = { assets: 0, drafts: 0 };
+  try {
+    const raw = localStorage.getItem(String(STORAGE_KEY)) || localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (raw) {
+      const p = JSON.parse(raw);
+      vaultStats.assets = (p.assets || []).length;
+      vaultStats.drafts = (p.drafts || []).length;
+    }
+  } catch (e) {}
+  const codeSize = code ? (code.length / 1024).toFixed(1) + ' KB' : '—';
   overlay.innerHTML =
-    '<div class="modal" style="max-width:600px;">' +
+    '<div class="modal" style="max-width:620px;">' +
       '<header><h2>📱 Sign in on another device</h2><button class="close" type="button" id="atm-close">&times;</button></header>' +
       '<div class="body">' +
         '<p class="help" style="margin-top:0;">' +
-          '<strong style="color:var(--cyan);">Two ways to transfer.</strong> Scan the QR with your phone camera (fastest) OR copy the code and paste it on the other device\'s sign-in screen.' +
+          '<strong style="color:var(--cyan);">Two ways to transfer.</strong> Scan the QR with your phone camera (fastest, account-only) OR copy the <strong style="color:var(--gold);">Full Code</strong> below to bring your <strong>vault + drafts + settings</strong> across in one shot.' +
         '</p>' +
-        '<!-- ===== QR CODE ===== -->' +
-        '<div style="display:flex;justify-content:center;margin:18px 0;padding:18px;background:#fff;border:1px solid var(--cyan);border-radius:12px;">' +
+        '<!-- ===== QR CODE · always uses compact account-only payload ===== -->' +
+        '<div style="display:flex;justify-content:center;margin:18px 0 8px;padding:18px;background:#fff;border:1px solid var(--cyan);border-radius:12px;">' +
           '<img src="' + qrSrc + '" alt="Account transfer QR code" style="display:block;width:280px;height:280px;" />' +
         '</div>' +
-        '<div style="text-align:center;font-size:10.5px;color:var(--muted);margin-bottom:14px;">' +
-          'Open your phone camera, point at the QR · tap the notification · WireIP opens with the account pre-provisioned.' +
+        '<div style="text-align:center;font-size:10.5px;color:var(--muted);margin-bottom:6px;">' +
+          '<strong style="color:var(--cyan);">QR = account credentials only.</strong> After scanning, paste the Full Code below on mobile to also bring your vault data over.' +
         '</div>' +
-        '<div style="padding:14px 16px;background:var(--bg);border:1px dashed var(--cyan);border-radius:var(--radius);margin:14px 0;">' +
-          '<div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--cyan);margin-bottom:6px;">Or copy this code manually</div>' +
-          '<div id="atm-code" style="font-family:\'IBM Plex Mono\',ui-monospace,monospace;font-size:11px;color:var(--gold);word-break:break-all;line-height:1.5;user-select:all;">' + _escapeHtml(code) + '</div>' +
+        '<!-- ===== CODE TYPE TOGGLE ===== -->' +
+        '<div style="display:flex;gap:6px;margin:14px 0 8px;padding:4px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">' +
+          '<button type="button" id="atm-mode-full" data-mode="full" style="flex:1;padding:9px;background:rgba(240,196,25,0.15);border:1px solid var(--gold);color:var(--gold);border-radius:6px;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;font-weight:700;">⚜ Full Code · vault + drafts + settings</button>' +
+          '<button type="button" id="atm-mode-compact" data-mode="compact" style="flex:1;padding:9px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;">⌬ Compact · account only</button>' +
+        '</div>' +
+        '<div style="padding:14px 16px;background:var(--bg);border:1px dashed var(--gold);border-radius:var(--radius);margin:8px 0;">' +
+          '<div style="display:flex;align-items:center;gap:8px;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;">' +
+            '<span id="atm-code-label">FULL CODE · vault + drafts + settings</span>' +
+            '<span style="flex:1;"></span>' +
+            '<span id="atm-code-stats" style="color:var(--muted);font-size:9px;text-transform:none;letter-spacing:0;">' +
+              vaultStats.assets + ' asset' + (vaultStats.assets === 1 ? '' : 's') + ' · ' + vaultStats.drafts + ' draft' + (vaultStats.drafts === 1 ? '' : 's') + ' · ' + codeSize +
+            '</span>' +
+          '</div>' +
+          '<div id="atm-code" style="font-family:\'IBM Plex Mono\',ui-monospace,monospace;font-size:10.5px;color:var(--gold);word-break:break-all;line-height:1.5;user-select:all;max-height:200px;overflow-y:auto;">' + _escapeHtml(code || '') + '</div>' +
         '</div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">' +
           '<button type="button" class="primary" id="atm-copy" style="padding:9px 14px;font-size:11px;">⎘ Copy code</button>' +
@@ -16446,10 +16682,38 @@ function openAccountTransferModal() {
   overlay.querySelector('#atm-close').addEventListener('click', close);
   overlay.querySelector('#atm-done').addEventListener('click', close);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  // Mode toggle · re-renders the displayed code + label + size readout
+  function _setCodeMode(mode) {
+    useFullCode = (mode === 'full');
+    code = useFullCode ? (fullCode || compactCode) : (compactCode || fullCode);
+    transferUrl = useFullCode ? fullUrl : compactUrl;
+    const codeEl  = overlay.querySelector('#atm-code');
+    const labelEl = overlay.querySelector('#atm-code-label');
+    const sizeEl  = overlay.querySelector('#atm-code-stats');
+    if (codeEl)  codeEl.textContent  = code || '';
+    if (labelEl) labelEl.textContent = useFullCode ? 'FULL CODE · vault + drafts + settings' : 'COMPACT CODE · account credentials only';
+    if (sizeEl) {
+      const kb = code ? (code.length / 1024).toFixed(1) + ' KB' : '—';
+      sizeEl.textContent = vaultStats.assets + ' asset' + (vaultStats.assets === 1 ? '' : 's') + ' · ' + vaultStats.drafts + ' draft' + (vaultStats.drafts === 1 ? '' : 's') + ' · ' + kb;
+    }
+    // Visual toggle highlight
+    const btnFull    = overlay.querySelector('#atm-mode-full');
+    const btnCompact = overlay.querySelector('#atm-mode-compact');
+    [btnFull, btnCompact].forEach(b => {
+      if (!b) return;
+      const active = b.dataset.mode === mode;
+      b.style.background  = active ? (mode === 'full' ? 'rgba(240,196,25,0.15)' : 'rgba(79,214,255,0.15)') : 'transparent';
+      b.style.borderColor = active ? (mode === 'full' ? 'var(--gold)' : 'var(--cyan)') : 'var(--border)';
+      b.style.color       = active ? (mode === 'full' ? 'var(--gold)' : 'var(--cyan)') : 'var(--muted)';
+      b.style.fontWeight  = active ? 700 : 400;
+    });
+  }
+  overlay.querySelector('#atm-mode-full').addEventListener('click', () => _setCodeMode('full'));
+  overlay.querySelector('#atm-mode-compact').addEventListener('click', () => _setCodeMode('compact'));
   overlay.querySelector('#atm-copy').addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(code);
-      if (typeof toast === 'function') toast('✓ Transfer code copied · paste on your other device', 'ok', 5000);
+      if (typeof toast === 'function') toast('✓ ' + (useFullCode ? 'Full transfer code' : 'Compact code') + ' copied · paste on your other device', 'ok', 5000);
     } catch (e) {
       const ta = document.createElement('textarea');
       ta.value = code; document.body.appendChild(ta);
@@ -16487,12 +16751,8 @@ function openAccountTransferModal() {
     }
   });
   overlay.querySelector('#atm-regen').addEventListener('click', () => {
-    const fresh = encodeAccountTransferCode();
-    if (!fresh) return;
-    const el = document.getElementById('atm-code');
-    if (el) el.textContent = fresh;
-    // Refresh the QR too · close + reopen the modal to redraw with the new code.
-    if (typeof toast === 'function') toast('Fresh code generated · reopen the dialog to refresh the QR', 'info', 4500);
+    // Close + reopen so QR + both codes refresh from latest vault state.
+    if (typeof toast === 'function') toast('Generating fresh code with latest vault snapshot…', 'info', 3000);
     close();
     setTimeout(openAccountTransferModal, 200);
   });
@@ -27301,35 +27561,62 @@ document.addEventListener('click', scheduleStepProgression, true);
 // My Vault → Drafts on the next load. Removed only when (a) user
 // explicitly deletes the draft, OR (b) the asset is successfully minted.
 let _autosaveTimer = 0;
+// Shared implementation · used by both the debounced scheduler and the
+// synchronous flush. Returns true if a draft was written, false if there
+// was nothing to save.
+function _doAutosaveDraft() {
+  try {
+    const c = state.current;
+    if (!c || !c.type) return false;       // nothing to save yet
+    // Ensure a stable id for this in-flight asset.
+    if (!c._resumedFromDraftId) {
+      c._resumedFromDraftId = 'draft_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+    }
+    const id = c._resumedFromDraftId;
+    let snap;
+    try { snap = collectAsset(true); } catch (e) { return false; }
+    snap.id = id;
+    snap.createdAt = snap.createdAt || new Date().toISOString();
+    snap.updatedAt = new Date().toISOString();
+    snap.autosaved = true;
+    if (!Array.isArray(state.drafts)) state.drafts = [];
+    const idx = state.drafts.findIndex(d => d && d.id === id);
+    if (idx >= 0) state.drafts[idx] = snap; else state.drafts.push(snap);
+    try { save(); } catch (e) { console.warn('Autosave write failed:', e); }
+    return true;
+  } catch (e) { return false; }
+}
 function scheduleAutosaveDraft() {
   if (_autosaveTimer) clearTimeout(_autosaveTimer);
   _autosaveTimer = setTimeout(() => {
     _autosaveTimer = 0;
-    try {
-      const c = state.current;
-      if (!c || !c.type) return;       // nothing to save yet
-      // Ensure a stable id for this in-flight asset.
-      if (!c._resumedFromDraftId) {
-        c._resumedFromDraftId = 'draft_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
-      }
-      const id = c._resumedFromDraftId;
-      // Build a draft snapshot (collectAsset(true) returns a clean copy).
-      let snap;
-      try { snap = collectAsset(true); } catch (e) { return; }
-      snap.id = id;
-      snap.createdAt = snap.createdAt || new Date().toISOString();
-      snap.updatedAt = new Date().toISOString();
-      snap.autosaved = true;
-      const idx = state.drafts.findIndex(d => d && d.id === id);
-      if (idx >= 0) state.drafts[idx] = snap; else state.drafts.push(snap);
-      try { save(); } catch (e) { console.warn('Autosave write failed:', e); }
-      // Light-touch ·don't re-render the vault on every keystroke; the
-      // user only sees the autosaved draft when they navigate there.
-    } catch (e) { /* never throw out of autosave */ }
+    _doAutosaveDraft();
   }, 800);
 }
+// IMMEDIATE flush · cancels any pending debounce and writes right now.
+// Used when the user is about to navigate away (New Asset click,
+// view change, beforeunload) so debounced work isn't lost to a fast
+// refresh. Previously referenced from view-tokenize handler but never
+// defined · which meant clicking New Asset while typing dropped work.
+function flushAutosaveDraft() {
+  if (_autosaveTimer) { clearTimeout(_autosaveTimer); _autosaveTimer = 0; }
+  return _doAutosaveDraft();
+}
+// Expose globally so the view-change handler at line ~15598 finds it.
+window.flushAutosaveDraft = flushAutosaveDraft;
 document.addEventListener('input',  scheduleAutosaveDraft, true);
 document.addEventListener('change', scheduleAutosaveDraft, true);
+// Belt-and-suspenders · also flush on any nav-item click so navigation
+// between views captures the latest keystrokes synchronously.
+document.addEventListener('click', (e) => {
+  const navItem = e.target && (e.target.closest ? e.target.closest('.nav-item') : null);
+  if (navItem) flushAutosaveDraft();
+}, true);
+// Page visibility (e.g. iOS Safari swiping tabs, alt-tabbing) · iOS often
+// fires visibilitychange but NOT beforeunload, so we flush here too.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flushAutosaveDraft();
+});
 // Also flush autosave on visibility hide / beforeunload ·captures the
 // last keystroke before a refresh or tab close.
 window.addEventListener('beforeunload', () => {
@@ -29699,18 +29986,19 @@ if (vizHexInput) vizHexInput.addEventListener('keydown', (e) => {
 });
 if (vizHexInput) vizHexInput.addEventListener('blur', applyHexFromInput);
 
-// ===== Background Color CHIPS · white / black / WIRE RED / custom =====
+// ===== Background Color CHIPS · white / black / custom =====
+// (WIRE RED was removed from this row · it lives in Settings → Appearance
+// → Accent Color now alongside the other named brand colors.)
 document.querySelectorAll('.viz-bg-chip').forEach(chip => {
   chip.addEventListener('click', () => {
     if (!state.current.visualizer) state.current.visualizer = defaultViz();
     const code = chip.dataset.bgc;
-    // WIRE RED is a named preset · the chip carries data-hex="e10600"
-    // for the canonical WireIP red. Other named codes resolve here.
+    // Named codes resolve here; any chip with a data-hex attribute takes
+    // priority for forward-compatibility with future named presets.
     const namedHex = chip.dataset.hex ? ('#' + chip.dataset.hex.replace(/^#/, '')) : '';
-    const hex  = code === 'white'    ? '#ffffff'
-              : code === 'black'    ? '#000000'
-              : code === 'wire-red' ? '#e10600'
-              : namedHex            ? namedHex
+    const hex  = code === 'white' ? '#ffffff'
+              : code === 'black' ? '#000000'
+              : namedHex         ? namedHex
               : (state.current.visualizer.color || '#f0c419');
     state.current.visualizer.color = hex;
     // Sync the hex input + swatch indicator
@@ -41505,16 +41793,16 @@ function buildCityDetail(earthGroup) {
       }
 
       // Studio name label sprite · sits HIGH above the tallest part of the
-      // building so it never covers the structure. Starts at a SMALL base
-      // scale (3.6 x 0.9) and updateCityDetail() scales it inversely with
-      // camera z so it shrinks at close zoom instead of growing.
+      // building so it never covers the structure. Base scale tuned so
+      // updateCityDetail's inverse-zoom counter-scaling keeps the label
+      // legible at every zoom (was too small at extreme close-up before).
       const lblTex = makeStudioLabelTexture(data.studios[i], '#f0c419', false);
       const lblMat = new THREE.SpriteMaterial({ map: lblTex, transparent: true, opacity: 0, depthTest: false });
       const lbl = new THREE.Sprite(lblMat);
       lbl.position.set(bx, bh + 2.6, bz);
-      lbl.scale.set(3.6, 0.9, 1);
+      lbl.scale.set(4.6, 1.15, 1);
       lbl.userData.isLabel = true;
-      lbl.userData.baseScale = { x: 3.6, y: 0.9 };
+      lbl.userData.baseScale = { x: 4.6, y: 1.15 };
       cg.add(lbl);
       cg.userData.materials.push({ m: lblMat, base: 1.0 });
     }
@@ -41540,17 +41828,17 @@ function buildCityDetail(earthGroup) {
     }
 
     // -------- City name label (sits high, above everything) --------
-    // Now also a managed label · base scale is small and updateCityDetail
-    // shrinks/grows it inversely with camera distance so it never
-    // dominates the viewport at extreme close-up.
+    // Managed label · updateCityDetail counter-scales it with camera
+    // distance so it never dominates the viewport at close-up but stays
+    // legible. Bumped from 4.8x1.2 to 6.4x1.6 base for better readability.
     const cityTex = makeStudioLabelTexture(city.toUpperCase(), '#ffffff', true);
     const cityMat = new THREE.SpriteMaterial({ map: cityTex, transparent: true, opacity: 0, depthTest: false });
     const cityLbl = new THREE.Sprite(cityMat);
     cityLbl.position.set(0, 7.8, 0);
-    cityLbl.scale.set(4.8, 1.2, 1);
+    cityLbl.scale.set(6.4, 1.6, 1);
     cityLbl.userData.isLabel = true;
     cityLbl.userData.isCityLabel = true;
-    cityLbl.userData.baseScale = { x: 4.8, y: 1.2 };
+    cityLbl.userData.baseScale = { x: 6.4, y: 1.6 };
     cg.add(cityLbl);
     cg.userData.materials.push({ m: cityMat, base: 1.0 });
 
@@ -41616,14 +41904,14 @@ function updateCityDetail(camera) {
 
   const t = Date.now() * 0.003;
   // ===== Per-frame label scaling =====
-  // The studio + city sprite labels grow ENORMOUS at close zoom because
-  // they're 3D sprites with fixed world scale · the closer the camera,
-  // the larger they appear on screen. Counter that by scaling them DOWN
-  // as camZ decreases so on-screen size stays roughly constant. At z=210
-  // (fade-in start) labels are at full base scale; by z=100 they're
-  // about 35% of base size.
-  const labelScaleMul = Math.max(0.32, Math.min(1.0, (camZ - 90) / 140));
-  const cityLabelMul  = Math.max(0.40, Math.min(1.05, (camZ - 90) / 130));
+  // 3D sprites have fixed world size · without counter-scaling, the labels
+  // balloon at close zoom and dominate the view. But the previous floor
+  // (0.32 / 0.40) overshrank them at extreme zoom-in and made the names
+  // hard to read. New floors are 0.62 / 0.78 · readable across the full
+  // zoom range without ever covering the buildings.
+  // Also bumped the base scales below to start larger.
+  const labelScaleMul = Math.max(0.62, Math.min(1.05, (camZ - 90) / 140));
+  const cityLabelMul  = Math.max(0.78, Math.min(1.10, (camZ - 90) / 130));
   for (const cg of globe.cityDetail.cityGroups) {
     const target = (cg === bestCG) ? tFade : 0;
     for (const rec of cg.userData.materials) {
@@ -44888,11 +45176,24 @@ init();
   if (!('speechSynthesis' in window)) return;
 
   // ===== Persistent preferences =====
-  const PREF_KEY = 'wireip-sentinel-prefs';
-  function loadPrefs() {
-    try { return JSON.parse(localStorage.getItem(PREF_KEY) || '{}'); } catch (e) { return {}; }
+  // Per-account namespacing · each new account gets its own consent state
+  // so signing into a fresh @handle re-prompts the read-aloud consent
+  // (you want the AI to ask each user, not inherit a prior user's answer).
+  function _activeHandle() {
+    try {
+      const acct = JSON.parse(localStorage.getItem('wireip-account') || 'null');
+      return acct && acct.handle ? String(acct.handle).toLowerCase() : '';
+    } catch (e) { return ''; }
   }
-  function savePrefs(p) { try { localStorage.setItem(PREF_KEY, JSON.stringify(p)); } catch (e) {} }
+  const PREF_KEY_BASE = 'wireip-sentinel-prefs';
+  function _prefKey() {
+    const h = _activeHandle();
+    return h ? (PREF_KEY_BASE + ':' + h) : PREF_KEY_BASE;
+  }
+  function loadPrefs() {
+    try { return JSON.parse(localStorage.getItem(_prefKey()) || '{}'); } catch (e) { return {}; }
+  }
+  function savePrefs(p) { try { localStorage.setItem(_prefKey(), JSON.stringify(p)); } catch (e) {} }
   const prefs = loadPrefs();   // { asked, autoRead, name }
   const sentinelName = prefs.name || 'SENTINEL';
 
@@ -45608,10 +45909,22 @@ init();
     }, { once: true, passive: true });
   });
   // Also fire after boot splash naturally clears (Safari + Chrome that
-  // didn't gate autoplay still get the prompt without needing a tap)
-  setTimeout(() => {
-    if (!document.getElementById('boot-splash') && !prefs.asked) triggerConsent();
-  }, 4500);
+  // didn't gate autoplay still get the prompt without needing a tap).
+  // POLL every 2 seconds for up to 30s so we don't miss the window if
+  // the splash takes longer than expected — every new account should
+  // hit this consent prompt on first launch.
+  let pollTries = 0;
+  const pollInterval = setInterval(() => {
+    pollTries++;
+    if (consentTriggered || pollTries > 15) { clearInterval(pollInterval); return; }
+    const gateUp = document.getElementById('account-gate');
+    const splashUp = document.getElementById('boot-splash');
+    const accountGateVisible = gateUp && gateUp.style.display !== 'none';
+    if (!splashUp && !accountGateVisible && !prefs.asked) {
+      clearInterval(pollInterval);
+      triggerConsent();
+    }
+  }, 2000);
 })();
 </script>
 </body>
