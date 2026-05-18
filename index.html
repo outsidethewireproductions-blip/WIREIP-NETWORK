@@ -2,15 +2,33 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="refresh" content="0; url=/wireip-dag.html">
 <title>WireIP Network™</title>
 <style>
   body { margin: 0; background: #050606; color: #f0c419; font-family: ui-monospace, monospace; height: 100vh; display: flex; align-items: center; justify-content: center; letter-spacing: 0.20em; }
   a { color: #f0c419; }
 </style>
+<!--
+  CRITICAL: this redirect MUST preserve location.search (?wi-signin=…,
+  ?transfer=…, ?code=…) so QR-code sign-in works. A simple
+  <meta http-equiv="refresh" url="/wireip-dag.html"> drops the query
+  string and breaks cross-device sign-in. We use JS to forward the full
+  search + hash.
+-->
+<script>
+  (function() {
+    var target = '/wireip-dag.html' + (location.search || '') + (location.hash || '');
+    location.replace(target);
+  })();
+</script>
 </head>
 <body>
-  ⌬ LOADING WIREIP… <a href="/wireip-dag.html">Continue manually</a>
-  <script>location.replace('/wireip-dag.html');</script>
+  ⌬ LOADING WIREIP… <a id="manual-link" href="/wireip-dag.html">Continue manually</a>
+  <script>
+    // Belt-and-suspenders: also patch the manual link to carry the query string
+    try {
+      var a = document.getElementById('manual-link');
+      if (a) a.href = '/wireip-dag.html' + (location.search || '') + (location.hash || '');
+    } catch (e) {}
+  </script>
 </body>
 </html>

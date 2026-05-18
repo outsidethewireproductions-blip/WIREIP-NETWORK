@@ -22,7 +22,7 @@
      compare the footer chip to the latest build to verify their device
      has the fresh code. -->
 <script>
-window.WIREIP_BUILD_ID = '2026-05-18-16:10 · v6-token-diag';
+window.WIREIP_BUILD_ID = '2026-05-18-17:45 · v8-transfer-fix';
 // Stamp the topbar build chip as soon as the DOM is parsed — this is the
 // single most reliable way for the user to verify they're loading the
 // freshly-deployed file vs a cached version. If the chip on their
@@ -362,11 +362,12 @@ window.WIREIP_AUTH_BACKEND_URL = window.WIREIP_AUTH_BACKEND_URL || '';
         tcBtn._authBound = true;
         tcBtn.addEventListener('click', () => processTransferCodeFromUI());
       }
-      // Auto-detect ?transfer=… in the URL (set by the QR code on desktop)
-      // and try to provision immediately — saves the user from having to
-      // paste anything on mobile.
+      // Auto-detect ?transfer=… / ?wi-signin=… / ?code=… in the URL
+      // (set by the QR code on desktop) and try to provision immediately
+      // — saves the user from having to paste anything on mobile.
       try {
-        const urlParam = new URL(location.href).searchParams.get('transfer');
+        const sp = new URL(location.href).searchParams;
+        const urlParam = sp.get('transfer') || sp.get('wi-signin') || sp.get('code');
         if (urlParam && !window._transferAutoTried) {
           window._transferAutoTried = true;
           // Wait a tick so the gate is fully rendered.
@@ -391,13 +392,13 @@ window.WIREIP_AUTH_BACKEND_URL = window.WIREIP_AUTH_BACKEND_URL || '';
         if (typeof window.decodeAccountTransferCode === 'function') {
           return window.decodeAccountTransferCode(s);
         }
-        // ----- inline v2 fallback -----
+        // ----- inline v2 fallback (matches the main decoder · case-preserving) -----
         try {
           let t = String(s).trim();
-          const u = t.match(/[?&]transfer=([^&\s#]+)/i);
-          if (u) t = u[1];
-          t = t.replace(/\s+/g, '').toUpperCase();
-          if (!t.startsWith('WI2-')) return { ok: false, error: 'unrecognized format' };
+          const u = t.match(/[?&](?:transfer|wi-signin|code)=([^&\s#]+)/i);
+          if (u) { try { t = decodeURIComponent(u[1]); } catch (e) { t = u[1]; } }
+          t = t.replace(/\s+/g, '');   // PRESERVE case · base64 is case-sensitive
+          if (!/^wi2-/i.test(t)) return { ok: false, error: 'unrecognized format' };
           const rest = t.slice(4);
           const dash = rest.indexOf('-');
           if (dash < 0) return { ok: false, error: 'malformed' };
@@ -439,9 +440,11 @@ window.WIREIP_AUTH_BACKEND_URL = window.WIREIP_AUTH_BACKEND_URL || '';
       // If the transfer arrived via URL param, strip it so a future
       // reload doesn't re-run the provision against a stale code.
       try {
-        if (prefilled && location.search.indexOf('transfer=') !== -1) {
+        if (prefilled && /[?&](transfer|wi-signin|code)=/.test(location.search)) {
           const url = new URL(location.href);
           url.searchParams.delete('transfer');
+          url.searchParams.delete('wi-signin');
+          url.searchParams.delete('code');
           window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
         }
       } catch (e) {}
@@ -16257,22 +16260,36 @@ function encodeAccountTransferCode() {
 window.encodeAccountTransferCode = encodeAccountTransferCode;
 window.decodeAccountTransferCode = function(code) {
   if (!code) return { ok: false, error: 'empty code' };
-  // Strip everything that isn't an allowed char so paste/whitespace/quotes
-  // don't kill the decode. Keep alphanumerics, '-', '_'.
   let s = String(code).trim();
-  // If the user pasted a full URL like "https://wireip-network.vercel.app/?transfer=WI2-…",
-  // extract just the transfer parameter.
-  const urlMatch = s.match(/[?&]transfer=([^&\s#]+)/i);
-  if (urlMatch) s = urlMatch[1];
-  s = s.replace(/\s+/g, '').toUpperCase();
+  // If the user pasted a full URL like "https://wireip-network.vercel.app/?transfer=WI2-…"
+  // or "?wi-signin=WI2-…", extract just the code parameter.
+  const urlMatch = s.match(/[?&](?:transfer|wi-signin|code)=([^&\s#]+)/i);
+  if (urlMatch) {
+    try { s = decodeURIComponent(urlMatch[1]); } catch (e) { s = urlMatch[1]; }
+  }
+  // Strip whitespace + invisible Unicode chars but PRESERVE case · the
+  // payload is URL-safe base64 which IS case-sensitive. Earlier versions
+  // called .toUpperCase() here which silently mangled every code (the
+  // checksum still validated against the uppercased payload but the
+  // base64 decode then produced different bytes). This was THE bug
+  // causing "checksum mismatch" reports.
+  s = s.replace(/[\s​-‍﻿]+/g, '');
   // ----- v2 format: WI2-CKSUM-payload -----
-  if (s.startsWith('WI2-')) {
+  // Case-insensitive prefix check; the WI2 and checksum portion is
+  // tolerated in any case, but the payload itself stays as-typed.
+  const v2re = /^wi2-/i;
+  if (v2re.test(s)) {
     const rest = s.slice(4);
     const dash = rest.indexOf('-');
     if (dash < 0) return { ok: false, error: 'malformed v2 code (no checksum separator)' };
-    const cks = rest.slice(0, dash);
+    // Checksum is hex · normalize to uppercase since hex is case-insensitive
+    const cks = rest.slice(0, dash).toUpperCase();
+    // Payload: strip grouping dashes only. PRESERVE case.
     const payload = rest.slice(dash + 1).replace(/-/g, '');
-    if (_checksum4(payload) !== cks) return { ok: false, error: 'checksum mismatch · code may be truncated or corrupted · re-copy from desktop' };
+    const computed = _checksum4(payload);
+    if (computed !== cks) {
+      return { ok: false, error: 'checksum mismatch · expected ' + cks + ' got ' + computed + ' · code may be truncated, retyped wrong, or copy-pasted with stray characters · re-copy from desktop' };
+    }
     try {
       const json = _b64urlDecode(payload);
       const obj = JSON.parse(json);
@@ -16283,7 +16300,7 @@ window.decodeAccountTransferCode = function(code) {
     }
   }
   // ----- v1 format (legacy): WI-…b64… -----
-  if (s.startsWith('WI-')) {
+  if (/^wi-/i.test(s)) {
     try {
       const stripped = s.slice(3).replace(/-/g, '');
       const json = decodeURIComponent(escape(atob(stripped)));
@@ -16308,7 +16325,11 @@ function openAccountTransferModal() {
   overlay.style.zIndex = 10500;
   // Build the transfer URL with the code as a query param so a QR scan
   // on the phone opens the deployed app + auto-provisions in one tap.
-  const transferUrl = location.origin + location.pathname + '?transfer=' + encodeURIComponent(code);
+  // ALWAYS target /wireip-dag.html explicitly because the deployment's
+  // index.html redirect can otherwise strip the query string when the
+  // user lands at /. The page accepts ?transfer=, ?wi-signin=, or ?code=.
+  const baseHref = location.origin + '/wireip-dag.html';
+  const transferUrl = baseHref + '?wi-signin=' + encodeURIComponent(code);
   // Use the api.qrserver.com free QR generator (no API key, no auth) —
   // returns a PNG of the QR code. 280px square is comfortably scannable
   // from across a desk. ECC level M for balance of size + error tolerance.
@@ -41322,42 +41343,64 @@ function buildCityDetail(earthGroup) {
     cg.userData.materials.push({ m: streetMat, base: 0.65 });
 
     // -------- Buildings (one per studio) --------
+    // More realistic skyline: each studio gets a small tower with:
+    //   · varied height (1.6 – 4.4) and footprint
+    //   · darker base + window-grid texture wrapping all 4 sides
+    //   · slim "antenna" mast on tall buildings
+    //   · glowing roofline trim in either gold or cyan
+    //   · subtle ambient occlusion via a darker ground pad beneath each
+    // The label sprite sits HIGH above the building (bh + 2.6) and starts
+    // small · the per-frame updateCityDetail scales it inversely with
+    // camera distance so close zoom keeps labels readable without
+    // dominating the screen.
     const studioCount = data.studios.length;
-    const ring = Math.max(2.6, Math.min(4.8, 1.6 + studioCount * 0.45));
+    const ring = Math.max(2.8, Math.min(5.2, 1.8 + studioCount * 0.48));
     for (let i = 0; i < studioCount; i++) {
       const angle = (i / studioCount) * Math.PI * 2;
       const bx = Math.cos(angle) * ring;
       const bz = Math.sin(angle) * ring;
       const seed = (i * 7919 + city.length * 131) % 100;
-      const bh = 1.4 + (seed % 24) / 10;          // 1.4 – 3.8
-      const bw = 0.9 + (seed % 8) / 20;           // 0.9 – 1.3
-      const bd = 0.9 + ((seed >> 2) % 8) / 20;
+      const bh = 1.6 + (seed % 28) / 10;          // 1.6 – 4.4
+      const bw = 0.85 + (seed % 7) / 22;          // 0.85 – 1.15
+      const bd = 0.85 + ((seed >> 2) % 7) / 22;
+      const accentGold = (seed % 3) !== 0;        // mix gold + cyan roofs
 
-      // Procedural window texture for the building face
+      // Procedural window texture for the building face. Brighter night-
+      // city look: dark navy base with warm-yellow lit windows mixed with
+      // a few cyan-lit ones for a studio-tech vibe.
       const winC = document.createElement('canvas');
       winC.width = 64; winC.height = 128;
       const wctx = winC.getContext('2d');
-      wctx.fillStyle = '#1a2632'; wctx.fillRect(0, 0, 64, 128);
-      // Window grid
-      for (let wy = 8; wy < 128; wy += 12) {
-        for (let wx = 6; wx < 64; wx += 10) {
-          const lit = ((wx * wy + i * 37) % 5) < 3;
-          wctx.fillStyle = lit ? '#f0c419' : '#0a1014';
-          wctx.fillRect(wx, wy, 6, 7);
+      // Vertical gradient · darker at bottom, slightly lighter at top
+      const grad = wctx.createLinearGradient(0, 0, 0, 128);
+      grad.addColorStop(0, '#1c2a38');
+      grad.addColorStop(1, '#0c141c');
+      wctx.fillStyle = grad; wctx.fillRect(0, 0, 64, 128);
+      for (let wy = 6; wy < 128; wy += 10) {
+        for (let wx = 5; wx < 64; wx += 9) {
+          const lit = ((wx * wy + i * 37) % 6) < 4;
+          if (lit) {
+            // 80% gold windows, 20% cyan
+            const isCyan = ((wx + wy + i * 13) % 5) === 0;
+            wctx.fillStyle = isCyan ? '#4fd6ff' : '#f0c419';
+          } else {
+            wctx.fillStyle = '#0a1018';
+          }
+          wctx.fillRect(wx, wy, 5, 6);
         }
       }
       const winTex = new THREE.CanvasTexture(winC);
       winTex.wrapS = THREE.RepeatWrapping;
       winTex.wrapT = THREE.RepeatWrapping;
-      winTex.repeat.set(2, Math.max(1, Math.round(bh)));
+      winTex.repeat.set(2, Math.max(1, Math.round(bh * 1.1)));
       winTex.needsUpdate = true;
 
       const bldgMat = new THREE.MeshPhongMaterial({
         map: winTex,
-        color: 0x404e5c,
+        color: 0x2a3340,
         emissive: 0xf0c419,
-        emissiveIntensity: 0.18,
-        shininess: 70,
+        emissiveIntensity: 0.22,
+        shininess: 80,
         transparent: true,
         opacity: 0
       });
@@ -41366,21 +41409,47 @@ function buildCityDetail(earthGroup) {
       cg.add(bldg);
       cg.userData.materials.push({ m: bldgMat, base: 1.0 });
 
-      // Glowing rooftop accent
-      const roofMat = new THREE.MeshBasicMaterial({ color: 0xf0c419, transparent: true, opacity: 0 });
-      const roof = new THREE.Mesh(new THREE.BoxGeometry(bw * 1.05, 0.07, bd * 1.05), roofMat);
+      // Dark ground pad (ambient occlusion · grounds the building)
+      const padMat = new THREE.MeshBasicMaterial({ color: 0x05080c, transparent: true, opacity: 0, depthWrite: false });
+      const pad = new THREE.Mesh(new THREE.CircleGeometry(Math.max(bw, bd) * 0.85, 16), padMat);
+      pad.rotation.x = -Math.PI / 2;
+      pad.position.set(bx, 0.06, bz);
+      cg.add(pad);
+      cg.userData.materials.push({ m: padMat, base: 0.7 });
+
+      // Glowing rooftop accent (alternating gold/cyan)
+      const roofColor = accentGold ? 0xf0c419 : 0x4fd6ff;
+      const roofMat = new THREE.MeshBasicMaterial({ color: roofColor, transparent: true, opacity: 0 });
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(bw * 1.06, 0.08, bd * 1.06), roofMat);
       roof.position.set(bx, bh + 0.07, bz);
       cg.add(roof);
       cg.userData.materials.push({ m: roofMat, base: 0.95 });
 
-      // Studio name label sprite · bigger so studio names are actually
-      // readable when the city labels have faded out and this is the
-      // primary identifier the user sees.
+      // Antenna mast on tall buildings (>3.0 units) · thin cylinder + tip
+      if (bh > 3.0) {
+        const mastMat = new THREE.MeshBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0 });
+        const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 6), mastMat);
+        mast.position.set(bx, bh + 0.55, bz);
+        cg.add(mast);
+        cg.userData.materials.push({ m: mastMat, base: 0.85 });
+        const tipMat = new THREE.MeshBasicMaterial({ color: 0xff5050, transparent: true, opacity: 0 });
+        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), tipMat);
+        tip.position.set(bx, bh + 1.05, bz);
+        cg.add(tip);
+        cg.userData.materials.push({ m: tipMat, base: 1.0, pulse: true });
+      }
+
+      // Studio name label sprite · sits HIGH above the tallest part of the
+      // building so it never covers the structure. Starts at a SMALL base
+      // scale (3.6 x 0.9) and updateCityDetail() scales it inversely with
+      // camera z so it shrinks at close zoom instead of growing.
       const lblTex = makeStudioLabelTexture(data.studios[i], '#f0c419', false);
       const lblMat = new THREE.SpriteMaterial({ map: lblTex, transparent: true, opacity: 0, depthTest: false });
       const lbl = new THREE.Sprite(lblMat);
-      lbl.position.set(bx, bh + 1.4, bz);
-      lbl.scale.set(7.0, 1.75, 1);
+      lbl.position.set(bx, bh + 2.6, bz);
+      lbl.scale.set(3.6, 0.9, 1);
+      lbl.userData.isLabel = true;
+      lbl.userData.baseScale = { x: 3.6, y: 0.9 };
       cg.add(lbl);
       cg.userData.materials.push({ m: lblMat, base: 1.0 });
     }
@@ -41405,12 +41474,18 @@ function buildCityDetail(earthGroup) {
       cg.userData.materials.push({ m: linkMat, base: 0.55 });
     }
 
-    // -------- City name label (large, above everything) --------
+    // -------- City name label (sits high, above everything) --------
+    // Now also a managed label · base scale is small and updateCityDetail
+    // shrinks/grows it inversely with camera distance so it never
+    // dominates the viewport at extreme close-up.
     const cityTex = makeStudioLabelTexture(city.toUpperCase(), '#ffffff', true);
     const cityMat = new THREE.SpriteMaterial({ map: cityTex, transparent: true, opacity: 0, depthTest: false });
     const cityLbl = new THREE.Sprite(cityMat);
-    cityLbl.position.set(0, 5.4, 0);
-    cityLbl.scale.set(7.2, 1.8, 1);
+    cityLbl.position.set(0, 7.8, 0);
+    cityLbl.scale.set(4.8, 1.2, 1);
+    cityLbl.userData.isLabel = true;
+    cityLbl.userData.isCityLabel = true;
+    cityLbl.userData.baseScale = { x: 4.8, y: 1.2 };
     cg.add(cityLbl);
     cg.userData.materials.push({ m: cityMat, base: 1.0 });
 
@@ -41475,6 +41550,15 @@ function updateCityDetail(camera) {
   }
 
   const t = Date.now() * 0.003;
+  // ===== Per-frame label scaling =====
+  // The studio + city sprite labels grow ENORMOUS at close zoom because
+  // they're 3D sprites with fixed world scale · the closer the camera,
+  // the larger they appear on screen. Counter that by scaling them DOWN
+  // as camZ decreases so on-screen size stays roughly constant. At z=210
+  // (fade-in start) labels are at full base scale; by z=100 they're
+  // about 35% of base size.
+  const labelScaleMul = Math.max(0.32, Math.min(1.0, (camZ - 90) / 140));
+  const cityLabelMul  = Math.max(0.40, Math.min(1.05, (camZ - 90) / 130));
   for (const cg of globe.cityDetail.cityGroups) {
     const target = (cg === bestCG) ? tFade : 0;
     for (const rec of cg.userData.materials) {
@@ -41487,6 +41571,18 @@ function updateCityDetail(camera) {
         next *= (0.75 + Math.sin(t * 1.5) * 0.25);
       }
       rec.m.opacity = next;
+    }
+    // Walk this city group's children to find marked label sprites
+    // and apply the inverse-zoom scaling so labels shrink at close zoom.
+    for (const child of cg.children) {
+      if (child && child.userData && child.userData.isLabel && child.userData.baseScale) {
+        const mul = child.userData.isCityLabel ? cityLabelMul : labelScaleMul;
+        child.scale.set(
+          child.userData.baseScale.x * mul,
+          child.userData.baseScale.y * mul,
+          1
+        );
+      }
     }
   }
 
