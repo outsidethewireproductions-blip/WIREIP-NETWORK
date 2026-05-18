@@ -9623,6 +9623,13 @@ document.addEventListener('DOMContentLoaded', function() {
           <button id="globe-ground-view-btn" type="button" style="position:absolute;top:14px;right:14px;z-index:5;padding:8px 14px;background:linear-gradient(135deg,rgba(79,214,255,0.18),rgba(8,12,18,0.85));color:var(--cyan);border:1px solid var(--cyan);border-radius:6px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;font-weight:700;backdrop-filter:blur(6px);">
             🗺 Ground View
           </button>
+          <!-- Quick "Zoom to Studios" button · auto-rotates the globe to
+               put Atlanta (network's creative hub) under the camera and
+               animates the camera to a close zoom (z=105) where the
+               studio buildings + names render full visibility. -->
+          <button id="globe-zoom-studios-btn" type="button" style="position:absolute;top:14px;right:154px;z-index:5;padding:8px 14px;background:linear-gradient(135deg,rgba(240,196,25,0.22),rgba(8,12,18,0.85));color:var(--gold);border:1px solid var(--gold);border-radius:6px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;font-weight:700;backdrop-filter:blur(6px);box-shadow:0 0 14px rgba(240,196,25,0.30);">
+            🏢 Zoom to Studios
+          </button>
           <!-- City badge  ·  shown only when extreme zoom is engaged on a city -->
           <div id="globe-city-badge" class="globe-city-badge"><span class="gcb-dot"></span><span id="globe-city-badge-name">·</span><span class="gcb-meta">LIVE</span></div>
           <div class="globe-overlay-top">
@@ -15267,42 +15274,42 @@ function showView(id) {
   if (id === 'view-home')          safe('view-home',          () => { refreshRailHero(); });
   if (id === 'view-tokenize')      safe('view-tokenize',      () => {
     refreshRailHero();
-    // ===== Explicit-only fresh-start prompt =====
-    // The prompt should fire ONLY when the user clicks the New Asset nav
-    // item DELIBERATELY — not every time they navigate back to tokenize
-    // from elsewhere (which was firing the dialog on every button click).
-    // window._wireipFreshAssetRequest is a one-shot flag set by the
-    // nav-item click handler and consumed here.
+    // ===== Silent auto-save on New Asset click =====
+    // No more confirm dialog. If the user clicks New Asset with unsaved
+    // work, we auto-save the current draft to My Vault → Drafts and
+    // reset state.current silently. A toast confirms. No friction.
     try {
       const requested = !!window._wireipFreshAssetRequest;
       window._wireipFreshAssetRequest = false;
       const c = state.current || {};
       const hasWork = !!(c.file || c.type || (c.fields && Object.keys(c.fields).length > 0) || c.hash);
       if (requested && hasWork) {
-        const ok = confirm('Start a NEW asset?\n\nYour current draft has unsaved changes. Click OK to save it to Drafts (in My Vault) and start fresh, or Cancel to keep working on it.');
-        if (ok) {
-          // Save the current as a draft, then reset state.current.
-          try {
-            if (typeof scheduleAutosaveDraft === 'function') scheduleAutosaveDraft();
-            if (typeof flushAutosaveDraft === 'function') flushAutosaveDraft();
-          } catch (e) {}
-          // Reset to a blank current asset.
-          state.current = {
-            type: null, file: null, fileMeta: null, dataURL: null,
-            hash: null, cbiaHash: null, poaSigned: false, poaSignature: null,
-            fields: {}, privacyMode: (state.settings && state.settings.defaultPrivacyMode) || 'maximum',
-            selectedOffices: [], originality: null, ownershipProofs: [], visualizer: null,
-          };
-          // Reset the visible form to blank state.
-          try {
-            document.querySelectorAll('.asset-type.selected').forEach(c => c.classList.remove('selected'));
-            const fi = document.getElementById('file-input'); if (fi) fi.value = '';
-            const pw = document.getElementById('file-preview-wrap'); if (pw) { pw.style.display = 'none'; pw.innerHTML = ''; }
-            const hs = document.getElementById('hash-status'); if (hs) hs.innerHTML = '<span class="dot"></span><span>No file</span>';
-            if (typeof updateMintReady === 'function') updateMintReady();
-          } catch (e) {}
-          if (typeof toast === 'function') toast('✓ Draft saved · starting a fresh new asset', 'ok', 3500);
-        }
+        // Silently flush the current draft into state.drafts.
+        try {
+          if (typeof scheduleAutosaveDraft === 'function') scheduleAutosaveDraft();
+          if (typeof flushAutosaveDraft === 'function') flushAutosaveDraft();
+        } catch (e) {}
+        // Reset to a blank current asset.
+        state.current = {
+          type: null, file: null, fileMeta: null, dataURL: null,
+          hash: null, cbiaHash: null, poaSigned: false, poaSignature: null,
+          fields: {}, privacyMode: (state.settings && state.settings.defaultPrivacyMode) || 'maximum',
+          selectedOffices: [], originality: null, ownershipProofs: [], visualizer: null,
+        };
+        // Reset the visible form.
+        try {
+          document.querySelectorAll('.asset-type.selected').forEach(c => c.classList.remove('selected'));
+          const fi = document.getElementById('file-input'); if (fi) fi.value = '';
+          const pw = document.getElementById('file-preview-wrap'); if (pw) { pw.style.display = 'none'; pw.innerHTML = ''; }
+          const hs = document.getElementById('hash-status'); if (hs) hs.innerHTML = '<span class="dot"></span><span>No file</span>';
+          if (typeof updateMintReady === 'function') updateMintReady();
+        } catch (e) {}
+        if (typeof toast === 'function') toast('✓ Previous draft saved to My Vault · starting fresh', 'ok', 4500);
+      } else if (requested && !hasWork) {
+        // Brand-new flow with nothing to save — just clear the form to be safe.
+        try {
+          document.querySelectorAll('.asset-type.selected').forEach(c => c.classList.remove('selected'));
+        } catch (e) {}
       }
     } catch (e) {}
     // Show all upload + connect steps at all times.
@@ -38798,6 +38805,9 @@ document.addEventListener('click', (e) => {
     } else if (t.id === 'btn-home-vault') {
       try { showView && showView('view-vault'); } catch (er) {}
     } else if (t.id === 'btn-vault-tokenize') {
+      // Clicking the gold "Tokenize New Asset" button on the vault
+      // should silently save any current draft and open a fresh form.
+      window._wireipFreshAssetRequest = true;
       try { showView && showView('view-tokenize'); } catch (er) {}
       setTimeout(() => {
         try {
@@ -39758,16 +39768,45 @@ window.openGroundViewMap = openGroundViewMap;
 function initGlobe() {
   if (state.validators.length === 0) seedValidators();
   updateGlobeStats();
-  // Wire the Ground View button (idempotent) so each globe-view enter binds it.
+  // Wire the Ground View + Zoom-to-Studios buttons (idempotent).
   setTimeout(() => {
     const btn = document.getElementById('globe-ground-view-btn');
     if (btn && !btn._gvBound) {
       btn._gvBound = true;
       btn.addEventListener('click', () => {
-        // If the user has a focused city / validator, route there; else default.
         const focused = (globe && globe.focusedCity) || null;
         if (focused) openGroundViewMap({ lat: focused.lat, lon: focused.lon, name: focused.name });
         else openGroundViewMap();
+      });
+    }
+    const zsBtn = document.getElementById('globe-zoom-studios-btn');
+    if (zsBtn && !zsBtn._gvBound) {
+      zsBtn._gvBound = true;
+      zsBtn.addEventListener('click', () => {
+        if (!globe || !globe.initialized || !globe.camera || !globe.earth) return;
+        // Stop the auto-rotation while we animate.
+        globe.autoRotate = false;
+        // Atlanta lat/lng → required earthGroup rotation to put it
+        // directly under the camera (which sits on +Z by default).
+        const targetLat = 33.749, targetLng = -84.388;
+        const targetY = -((targetLng + 180) * Math.PI / 180) - Math.PI / 2;
+        const targetX = -(targetLat * Math.PI / 180);
+        const startY = globe.earth.rotation.y;
+        const startX = globe.earth.rotation.x;
+        const startZ = globe.camera.position.z;
+        const endZ = 105;
+        const dur = 1200;
+        const t0 = performance.now();
+        function step(now) {
+          const t = Math.min(1, (now - t0) / dur);
+          const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+          globe.earth.rotation.y = startY + (targetY - startY) * eased;
+          globe.earth.rotation.x = startX + (targetX - startX) * eased;
+          globe.camera.position.z = startZ + (endZ - startZ) * eased;
+          if (t < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+        if (typeof toast === 'function') toast('Zooming to Atlanta · WireIP creative hub · studio buildings visible', 'info', 4500);
       });
     }
   }, 50);
@@ -40433,7 +40472,9 @@ function updateGlobeLabels() {
   const placed = [];
   for (const p of projected) {
     let collide = false;
-    const radius = 60 * Math.max(0.5, p.typeScale);   // screen-pixel exclusion radius
+    // Bigger exclusion radius so dense clusters (US East Coast, Western
+    // Europe, East Asia) don't pile up. 90px gives each label real room.
+    const radius = 90 * Math.max(0.6, p.typeScale);   // screen-pixel exclusion radius
     for (const q of placed) {
       const dx = p.x - q.x, dy = p.y - q.y;
       const d2 = dx * dx + dy * dy;
@@ -40684,8 +40725,11 @@ function updateCityDetail(camera) {
   // Fade range: starts showing at z=165 (overlaps with city-label fade-out
   // that completes by z=165), fully visible at z=100. The two layers now
   // cross-fade so there's no "blank" zone between cities and studios.
-  const fadeStart = 165;
-  const fadeEnd = 100;
+  // Studio detail fades in earlier (z=210) so it's visible from a more
+  // comfortable zoom level · users were missing it because they didn't
+  // zoom close enough. Fully visible by z=120.
+  const fadeStart = 210;
+  const fadeEnd = 120;
   const tFade = Math.max(0, Math.min(1, (fadeStart - camZ) / (fadeStart - fadeEnd)));
   globe.cityDetail.detailGroup.visible = tFade > 0.01;
 
@@ -43570,29 +43614,51 @@ function init() {
   } catch (e) {}
 
   // ============================================================
-  // VISUALIZER SECTION REORDER  · Logo block right after Font Size chips
+  // VISUALIZER SECTION REORDER  · Logo + Background Media block placed
+  // directly after Canvas Dimensions, with Logo Size/Position/Opacity
+  // grouped underneath Branded Logo. Background Media sits below the
+  // logo block. This was the user's explicit request.
   // ============================================================
-  // User preference: Add Branded Logo + Logo Size + Logo Position + Layer
-  // Order should sit directly below the Font Size chip row, not after
-  // Pattern Size or buried at the end of the panel. Splice the DOM once
-  // on load. Anchor element: the last .viz-font-size-chip. Insert point:
-  // immediately after that chip's parent row so the whole "Font Size +
-  // Logo controls" block sits as one cohesive section.
   try {
-    const sizeChips    = document.querySelectorAll('.viz-font-size-chip');
-    const uploader     = document.querySelector('.viz-logo-uploader');
-    if (sizeChips.length && uploader && !uploader._reordered) {
-      const chipRow = sizeChips[sizeChips.length - 1].parentNode;
-      const parent  = uploader.parentNode;
-      if (chipRow && parent && chipRow.parentNode === parent) {
-        const refNode = chipRow.nextSibling;  // insert right after the Font Size chip row
-        // Collect every following sibling starting from the logo uploader
-        // (Add Branded Logo widget, Logo Size label + slider, Logo Position
-        // label + X / Y inputs, Layer Order label + chips + help text  · all
-        // the way to the end of the right column).
+    const uploader = document.querySelector('.viz-logo-uploader');
+    if (uploader && !uploader._reordered) {
+      // Find the Canvas Dimensions section label — anchor for insertion.
+      let canvasAnchor = null;
+      document.querySelectorAll('.viz-section-label').forEach(l => {
+        if (canvasAnchor) return;
+        if (/canvas dimensions/i.test(l.textContent || '')) canvasAnchor = l;
+      });
+      const parent = uploader.parentNode;
+      // We want everything from the logo uploader up through the layer
+      // chips (Logo Size, Logo Position, Layer Order). The block ends
+      // at the next major section label after the logo uploader.
+      if (canvasAnchor && parent && canvasAnchor.parentNode === parent) {
+        // Find the END of the Canvas Dimensions block — the next
+        // .viz-section-label sibling after the canvas anchor row.
+        let canvasBlockEnd = canvasAnchor.nextElementSibling;
+        while (canvasBlockEnd && !canvasBlockEnd.classList.contains('viz-section-label')) {
+          canvasBlockEnd = canvasBlockEnd.nextElementSibling;
+        }
+        const refNode = canvasBlockEnd;   // insert right BEFORE the next section label
+        // Collect: the logo uploader, the background-media uploader
+        // (the second .viz-logo-uploader), the Logo Size label/slider,
+        // Logo Position label/inputs, Layer Order label/chips.
         const block = [];
         let n = uploader;
-        while (n) { block.push(n); n = n.nextElementSibling; }
+        while (n) {
+          block.push(n);
+          const next = n.nextElementSibling;
+          // Stop if we'd swallow the canvas block end or a totally
+          // unrelated downstream section. We collect all immediate
+          // siblings that belong to the logo/bg group.
+          if (!next) break;
+          // Stop when we hit a known "different topic" section label.
+          if (next.classList && next.classList.contains('viz-section-label')) {
+            const tx = (next.textContent || '').toLowerCase();
+            if (/font|background color|pattern|wave|animation|effect|fx|texture/.test(tx)) break;
+          }
+          n = next;
+        }
         for (const node of block) parent.insertBefore(node, refNode);
         uploader._reordered = true;
       }
