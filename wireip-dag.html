@@ -21,7 +21,7 @@
 <!-- WIREIP_BUILD_ID is updated every time we ship a change · users can
      compare the footer chip to the latest build to verify their device
      has the fresh code. -->
-<script>window.WIREIP_BUILD_ID = '2026-05-16-23:30';</script>
+<script>window.WIREIP_BUILD_ID = '2026-05-18-04:30 · auth-v3';</script>
 <!-- =====================================================================
      ACCOUNT GATE BOOTSTRAP · runs before the main app
      ---------------------------------------------------------------------
@@ -32,9 +32,46 @@
      even if the main app's giant inline script hasn't run yet.
      ===================================================================== -->
 <script>
+/* ============================================================
+   BACKEND AUTH HOOK · for real cross-device login
+   ============================================================
+   Set window.WIREIP_AUTH_BACKEND_URL to your auth endpoint URL
+   to enable true "@handle + password works on any device" login.
+   The frontend POSTs to that URL with three actions:
+     · {action:'signup',  handle, password}      → returns {ok, error}
+     · {action:'signin',  handle, password}      → returns {ok, error, token}
+     · {action:'transfer', handle, password}     → returns {ok, payload}
+   Any backend speaking that contract works. The simplest
+   reference implementation is ~30 lines of Cloudflare Worker
+   or Firebase Function code · see WIREIP-AUTH-BACKEND.md.
+   When BACKEND_URL is empty, the gate falls back to per-device
+   localStorage authentication (the current behavior).
+   ============================================================ */
+window.WIREIP_AUTH_BACKEND_URL = window.WIREIP_AUTH_BACKEND_URL || '';
+
 (function _wireipAccountGate() {
   const ACCT_KEY = 'wireip-account';        // { handle, passHash, salt, createdAt }
   const SESSION_KEY = 'wireip-auth';        // simple "unlocked" flag for this session
+  // Helper · POSTs to the configured backend if one is set. Returns null
+  // when no backend is configured so the caller falls back to local-only.
+  async function callBackend(action, handle, password, extra) {
+    const url = window.WIREIP_AUTH_BACKEND_URL;
+    if (!url) return null;
+    try {
+      const body = Object.assign({ action, handle, password }, extra || {});
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok && !j.ok) return { ok: false, error: j.error || ('HTTP ' + r.status) };
+      return j;
+    } catch (e) {
+      return { ok: false, error: 'network · ' + (e && e.message || e) };
+    }
+  }
+  window._wireipAuthCallBackend = callBackend;
   function loadAccount() {
     try { return JSON.parse(localStorage.getItem(ACCT_KEY) || 'null'); }
     catch (e) { return null; }
@@ -191,6 +228,14 @@
       const terms = document.getElementById('auth-terms').checked;
       if (password !== confirm) return showError('Passwords do not match');
       if (!terms) return showError('Please accept the account responsibilities');
+      // ===== Backend-first signup (when configured) =====
+      // If WIREIP_AUTH_BACKEND_URL is set, register with the backend
+      // FIRST so the account is portable across devices. Falls back to
+      // local-only if no backend or the backend errors out.
+      const backendResult = await callBackend('signup', handle, password);
+      if (backendResult && !backendResult.ok) {
+        return showError(backendResult.error || 'Signup rejected by backend');
+      }
       if (acct && acct.handle === handle) return showError('An account with that handle already exists on this device · use Sign In instead');
       const salt = randomSalt();
       const passHash = await sha256Hex(password + ':' + salt);
@@ -211,8 +256,39 @@
       return;
     }
     // ===== SIGN IN =====
-    if (!acct) return showError('No account on this device with that handle · tap Create Account to make one');
-    if (acct.handle !== handle) return showError('No account on this device with that handle · check the spelling or Create Account');
+    // Backend path first (true cross-device login): if configured, ask
+    // the backend to authenticate · on success, provision the local
+    // account record so subsequent loads use the per-device fast path.
+    const backendSignin = await callBackend('signin', handle, password);
+    if (backendSignin && backendSignin.ok) {
+      // Backend approved · materialize a local account record so the
+      // user can use the device offline / quickly until next backend sync.
+      const salt = randomSalt();
+      const passHash = await sha256Hex(password + ':' + salt);
+      const newAcct = { handle, passHash, salt, createdAt: Date.now(), backend_token: backendSignin.token || null };
+      saveAccount(newAcct);
+      try {
+        const s = JSON.parse(localStorage.getItem('wireip_settings') || '{}');
+        s.profile = s.profile || {};
+        s.profile.handle = handle;
+        localStorage.setItem('wireip_settings', JSON.stringify(s));
+      } catch (er) {}
+      hideGate({ handle: handle });
+      setTimeout(() => { try { location.reload(); } catch (e) {} }, 2200);
+      return;
+    }
+    if (backendSignin && !backendSignin.ok) {
+      return showError(backendSignin.error || 'Sign-in rejected by backend');
+    }
+    // No backend configured · fall back to local-only authentication.
+    if (!acct) return showError(
+      'No account on this device with that handle.\n\n' +
+      'Three options:\n' +
+      '  · If you signed up on another device, tap "📱 Paste Transfer Code" above\n' +
+      '  · Otherwise tap "Create Account" to make one here\n' +
+      '  · For real cross-device login, wire a backend (see auth note below)'
+    );
+    if (acct.handle !== handle) return showError('No account on this device with that handle · check the spelling or use the transfer code option above');
     const candidate = await sha256Hex(password + ':' + acct.salt);
     if (candidate !== acct.passHash) return showError('Incorrect password');
     hideGate({ handle: handle });
@@ -245,6 +321,11 @@
     // available, with a small retry loop to handle the race where the gate
     // markup hasn't been parsed yet on the very first call.
     function wireForm() {
+      // Stamp the build ID so the user can verify they're on the latest deploy.
+      try {
+        const idEl = document.getElementById('auth-build-id');
+        if (idEl && window.WIREIP_BUILD_ID) idEl.textContent = window.WIREIP_BUILD_ID;
+      } catch (e) {}
       const tabs = document.querySelectorAll('.auth-tab');
       const form = document.getElementById('auth-form');
       if (!tabs.length || !form) return false;
@@ -8125,6 +8206,25 @@ document.addEventListener('DOMContentLoaded', function() {
         <div style="font-size:9px;letter-spacing:0.24em;text-transform:uppercase;color:var(--cyan);margin-bottom:6px;">⌬ WireIP Network</div>
         <div style="font-size:22px;font-weight:700;color:var(--gold);letter-spacing:0.04em;">Sovereign IP Vault</div>
         <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;">Identity-based account · not a wallet. Your handle + password unlock access; your SecureCard ID is generated separately.</div>
+        <div style="font-size:8.5px;color:var(--gold-soft);margin-top:8px;letter-spacing:0.06em;font-family:'IBM Plex Mono',ui-monospace,monospace;">build <span id="auth-build-id">…</span></div>
+      </div>
+      <!-- ============================================================
+           PROMINENT TRANSFER CODE CTA · displayed BEFORE the form so
+           users coming from another device see it immediately. The
+           prior "no account on this device" dead-end was because this
+           option was buried below the form.
+           ============================================================ -->
+      <div id="auth-transfer-cta" style="margin-bottom:18px;padding:14px 16px;background:linear-gradient(135deg,rgba(79,214,255,0.10),rgba(79,214,255,0.02));border:1.5px solid var(--cyan);border-radius:10px;text-align:left;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style="font-size:18px;color:var(--cyan);">📱</span>
+          <span style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--cyan);flex:1;font-weight:700;">Coming from another device?</span>
+        </div>
+        <p style="font-size:11px;color:var(--text);line-height:1.55;margin:0 0 10px;">
+          Your account already exists on your other device · paste your <strong>transfer code</strong> here to link this device to it. Generate the code on your existing device under <strong>Settings → Devices → "Sign in on another device"</strong>.
+        </p>
+        <button type="button" id="auth-use-transfer-code" style="width:100%;padding:11px;background:var(--cyan);color:#050606;border:none;border-radius:6px;font-size:12px;font-weight:700;letter-spacing:0.10em;text-transform:uppercase;cursor:pointer;">
+          📱 Paste Transfer Code
+        </button>
       </div>
       <div id="auth-tabs" style="display:flex;gap:6px;margin-bottom:20px;background:var(--bg);padding:4px;border-radius:8px;border:1px solid var(--border);">
         <button type="button" data-tab="signin" class="auth-tab active" style="flex:1;padding:9px;background:rgba(240,196,25,0.10);border:1px solid var(--gold);color:var(--gold);border-radius:6px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;font-weight:700;">Sign In</button>
@@ -8153,19 +8253,10 @@ document.addEventListener('DOMContentLoaded', function() {
         <div id="auth-error" style="display:none;margin-bottom:14px;padding:10px 12px;background:rgba(255,80,80,0.10);border:1px solid var(--err);border-radius:6px;font-size:11px;color:var(--err);"></div>
         <button type="submit" id="auth-submit" class="primary" style="width:100%;padding:13px;font-size:13px;letter-spacing:0.10em;text-transform:uppercase;font-weight:700;background:linear-gradient(135deg,#f0c419,#d4af37);color:#050606;border:none;border-radius:8px;cursor:pointer;">Sign In</button>
       </form>
-      <!-- ============================================================
-           TRANSFER CODE PATH · sign in on a new device using a code
-           generated on your existing device (Settings → Devices →
-           "Sign in on another device"). This is how cross-device
-           login works without a backend.
-           ============================================================ -->
-      <div style="margin-top:14px;text-align:center;">
-        <button type="button" id="auth-use-transfer-code" style="background:transparent;border:1px solid var(--cyan);color:var(--cyan);padding:9px 18px;font-size:11px;letter-spacing:0.06em;border-radius:6px;cursor:pointer;font-weight:700;">
-          📱 Use transfer code from another device
-        </button>
-      </div>
       <div style="margin-top:16px;padding-top:16px;border-top:1px dashed var(--border);font-size:9.5px;color:var(--muted);text-align:center;line-height:1.5;">
-        New device? Generate a transfer code on your existing device under <strong>Settings → Devices → Sign in on another device</strong> · paste it above to provision this account here.
+        <strong style="color:var(--gold-soft);">How cross-device works in this build:</strong><br>
+        Static HTML can't authenticate across devices without a backend. Use the transfer code above to link a new device — one-time per device, then sign-in works normally.<br><br>
+        <span style="color:var(--cyan);font-size:9px;">For production cross-device, wire a backend at <code>window.WIREIP_AUTH_BACKEND_URL</code> · see WIREIP-AUTH-BACKEND.md.</span>
       </div>
     </div>
   </div>
