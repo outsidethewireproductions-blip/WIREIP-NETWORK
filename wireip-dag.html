@@ -22,7 +22,7 @@
      compare the footer chip to the latest build to verify their device
      has the fresh code. -->
 <script>
-window.WIREIP_BUILD_ID = '2026-05-18-22:00 · v15-real-logo';
+window.WIREIP_BUILD_ID = '2026-05-18-22:20 · v16-minimal-splash';
 // Stamp the topbar build chip as soon as the DOM is parsed — this is the
 // single most reliable way for the user to verify they're loading the
 // freshly-deployed file vs a cached version. If the chip on their
@@ -152,24 +152,24 @@ window.WIREIP_AUTH_BACKEND_URL = window.WIREIP_AUTH_BACKEND_URL || '';
         'background:radial-gradient(ellipse at center,rgba(8,16,30,0.98),rgba(2,4,8,1));' +
         'display:flex;align-items:center;justify-content:center;flex-direction:column;' +
         'opacity:0;transition:opacity 0.35s ease;';
-      // ===== Branded splash logo =====
-      // Uses the user-supplied wireip-logo.svg (the actual vector logo
-      // file in the project root). A tiny placeholder is shown only
-      // while the SVG loads; if the file is missing the placeholder
-      // stays so the splash never breaks.
+      // ===== Branded splash · minimal layout matching reference PDF =====
+      // Just the logo, a soft halo behind it, and a small green
+      // "✓ ACCESS GRANTED" line below in monospace. No big heading, no
+      // @handle echo, no "entering the network" caption. The reference
+      // mock the user supplied shows this exact minimal composition.
       splash.innerHTML =
-        '<div style="text-align:center;max-width:480px;padding:24px;">' +
-          '<div style="position:relative;width:220px;height:220px;margin:0 auto 18px;">' +
+        '<div style="text-align:center;padding:24px;">' +
+          '<div style="position:relative;width:220px;height:220px;margin:0 auto 14px;">' +
             // Soft gold halo so the logo "breathes" on the dark splash
-            '<div style="position:absolute;inset:-20px;border-radius:50%;background:radial-gradient(circle,rgba(240,196,25,0.20),transparent 65%);pointer-events:none;"></div>' +
-            // The real logo · drops in cleanly when present
+            '<div style="position:absolute;inset:-30px;border-radius:50%;background:radial-gradient(circle,rgba(240,196,25,0.18),transparent 65%);pointer-events:none;"></div>' +
+            // The real logo
             '<img src="wireip-logo.svg?v=' + (window.WIREIP_BUILD_ID || Date.now()) + '" alt="WireIP" ' +
                  'style="position:relative;width:100%;height:100%;object-fit:contain;display:block;" ' +
                  'onerror="this.style.display=\'none\';" />' +
           '</div>' +
-          '<div style="font-size:26px;font-weight:800;color:var(--gold);letter-spacing:0.10em;margin-bottom:8px;">ACCESS GRANTED</div>' +
-          (handle ? '<div style="font-family:\'IBM Plex Mono\',ui-monospace,monospace;font-size:14px;color:var(--cyan);letter-spacing:0.04em;">@' + handle.replace(/[<>"&]/g,'') + '</div>' : '') +
-          '<div style="font-size:10px;color:var(--muted);margin-top:12px;letter-spacing:0.14em;text-transform:uppercase;">Entering the network…</div>' +
+          '<div style="font-family:\'IBM Plex Mono\',ui-monospace,monospace;font-size:11px;letter-spacing:0.28em;color:#4ade80;text-transform:uppercase;">' +
+            '✓ Access Granted' +
+          '</div>' +
         '</div>';
       document.body.appendChild(splash);
       requestAnimationFrame(() => { splash.style.opacity = '1'; });
