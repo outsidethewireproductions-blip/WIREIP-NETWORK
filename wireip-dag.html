@@ -347,54 +347,91 @@ window.WIREIP_AUTH_BACKEND_URL = window.WIREIP_AUTH_BACKEND_URL || '';
       const tcBtn = document.getElementById('auth-use-transfer-code');
       if (tcBtn && !tcBtn._authBound) {
         tcBtn._authBound = true;
-        tcBtn.addEventListener('click', () => {
-          const code = window.prompt(
-            'Paste your Account Transfer Code from your other device:\n\n' +
-            '(Generate one in Settings → Devices → "Sign in on another device" on your existing device)'
-          );
-          if (!code) return;
-          const decoded = (typeof window.decodeAccountTransferCode === 'function')
-            ? window.decodeAccountTransferCode(code)
-            : null;
-          // Inline fallback decoder in case the main script hasn't loaded yet.
-          let obj = decoded;
-          if (!obj) {
-            try {
-              let s = String(code).trim().toUpperCase();
-              if (s.startsWith('WI-')) {
-                s = s.slice(3).replace(/-/g, '');
-                const json = decodeURIComponent(escape(atob(s)));
-                const parsed = JSON.parse(json);
-                if (parsed && parsed.v === 1 && parsed.handle && parsed.passHash && parsed.salt) obj = parsed;
-              }
-            } catch (e) {}
-          }
-          if (!obj) {
-            showError('Invalid transfer code · check that you pasted the whole thing including the WI- prefix');
-            return;
-          }
-          // Provision the account record locally with the decoded credentials.
-          const newAcct = { handle: obj.handle, passHash: obj.passHash, salt: obj.salt, createdAt: Date.now(), provisioned_from_transfer: true };
-          saveAccount(newAcct);
-          // Pre-fill the handle field + flip to Sign In tab so the user
-          // just needs to type their password to complete the login.
-          setAuthMode('signin');
-          const hEl = document.getElementById('auth-handle');
-          const pEl = document.getElementById('auth-password');
-          if (hEl) hEl.value = obj.handle;
-          if (pEl) pEl.focus();
-          showError('');
-          const err = document.getElementById('auth-error');
-          if (err) {
-            err.textContent = '✓ Account provisioned · type your password to sign in';
-            err.style.background = 'rgba(74,222,128,0.10)';
-            err.style.border = '1px solid var(--green)';
-            err.style.color = 'var(--green)';
-            err.style.display = 'block';
-          }
-        });
+        tcBtn.addEventListener('click', () => processTransferCodeFromUI());
       }
+      // Auto-detect ?transfer=… in the URL (set by the QR code on desktop)
+      // and try to provision immediately — saves the user from having to
+      // paste anything on mobile.
+      try {
+        const urlParam = new URL(location.href).searchParams.get('transfer');
+        if (urlParam && !window._transferAutoTried) {
+          window._transferAutoTried = true;
+          // Wait a tick so the gate is fully rendered.
+          setTimeout(() => processTransferCodeFromUI(urlParam), 50);
+        }
+      } catch (e) {}
       return true;
+    }
+    // Shared transfer-code processor · used by the button AND the
+    // ?transfer=… URL-param auto-handler so both paths report the same
+    // detailed errors and provision the same way.
+    function processTransferCodeFromUI(prefilled) {
+      const code = prefilled || window.prompt(
+        'Paste your Account Transfer Code from your other device:\n\n' +
+        '(Generate one in Settings → Devices → "Sign in on another device" on your existing device.\n' +
+        'Or scan the QR code shown there with your phone camera.)'
+      );
+      if (!code) return;
+      // Inline decoder copy in case the main script hasn't loaded yet
+      // (race on first-visit account-gate render).
+      function inlineDecode(s) {
+        if (typeof window.decodeAccountTransferCode === 'function') {
+          return window.decodeAccountTransferCode(s);
+        }
+        // ----- inline v2 fallback -----
+        try {
+          let t = String(s).trim();
+          const u = t.match(/[?&]transfer=([^&\s#]+)/i);
+          if (u) t = u[1];
+          t = t.replace(/\s+/g, '').toUpperCase();
+          if (!t.startsWith('WI2-')) return { ok: false, error: 'unrecognized format' };
+          const rest = t.slice(4);
+          const dash = rest.indexOf('-');
+          if (dash < 0) return { ok: false, error: 'malformed' };
+          const payload = rest.slice(dash + 1).replace(/-/g, '');
+          let b = payload.replace(/-/g, '+').replace(/_/g, '/');
+          while (b.length % 4) b += '=';
+          const json = decodeURIComponent(escape(atob(b)));
+          const obj = JSON.parse(json);
+          if (!obj || obj.v !== 2 || !obj.handle || !obj.passHash || !obj.salt) return { ok: false, error: 'incomplete payload' };
+          return { ok: true, payload: obj };
+        } catch (e) { return { ok: false, error: 'decode error' }; }
+      }
+      const result = inlineDecode(code);
+      if (!result || !result.ok) {
+        showError('Invalid transfer code · ' + (result && result.error || 'unknown error') +
+          '\n\nMake sure you copied the WHOLE code from desktop including the WI2- prefix.');
+        return;
+      }
+      const obj = result.payload;
+      // Provision the account record locally with the decoded credentials.
+      const newAcct = { handle: obj.handle, passHash: obj.passHash, salt: obj.salt, createdAt: Date.now(), provisioned_from_transfer: true };
+      saveAccount(newAcct);
+      // Pre-fill the handle field + flip to Sign In tab so the user
+      // just needs to type their password to complete the login.
+      setAuthMode('signin');
+      const hEl = document.getElementById('auth-handle');
+      const pEl = document.getElementById('auth-password');
+      if (hEl) hEl.value = obj.handle;
+      if (pEl) pEl.focus();
+      showError('');
+      const err = document.getElementById('auth-error');
+      if (err) {
+        err.textContent = '✓ Account "@' + obj.handle + '" provisioned on this device · type your password to sign in';
+        err.style.background = 'rgba(74,222,128,0.10)';
+        err.style.border = '1px solid var(--green)';
+        err.style.color = 'var(--green)';
+        err.style.display = 'block';
+      }
+      // If the transfer arrived via URL param, strip it so a future
+      // reload doesn't re-run the provision against a stale code.
+      try {
+        if (prefilled && location.search.indexOf('transfer=') !== -1) {
+          const url = new URL(location.href);
+          url.searchParams.delete('transfer');
+          window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
+        }
+      } catch (e) {}
     }
     if (!wireForm()) {
       // Retry with a small backoff until the markup exists.
@@ -16069,31 +16106,86 @@ if (_origRenderSettingsForDevices) {
    SECURITY NOTE: this code is sensitive · anyone who has it can
    sign in as you on their device. Treat it like a password.
    ============================================================ */
+/* ============================================================
+   ACCOUNT TRANSFER CODE · encode / decode
+   ============================================================
+   Encoded as URL-safe base64 (no +/= which break in URLs and get
+   mangled by some clipboard managers). Wrapped with a TRANSFER-V2
+   sentinel + 4-char checksum so decoding fails LOUDLY when the
+   code has been truncated or corrupted instead of silently
+   producing the wrong account.
+   ============================================================ */
+function _b64urlEncode(str) {
+  return btoa(unescape(encodeURIComponent(str)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function _b64urlDecode(s) {
+  s = String(s).replace(/-/g, '+').replace(/_/g, '/');
+  // Pad with '=' to multiple of 4
+  while (s.length % 4) s += '=';
+  return decodeURIComponent(escape(atob(s)));
+}
+function _checksum4(str) {
+  // Simple 16-bit djb2 hash → 4-char hex. Detects truncation / typos.
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = (((h << 5) + h) + str.charCodeAt(i)) & 0xFFFF;
+  return (h >>> 0).toString(16).padStart(4, '0').toUpperCase();
+}
 function encodeAccountTransferCode() {
   try {
     const acct = JSON.parse(localStorage.getItem('wireip-account') || 'null');
     if (!acct || !acct.handle) return null;
-    const payload = { v: 1, handle: acct.handle, passHash: acct.passHash, salt: acct.salt, issued: Date.now() };
+    const payload = { v: 2, handle: acct.handle, passHash: acct.passHash, salt: acct.salt, issued: Date.now() };
     const json = JSON.stringify(payload);
-    const b64 = btoa(unescape(encodeURIComponent(json)));
-    // Group into 5-char chunks for readability when typed: WI-XXXXX-XXXXX-…
+    const b64 = _b64urlEncode(json);
+    const cks = _checksum4(b64);
+    // Group into 5-char chunks for readability: WI2-CKSUM-XXXXX-XXXXX-…
     const groups = [];
     for (let i = 0; i < b64.length; i += 5) groups.push(b64.slice(i, i + 5));
-    return 'WI-' + groups.join('-');
+    return 'WI2-' + cks + '-' + groups.join('-');
   } catch (e) { return null; }
 }
 window.encodeAccountTransferCode = encodeAccountTransferCode;
 window.decodeAccountTransferCode = function(code) {
-  try {
-    if (!code) return null;
-    let s = String(code).trim().toUpperCase();
-    if (!s.startsWith('WI-')) return null;
-    s = s.slice(3).replace(/-/g, '');
-    const json = decodeURIComponent(escape(atob(s)));
-    const obj = JSON.parse(json);
-    if (!obj || obj.v !== 1 || !obj.handle || !obj.passHash || !obj.salt) return null;
-    return obj;
-  } catch (e) { return null; }
+  if (!code) return { ok: false, error: 'empty code' };
+  // Strip everything that isn't an allowed char so paste/whitespace/quotes
+  // don't kill the decode. Keep alphanumerics, '-', '_'.
+  let s = String(code).trim();
+  // If the user pasted a full URL like "https://wireip-network.vercel.app/?transfer=WI2-…",
+  // extract just the transfer parameter.
+  const urlMatch = s.match(/[?&]transfer=([^&\s#]+)/i);
+  if (urlMatch) s = urlMatch[1];
+  s = s.replace(/\s+/g, '').toUpperCase();
+  // ----- v2 format: WI2-CKSUM-payload -----
+  if (s.startsWith('WI2-')) {
+    const rest = s.slice(4);
+    const dash = rest.indexOf('-');
+    if (dash < 0) return { ok: false, error: 'malformed v2 code (no checksum separator)' };
+    const cks = rest.slice(0, dash);
+    const payload = rest.slice(dash + 1).replace(/-/g, '');
+    if (_checksum4(payload) !== cks) return { ok: false, error: 'checksum mismatch · code may be truncated or corrupted · re-copy from desktop' };
+    try {
+      const json = _b64urlDecode(payload);
+      const obj = JSON.parse(json);
+      if (!obj || obj.v !== 2 || !obj.handle || !obj.passHash || !obj.salt) return { ok: false, error: 'decoded payload missing fields' };
+      return { ok: true, payload: obj };
+    } catch (e) {
+      return { ok: false, error: 'base64 decode failed: ' + (e && e.message || e) };
+    }
+  }
+  // ----- v1 format (legacy): WI-…b64… -----
+  if (s.startsWith('WI-')) {
+    try {
+      const stripped = s.slice(3).replace(/-/g, '');
+      const json = decodeURIComponent(escape(atob(stripped)));
+      const obj = JSON.parse(json);
+      if (!obj || obj.v !== 1 || !obj.handle || !obj.passHash || !obj.salt) return { ok: false, error: 'v1 payload missing fields' };
+      return { ok: true, payload: obj };
+    } catch (e) {
+      return { ok: false, error: 'v1 decode failed: ' + (e && e.message || e) };
+    }
+  }
+  return { ok: false, error: 'unrecognized format · expected code starting with WI2-' };
 };
 
 function openAccountTransferModal() {
@@ -16105,19 +16197,34 @@ function openAccountTransferModal() {
   const overlay = document.createElement('div');
   overlay.className = 'modal-backdrop';
   overlay.style.zIndex = 10500;
+  // Build the transfer URL with the code as a query param so a QR scan
+  // on the phone opens the deployed app + auto-provisions in one tap.
+  const transferUrl = location.origin + location.pathname + '?transfer=' + encodeURIComponent(code);
+  // Use the api.qrserver.com free QR generator (no API key, no auth) —
+  // returns a PNG of the QR code. 280px square is comfortably scannable
+  // from across a desk. ECC level M for balance of size + error tolerance.
+  const qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&ecc=M&data=' + encodeURIComponent(transferUrl);
   overlay.innerHTML =
-    '<div class="modal" style="max-width:560px;">' +
+    '<div class="modal" style="max-width:600px;">' +
       '<header><h2>📱 Sign in on another device</h2><button class="close" type="button" id="atm-close">&times;</button></header>' +
       '<div class="body">' +
         '<p class="help" style="margin-top:0;">' +
-          'Copy this <strong>Account Transfer Code</strong> and paste it on your other device\'s sign-in screen. The other device will provision the same account locally so you can sign in there with your @handle + password.' +
+          '<strong style="color:var(--cyan);">Two ways to transfer.</strong> Scan the QR with your phone camera (fastest) OR copy the code and paste it on the other device\'s sign-in screen.' +
         '</p>' +
+        '<!-- ===== QR CODE ===== -->' +
+        '<div style="display:flex;justify-content:center;margin:18px 0;padding:18px;background:#fff;border:1px solid var(--cyan);border-radius:12px;">' +
+          '<img src="' + qrSrc + '" alt="Account transfer QR code" style="display:block;width:280px;height:280px;" />' +
+        '</div>' +
+        '<div style="text-align:center;font-size:10.5px;color:var(--muted);margin-bottom:14px;">' +
+          'Open your phone camera, point at the QR · tap the notification · WireIP opens with the account pre-provisioned.' +
+        '</div>' +
         '<div style="padding:14px 16px;background:var(--bg);border:1px dashed var(--cyan);border-radius:var(--radius);margin:14px 0;">' +
-          '<div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--cyan);margin-bottom:6px;">Account Transfer Code</div>' +
+          '<div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--cyan);margin-bottom:6px;">Or copy this code manually</div>' +
           '<div id="atm-code" style="font-family:\'IBM Plex Mono\',ui-monospace,monospace;font-size:11px;color:var(--gold);word-break:break-all;line-height:1.5;user-select:all;">' + _escapeHtml(code) + '</div>' +
         '</div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">' +
           '<button type="button" class="primary" id="atm-copy" style="padding:9px 14px;font-size:11px;">⎘ Copy code</button>' +
+          '<button type="button" id="atm-copy-url" style="padding:9px 14px;font-size:11px;background:transparent;border:1px solid var(--cyan);color:var(--cyan);border-radius:var(--radius);cursor:pointer;">🔗 Copy sign-in URL</button>' +
           '<button type="button" id="atm-share" style="padding:9px 14px;font-size:11px;background:transparent;border:1px solid var(--gold-soft);color:var(--gold);border-radius:var(--radius);cursor:pointer;">⌬ Share via system sheet</button>' +
         '</div>' +
         '<div style="padding:12px 14px;background:rgba(255,80,80,0.06);border:1px solid var(--err);border-left:4px solid var(--err);border-radius:var(--radius);font-size:11px;color:var(--text);line-height:1.55;">' +
@@ -16156,10 +16263,29 @@ function openAccountTransferModal() {
       if (typeof toast === 'function') toast('✓ Transfer code copied', 'ok');
     }
   });
+  // Copy the full sign-in URL (contains the transfer code as a query param).
+  // The user can send this via text/email/AirDrop to their phone — opening
+  // it in any browser auto-provisions the account without any typing.
+  const copyUrlBtn = overlay.querySelector('#atm-copy-url');
+  if (copyUrlBtn) {
+    copyUrlBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(transferUrl);
+        if (typeof toast === 'function') toast('✓ Sign-in URL copied · paste in your mobile browser', 'ok', 5000);
+      } catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = transferUrl; document.body.appendChild(ta);
+        ta.select(); try { document.execCommand('copy'); } catch (er) {}
+        ta.remove();
+        if (typeof toast === 'function') toast('✓ Sign-in URL copied', 'ok');
+      }
+    });
+  }
   overlay.querySelector('#atm-share').addEventListener('click', async () => {
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'WireIP Account Transfer Code', text: code });
+        // Prefer sharing the URL since it auto-opens WireIP on the receiving device.
+        await navigator.share({ title: 'WireIP · Sign in on this device', text: 'Tap to sign in to my WireIP account: ' + transferUrl, url: transferUrl });
       } catch (e) {}
     } else {
       if (typeof toast === 'function') toast('Share sheet not supported on this browser · use Copy instead', 'warn');
@@ -16167,11 +16293,13 @@ function openAccountTransferModal() {
   });
   overlay.querySelector('#atm-regen').addEventListener('click', () => {
     const fresh = encodeAccountTransferCode();
-    if (fresh) {
-      const el = document.getElementById('atm-code');
-      if (el) el.textContent = fresh;
-      if (typeof toast === 'function') toast('Fresh code generated', 'info');
-    }
+    if (!fresh) return;
+    const el = document.getElementById('atm-code');
+    if (el) el.textContent = fresh;
+    // Refresh the QR too · close + reopen the modal to redraw with the new code.
+    if (typeof toast === 'function') toast('Fresh code generated · reopen the dialog to refresh the QR', 'info', 4500);
+    close();
+    setTimeout(openAccountTransferModal, 200);
   });
 }
 window.openAccountTransferModal = openAccountTransferModal;
