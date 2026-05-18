@@ -22,7 +22,7 @@
      compare the footer chip to the latest build to verify their device
      has the fresh code. -->
 <script>
-window.WIREIP_BUILD_ID = '2026-05-18-15:30 · v5-nfc-pinned';
+window.WIREIP_BUILD_ID = '2026-05-18-16:10 · v6-token-diag';
 // Stamp the topbar build chip as soon as the DOM is parsed — this is the
 // single most reliable way for the user to verify they're loading the
 // freshly-deployed file vs a cached version. If the chip on their
@@ -15392,9 +15392,10 @@ function enforceSecureCardMatch() {
   const validTest        = (typeof isTestCodeValid === 'function') && isTestCodeValid(poa.cardSerial);
   const bypassTokenPref  = !!(state.settings && state.settings.bypassSecureCardToken);
   const noSecureNode     = !(state.secureNode && state.secureNode.connected);
-  const bypassToken      = bypassTokenPref || noSecureNode;
+  const bypassToken      = bypassTokenPref || noSecureNode || validTest;
   const idMatch          = (poa.cardSerial === expectedId) || validTest;
   const tokenMatch       = (poa.signature === expectedToken) || validTest || bypassToken;
+  try { console.log('[WireIP PoA Enforce]', { idMatch, tokenMatch, bypassTokenPref, noSecureNode, bypassToken, validTest }); } catch (e) {}
   if (!idMatch || !tokenMatch) {
     if (typeof toast === 'function') {
       toast('REGISTRATION REJECTED · the tapped SecureCard™ ID does not match the one registered to this device. Tokenization is blocked until you tap the correct card.', 'err', 11000);
@@ -31734,26 +31735,47 @@ function _wireNfcPasteVerify() {
       setTimeout(() => { try { completeNFC(true, tagSig); } catch (e) {} }, 400);
       return;
     }
-    // Accept either the permanent SecureCard ID or any test code in
-    // the 60-second grace window. Token mismatch is forgiven for the
-    // test-code path, when Settings → Privacy → token-check Bypass is
-    // enabled (testnet-only convenience), OR when no SecureNode is
-    // connected — without the hardware that signs the token, there's
-    // no way to verify the signature anyway.
+    // ===== TESTNET BYPASS LOGIC ===================================
+    // The token check is forgiven when ANY of these is true:
+    //   1. The pasted ID is a currently-valid Test Code (60s grace).
+    //   2. The user explicitly enabled Settings → Privacy → Bypass.
+    //   3. No SecureNode is connected to this account — without the
+    //      hardware that signs the token, there's no way to actually
+    //      verify a signature anyway, so refusing the verification
+    //      would just lock the user out.
+    // When bypass is active AND the ID matches the registered card,
+    // we PASS unconditionally and surface a yellow "AUTO-BYPASS" badge
+    // so the user can see why the verification was accepted.
     const matchesTestCode = (typeof isTestCodeValid === 'function') && isTestCodeValid(tagCardId);
     const bypassTokenPref = !!(state.settings && state.settings.bypassSecureCardToken);
     const noSecureNode    = !(state.secureNode && state.secureNode.connected);
-    const bypassToken     = bypassTokenPref || noSecureNode;
+    const bypassToken     = bypassTokenPref || noSecureNode || matchesTestCode;
     const idMatch    = (tagCardId === expectedCardId) || matchesTestCode;
-    const tokenMatch = (tagSig === expectedCardToken) || matchesTestCode || bypassToken;
+    const tokenMatchRaw = (tagSig === expectedCardToken);
+    const tokenMatch    = tokenMatchRaw || matchesTestCode || bypassToken;
+    // Diagnostics · printed to the dev console so we can see exactly
+    // why a verification did or didn't pass on the user's machine.
+    try {
+      console.log('[WireIP NFC Verify]',
+        { idMatch, tokenMatchRaw, matchesTestCode, bypassTokenPref,
+          noSecureNode, bypassToken, secureNodeState: state.secureNode });
+    } catch (e) {}
     if (idMatch && tokenMatch) {
       // SECURITY: never echo the registered Card ID back to the screen.
       // The user already has it in Settings; surfacing it here lets an
       // over-the-shoulder observer harvest it from the verify result.
+      const bypassBadge = bypassToken && !tokenMatchRaw
+        ? '<div style="margin-top:6px;padding:6px 8px;background:rgba(240,196,25,0.10);border:1px dashed var(--gold);border-radius:4px;color:var(--gold);font-size:10px;letter-spacing:0.05em;">⚜ AUTO-BYPASS ACTIVE · ' +
+          (matchesTestCode ? 'valid test code' :
+           bypassTokenPref ? 'token-check bypass setting ON' :
+           'no SecureNode connected · no hardware to sign with') +
+          '</div>'
+        : '';
       out.innerHTML =
-        '<span style="color:var(--green);">✓ MATCH · encrypted handshake verified</span><br>' +
+        '<span style="color:var(--green);">✓ MATCH · handshake verified</span><br>' +
         '<div style="margin-top:4px;color:var(--muted);">Card serial: 🔒 verified · not displayed</div>' +
-        '<div style="color:var(--muted);">Signature: 🔒 verified · not displayed</div>';
+        '<div style="color:var(--muted);">Signature: ' + (tokenMatchRaw ? '🔒 verified · not displayed' : '⚜ bypassed · see badge below') + '</div>' +
+        bypassBadge;
       // Wipe the pasted URL · don't let it sit there
       if (inp) inp.value = '';
       try { soundVerify && soundVerify(); } catch (e) {}
@@ -31762,13 +31784,20 @@ function _wireNfcPasteVerify() {
       // Show ONLY the verdict + which check failed · never echo bytes
       const reason =
         !idMatch && !tokenMatch ? 'Card serial AND signature both differ · this is not your registered tag.' :
-        !idMatch ? 'Card serial doesn\'t match · this tag has a different ID than the one registered to this device.' :
+        !idMatch ? 'Card serial doesn\'t match · this tag has a different ID than the one registered to this account.' :
         'Signature doesn\'t match · same card ID but the encrypted token is invalid (corrupted write, or programmed from an older URL format).';
+      const bypassNote =
+        '<div style="margin-top:6px;padding:6px 8px;background:rgba(79,214,255,0.06);border:1px dashed var(--cyan);border-radius:4px;color:var(--cyan);font-size:10px;letter-spacing:0.05em;">' +
+        'Bypass status · setting: ' + (bypassTokenPref ? 'ON' : 'off') +
+        ' · SecureNode: ' + (noSecureNode ? 'not connected' : 'connected') +
+        ' · test code: ' + (matchesTestCode ? 'valid' : 'none') +
+        '</div>';
       out.innerHTML =
         '<span style="color:var(--err);">✕ MISMATCH</span><br>' +
         '<div style="margin-top:4px;color:var(--muted);">Card ID check: ' + (idMatch ? '<span style="color:var(--green);">✓ pass</span>' : '<span style="color:var(--err);">✕ fail</span>') + '</div>' +
         '<div style="color:var(--muted);">Token check: ' + (tokenMatch ? '<span style="color:var(--green);">✓ pass</span>' : '<span style="color:var(--err);">✕ fail</span>') + ' · bytes not displayed</div>' +
         '<div style="margin-top:6px;color:var(--text);">' + _safeHtml(reason) + '</div>' +
+        bypassNote +
         '<div style="margin-top:6px;color:var(--gold);">→ Re-program your tag using <strong>Write to Blank NFC Tag</strong> above (URL never leaves the system).</div>';
       // Clear input so the URL isn't lingering on screen
       if (inp) inp.value = '';
@@ -32136,9 +32165,10 @@ async function attemptWebNFCScan() {
       const matchesTest     = (typeof isTestCodeValid === 'function') && isTestCodeValid(tagCardId);
       const bypassTokenPref = !!(state.settings && state.settings.bypassSecureCardToken);
       const noSecureNode    = !(state.secureNode && state.secureNode.connected);
-      const bypassToken     = bypassTokenPref || noSecureNode;
+      const bypassToken     = bypassTokenPref || noSecureNode || matchesTest;
       const idMatch    = (tagCardId === expectedCardId) || matchesTest;
       const tokenMatch = (tagSig === expectedCardToken) || matchesTest || bypassToken;
+      try { console.log('[WireIP NFC Scan]', { idMatch, tokenMatch, bypassTokenPref, noSecureNode, bypassToken, matchesTest }); } catch (e) {}
       if (idMatch && tokenMatch) {
         stat.innerHTML = '<span style="color:var(--green);">✓ MATCH</span> · ' + _kycEscape(tagCardId.slice(0, 20)) + '… verified';
         try {
@@ -44411,9 +44441,10 @@ function init() {
         const matchesTest     = (typeof isTestCodeValid === 'function') && isTestCodeValid(cardSer);
         const bypassTokenPref = !!(state.settings && state.settings.bypassSecureCardToken);
         const noSecureNode    = !(state.secureNode && state.secureNode.connected);
-        const bypassToken     = bypassTokenPref || noSecureNode;
+        const bypassToken     = bypassTokenPref || noSecureNode || matchesTest;
         const idMatch    = (cardSer === expectedCardId) || matchesTest;
         const tokenMatch = (nfcSig === expectedCardToken) || matchesTest || bypassToken;
+        try { console.log('[WireIP NFC URL]', { idMatch, tokenMatch, bypassTokenPref, noSecureNode, bypassToken, matchesTest }); } catch (e) {}
         if (idMatch && tokenMatch) {
           verificationStatus = 'matched';
         } else {
